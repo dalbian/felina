@@ -5,6 +5,7 @@
 
 import { AlertTriangle, ChevronRight, Crown } from 'lucide-react';
 
+import { can } from './lib/permissions.js';
 import { GlobalStyle } from './styles.jsx';
 import { OrgAvatar, ConfirmDialog } from './components/ui.jsx';
 import { useFelinaStore } from './hooks/useFelinaStore.js';
