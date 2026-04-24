@@ -21,7 +21,10 @@ export const GlobalStyle = () => (
     * { font-family: 'DM Sans', system-ui, sans-serif; }
     .font-serif { font-family: 'Fraunces', Georgia, serif; font-variation-settings: "opsz" 144; }
     .font-mono { font-family: 'JetBrains Mono', monospace; }
-    body { background-color: #F8F3E8; }
+    /* overflow-x: hidden evita que cualquier elemento que accidentalmente se
+       salga de ancho genere scroll horizontal en toda la app. Red de seguridad
+       para móviles pequeños. */
+    html, body { background-color: #F8F3E8; overflow-x: hidden; }
     input:focus, select:focus, textarea:focus { box-shadow: 0 0 0 2px #2D4A3E !important; }
     select { appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.5l3 3 3-3' stroke='%238A7A5C' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px; }
   `}</style>
