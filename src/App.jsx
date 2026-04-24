@@ -249,15 +249,24 @@ export default function App() {
 
         <main className="flex-1 min-w-0 pb-20 md:pb-8">
           {showSuperAdminBanner && (
-            <div className="sticky top-[28px] z-20 flex items-center justify-between gap-3 px-5 md:px-8 py-2.5 text-xs"
+            <div className="sticky top-[28px] z-20 flex items-center justify-between gap-2 px-4 md:px-8 py-2 text-xs"
                  style={{ backgroundColor: '#FDF4DE', borderBottom: '1px solid #E8D4A0', color: '#8A6B1F' }}>
-              <span className="flex items-center gap-1.5">
-                <Crown className="w-3.5 h-3.5" />
-                Estás viendo <strong>{currentOrg.name}</strong> como superadministrador
-                {orgSuspended && <span className="ml-2 px-2 py-0.5 rounded" style={{ backgroundColor: '#F5DDCE', color: '#B15A3A' }}>Organización suspendida</span>}
+              <span className="flex items-center gap-1.5 min-w-0">
+                <Crown className="w-3.5 h-3.5 flex-shrink-0" />
+                <span className="hidden sm:inline">Estás viendo&nbsp;</span>
+                <strong className="truncate">{currentOrg.name}</strong>
+                <span className="hidden md:inline">&nbsp;como superadministrador</span>
+                {orgSuspended && (
+                  <span className="ml-1 px-2 py-0.5 rounded flex-shrink-0"
+                        style={{ backgroundColor: '#F5DDCE', color: '#B15A3A' }}>
+                    Suspendida
+                  </span>
+                )}
               </span>
-              <button onClick={handleExitToPlatform} className="font-medium hover:underline">
-                ← Volver a Plataforma
+              <button onClick={handleExitToPlatform}
+                      className="font-medium hover:underline whitespace-nowrap flex-shrink-0">
+                <span className="sm:hidden">← Volver</span>
+                <span className="hidden sm:inline">← Volver a Plataforma</span>
               </button>
             </div>
           )}

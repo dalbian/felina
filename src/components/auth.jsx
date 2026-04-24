@@ -8,10 +8,12 @@ import { PASSWORD_MIN, SHOW_DEMO_CREDENTIALS, validatePassword } from '../lib/au
 import { inputStyle, labelStyle } from '../styles.jsx';
 
 export const PrototypeBanner = () => (
-  <div className="sticky top-0 z-[60] w-full flex items-center justify-center gap-1.5 px-4 text-[11px] font-medium"
+  <div className="sticky top-0 z-[60] w-full flex items-center justify-center gap-1.5 px-4 text-[11px] font-medium whitespace-nowrap overflow-hidden"
        style={{ backgroundColor: '#FDF4DE', color: '#8A6B1F', borderBottom: '1px solid #E8D4A0', height: 28, lineHeight: '28px' }}>
-    <AlertTriangle className="w-3 h-3" />
-    <span>Versión de pruebas · los datos se guardan solo en este dispositivo</span>
+    <AlertTriangle className="w-3 h-3 flex-shrink-0" />
+    <span className="truncate">
+      Versión de pruebas<span className="hidden sm:inline"> · los datos se guardan solo en este dispositivo</span>
+    </span>
   </div>
 );
 
