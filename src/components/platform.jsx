@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import {
   Plus, Crown, Search, X, Edit3, MoreHorizontal, AlertTriangle, Building2,
-  ChevronRight, Trash2, Check,
+  ChevronRight, Trash2, Check, LogOut,
 } from 'lucide-react';
 import { fmtRelative } from '../lib/dates.js';
 import { ROLES } from '../constants.js';
@@ -12,7 +12,7 @@ import { OrgAvatar, UserAvatar, EmptyState } from './ui.jsx';
 import { inputStyle } from '../styles.jsx';
 
 export const PlatformView = ({ organizations, users, memberships, colonies, cats, events,
-                        onCreateOrg, onDeleteOrg, onSuspendOrg, onEnterOrg, onEditOrg, onToggleSuperAdmin, onResetUserPassword, currentUserId }) => {
+                        onCreateOrg, onDeleteOrg, onSuspendOrg, onEnterOrg, onEditOrg, onToggleSuperAdmin, onResetUserPassword, currentUserId, onLogout }) => {
   const [tab, setTab] = useState('orgs');
   const [orgSearch, setOrgSearch] = useState('');
   const [userSearch, setUserSearch] = useState('');
@@ -67,11 +67,23 @@ export const PlatformView = ({ organizations, users, memberships, colonies, cats
               Desde aquí puedes crear, suspender, eliminar o auditar cualquier organización.
             </p>
           </div>
-          <button onClick={onCreateOrg}
-                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium"
-                  style={{ backgroundColor: '#FDF4DE', color: '#8A6B1F' }}>
-            <Plus className="w-4 h-4" /> Nueva organización
-          </button>
+          <div className="flex items-center gap-2 flex-wrap">
+            <button onClick={onCreateOrg}
+                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium"
+                    style={{ backgroundColor: '#FDF4DE', color: '#8A6B1F' }}>
+              <Plus className="w-4 h-4" /> Nueva organización
+            </button>
+            {/* Logout accesible en móvil cuando no hay sidebar. En escritorio
+                también aparece; el Sidebar sigue teniendo su propio logout. */}
+            {onLogout && (
+              <button onClick={onLogout}
+                      title="Cerrar sesión"
+                      className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-medium md:hidden"
+                      style={{ backgroundColor: 'rgba(253,244,222,0.15)', color: '#FDF4DE', boxShadow: '0 0 0 1px rgba(253,244,222,0.35)' }}>
+                <LogOut className="w-4 h-4" /> Salir
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -198,9 +210,10 @@ export const PlatformView = ({ organizations, users, memberships, colonies, cats
               {filteredUsers.map((u, i) => {
                 const uMems = memberships.filter(m => m.userId === u.id);
                 return (
-                  <div key={u.id} className="flex items-center gap-3 p-4"
+                  <div key={u.id}
+                       className="flex flex-wrap items-center gap-3 p-4"
                        style={{ borderTop: i > 0 ? '1px solid #F0E8D6' : 'none' }}>
-                    <div className="relative">
+                    <div className="relative flex-shrink-0">
                       <UserAvatar name={u.name} color={u.color} size={40} />
                       {u.superAdmin && (
                         <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center"
@@ -216,16 +229,17 @@ export const PlatformView = ({ organizations, users, memberships, colonies, cats
                         {u.superAdmin ? 'Super administrador' : `${uMems.length} organización${uMems.length !== 1 ? 'es' : ''}`}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
+                    {/* En móvil los botones bajan a segunda fila. En escritorio se mantienen a la derecha. */}
+                    <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto sm:flex-nowrap sm:flex-shrink-0">
                       {u.id !== currentUserId && (
                         <button onClick={() => onResetUserPassword(u)}
-                                className="text-xs px-3 py-1.5 rounded-lg font-medium"
+                                className="text-xs px-3 py-1.5 rounded-lg font-medium whitespace-nowrap"
                                 style={{ backgroundColor: '#F2EADB', color: '#4A433C' }}>
                           Resetear contraseña
                         </button>
                       )}
                       <button onClick={() => onToggleSuperAdmin(u.id)}
-                              className="text-xs px-3 py-1.5 rounded-lg font-medium"
+                              className="text-xs px-3 py-1.5 rounded-lg font-medium whitespace-nowrap"
                               style={{
                                 backgroundColor: u.superAdmin ? '#FDF4DE' : '#F2EADB',
                                 color: u.superAdmin ? '#8A6B1F' : '#4A433C',

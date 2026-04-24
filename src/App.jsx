@@ -247,7 +247,7 @@ export default function App() {
                  onLogout={handleLogout}
                  isSuperAdmin={isSuperAdmin} />
 
-        <main className="flex-1 min-w-0 pb-20 md:pb-8">
+        <main className="flex-1 min-w-0 pb-20 md:pb-8 overflow-x-hidden">
           {showSuperAdminBanner && (
             <div className="sticky top-[28px] z-20 flex items-center justify-between gap-2 px-4 md:px-8 py-2 text-xs"
                  style={{ backgroundColor: '#FDF4DE', borderBottom: '1px solid #E8D4A0', color: '#8A6B1F' }}>
@@ -281,7 +281,8 @@ export default function App() {
                             onEnterOrg={handleEnterOrgAsSuperAdmin}
                             onEditOrg={(org) => { setSelectedColony(null); setModal({ type: 'platformEditOrg', org }); }}
                             onToggleSuperAdmin={handleToggleSuperAdmin}
-                            onResetUserPassword={(user) => setModal({ type: 'resetPassword', userId: user.id, userName: user.name })} />
+                            onResetUserPassword={(user) => setModal({ type: 'resetPassword', userId: user.id, userName: user.name })}
+                            onLogout={handleLogout} />
             )}
             {view === 'dashboard' && currentOrg && (
               <Dashboard cats={orgCats} colonies={orgColonies} events={orgEvents}
