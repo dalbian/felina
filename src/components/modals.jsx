@@ -20,6 +20,10 @@ export const GlobalModals = ({
   setSelectedShift, setSelectedTemplate,
   currentOrg, currentUser, currentRole,
   orgColonies, orgMembers, orgTemplates,
+  // Lista global de perfiles visibles (no solo miembros de la org actual).
+  // Se usa como fallback al resolver assignees cuando son usuarios "de paso"
+  // (típicamente un super_admin que se ha asignado un turno sin ser miembro).
+  users,
   currentColony, currentCat,
   // datos
   notify,
@@ -102,8 +106,14 @@ export const GlobalModals = ({
       {selectedShift && (
         <ShiftDetailView shift={selectedShift}
                          colony={orgColonies.find(c => c.id === selectedShift.colonyId)}
-                         assignee={selectedShift.assigneeId ? orgMembers.find(m => m.userId === selectedShift.assigneeId) : null}
-                         completedBy={selectedShift.completedBy ? orgMembers.find(m => m.userId === selectedShift.completedBy) : null}
+                         assignee={selectedShift.assigneeId
+                           ? (orgMembers.find(m => m.userId === selectedShift.assigneeId)
+                              || users.find(u => u.id === selectedShift.assigneeId))
+                           : null}
+                         completedBy={selectedShift.completedBy
+                           ? (orgMembers.find(m => m.userId === selectedShift.completedBy)
+                              || users.find(u => u.id === selectedShift.completedBy))
+                           : null}
                          currentUser={currentUser} currentRole={currentRole}
                          onClaim={() => claimShift(selectedShift)}
                          onUnclaim={() => unclaimShift(selectedShift)}

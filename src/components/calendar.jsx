@@ -15,7 +15,7 @@ import {
 } from '../lib/dates.js';
 import { computeShifts, isShiftPast as isShiftPastRaw } from '../lib/shifts.js';
 import { can } from '../lib/permissions.js';
-import { SHIFT_TASKS, SHIFT_SLOTS, DAYS_OF_WEEK } from '../constants.js';
+import { SHIFT_TASKS, SHIFT_SLOTS, DAYS_OF_WEEK, ROLES } from '../constants.js';
 import { TaskPill, EmptyState, UserAvatar, Field, RoleBadge } from './ui.jsx';
 import { inputStyle, labelStyle } from '../styles.jsx';
 
@@ -244,7 +244,9 @@ export const ShiftAssignForm = ({ shift, members, colony, onSave, onCancel }) =>
   const [assigneeId, setAssigneeId] = useState(shift.assigneeId || members[0]?.userId || '');
   const assignable = members.filter(m => m.role !== 'vet'); // vet no cubre turnos
   const d = parseYmd(shift.date);
-  const t = SHIFT_TASKS[shift.task];
+  // Fallback igual que en otros usos del archivo: si por algún motivo task no
+  // coincide con una key conocida, evitamos crashear el render.
+  const t = SHIFT_TASKS[shift.task] || SHIFT_TASKS.otros;
   const Icon = t.icon;
 
   return (
@@ -845,7 +847,7 @@ export const DayListModal = ({ date, shifts, colonies, members, onSelectShift, o
 };
 
 // Contenedor principal del calendario
-export const CalendarView = ({ templates, shifts, colonies, members, currentUser, currentRole,
+export const CalendarView = ({ templates, shifts, colonies, members, users, currentUser, currentRole,
                        onSelectShift, onAddTemplate, onEditTemplate, initialTab = 'month' }) => {
   const [tab, setTab] = useState(initialTab);
   const [cursor, setCursor] = useState(new Date());
@@ -870,6 +872,16 @@ export const CalendarView = ({ templates, shifts, colonies, members, currentUser
   const colonyIds = colonyFilter === 'all' ? null : new Set([colonyFilter]);
   let allShifts = computeShifts({ templates, shifts, colonyIds, from: rangeFrom, to: rangeTo });
   if (taskFilter !== 'all') allShifts = allShifts.filter(s => s.task === taskFilter);
+
+  // Lista enriquecida para resolver assignees/completedBy: miembros reales de
+  // la org + perfiles globales (users) como fallback. Usuarios "de paso" como
+  // un super_admin que asigna turnos sin ser miembro siguen siendo localizables
+  // por nombre y avatar. members tiene prioridad porque trae el rol.
+  const memberKeyed = members.map(m => [m.userId, m]);
+  const userKeyed = (users || []).map(u => [u.id, { ...u, userId: u.id }]);
+  // Object.fromEntries: las entradas posteriores ganan, así que members
+  // sobrescribe a users cuando coinciden los ids.
+  const allKnown = Object.values(Object.fromEntries([...userKeyed, ...memberKeyed]));
 
   const tabs = [
     { key: 'month',     label: 'Mes',        icon: CalendarDays },
@@ -916,7 +928,7 @@ export const CalendarView = ({ templates, shifts, colonies, members, currentUser
       )}
 
       {tab === 'month' && (
-        <MonthView cursor={cursor} setCursor={setCursor} shifts={allShifts} members={members}
+        <MonthView cursor={cursor} setCursor={setCursor} shifts={allShifts} members={allKnown}
                    onSelectShift={onSelectShift}
                    onSelectDay={(d) => {
                      setCursor(d);
@@ -924,11 +936,11 @@ export const CalendarView = ({ templates, shifts, colonies, members, currentUser
                    }} />
       )}
       {tab === 'week' && (
-        <WeekView cursor={cursor} setCursor={setCursor} shifts={allShifts} members={members}
+        <WeekView cursor={cursor} setCursor={setCursor} shifts={allShifts} members={allKnown}
                   colonies={availableColonies} onSelectShift={onSelectShift} />
       )}
       {tab === 'mine' && (
-        <MyShiftsView shifts={allShifts} members={members} colonies={colonies}
+        <MyShiftsView shifts={allShifts} members={allKnown} colonies={colonies}
                       currentUser={currentUser} currentRole={currentRole}
                       onSelectShift={onSelectShift} />
       )}

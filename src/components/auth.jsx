@@ -3,22 +3,27 @@
 // (ver memoria del proyecto: felina_temporary_pieces).
 
 import { useState } from 'react';
-import { AlertTriangle, Check, Heart, Shield, PawPrint, ChevronRight } from 'lucide-react';
+import { AlertTriangle, Heart, Shield, PawPrint, ChevronRight } from 'lucide-react';
 import { PASSWORD_MIN, SHOW_DEMO_CREDENTIALS, validatePassword } from '../lib/auth.js';
 import { inputStyle, labelStyle } from '../styles.jsx';
 
+// Banner fino siempre visible. Avisa de que la app está en versión inicial
+// (beta) sin alarmar: los datos ya están en backend real, RGPD-compliant.
 export const PrototypeBanner = () => (
   <div className="sticky top-0 z-[60] w-full flex items-center justify-center gap-1.5 px-4 text-[11px] font-medium whitespace-nowrap overflow-hidden"
        style={{ backgroundColor: '#FDF4DE', color: '#8A6B1F', borderBottom: '1px solid #E8D4A0', height: 28, lineHeight: '28px' }}>
     <AlertTriangle className="w-3 h-3 flex-shrink-0" />
     <span className="truncate">
-      Versión de pruebas<span className="hidden sm:inline"> · los datos se guardan solo en este dispositivo</span>
+      Versión inicial<span className="hidden sm:inline"> · si encuentras algo raro, escríbenos</span>
     </span>
   </div>
 );
 
 // Aviso legal mostrado una sola vez por usuario tras el primer login correcto.
 // Se persiste en localStorage con la clave felina:rgpdAck:<userId>.
+// Tras la migración a backend real, lo que se le explica al usuario cambia:
+// los datos ya viven en servidor europeo (Supabase, Frankfurt/Dublin) y se
+// comparten con quien la organización autorice.
 export const RgpdGate = ({ userName, onAccept }) => (
   <div className="fixed inset-0 z-[70] flex items-end md:items-center justify-center p-0 md:p-4"
        style={{ backgroundColor: 'rgba(26,23,18,0.55)' }}>
@@ -29,23 +34,19 @@ export const RgpdGate = ({ userName, onAccept }) => (
         <Shield className="w-6 h-6" style={{ color: '#8A6B1F' }} />
       </div>
       <h2 className="font-serif text-2xl mb-2" style={{ color: '#1A1712' }}>
-        Antes de empezar{userName ? `, ${userName.split(' ')[0]}` : ''}
+        Bienvenido/a{userName ? `, ${userName.split(' ')[0]}` : ''}
       </h2>
       <p className="text-sm mb-4" style={{ color: '#6B635A' }}>
-        Felina está en fase de pruebas. Para protegerte a ti y a las personas con las que colaboras, lee esto un momento:
+        Antes de empezar, dos cosas que conviene tener claras:
       </p>
       <ul className="space-y-3 mb-5 text-sm" style={{ color: '#4A433C' }}>
         <li className="flex gap-2">
-          <Check className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: '#6B8E4E' }} />
-          <span><strong>Los datos se guardan solo en este dispositivo.</strong> No se sincronizan con otros móviles u ordenadores. Si vacías la caché del navegador, se pierden.</span>
-        </li>
-        <li className="flex gap-2">
-          <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: '#B15A3A' }} />
-          <span><strong>No introduzcas datos personales reales de personas</strong> (adoptantes, donantes, vecinas, teléfonos…). Para las fichas de gatos, colonias y eventos veterinarios sin problema.</span>
+          <Shield className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: '#4A6332' }} />
+          <span><strong>Tus datos están a salvo.</strong> Se guardan en un servidor europeo (Frankfurt/Dublín) en cumplimiento del RGPD. Solo las personas que tu organización autorice pueden verlos.</span>
         </li>
         <li className="flex gap-2">
           <Heart className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: '#C67B5C' }} />
-          <span>Tu feedback es el objetivo de esta prueba: anota lo que te confunda o lo que eches en falta.</span>
+          <span><strong>Es una versión inicial.</strong> Si algo se ve raro o se atasca, avísanos — el feedback es lo que la hará mejor.</span>
         </li>
       </ul>
       <button onClick={onAccept}

@@ -18,6 +18,67 @@ import { normalizeEmail, isValidEmail, validatePassword } from '../lib/auth.js';
 import { can } from '../lib/permissions.js';
 import { sampleData } from '../lib/seed.js';
 import { slotFromTime } from '../lib/shifts.js';
+import { supabase } from '../lib/supabaseClient.js';
+
+// Mappers fila Postgres (snake_case) ↔ forma in-memory (camelCase) que ya
+// consumen los componentes. Mantenerlos centralizados aquí evita reescribir
+// la cadena de derivados (currentUser, userOrgs, orgMembers, etc.) durante
+// la migración a backend.
+//
+// Las fechas (createdAt, joinedAt) las convertimos de ISO string a ms desde
+// epoch para conservar la forma que esperaba el prototipo (Date.now()).
+// Así helpers como fmtRelative, fmtDate, etc. siguen funcionando sin tocar.
+const toMs = (s) => (s ? new Date(s).getTime() : 0);
+
+const mapProfile = (row) => row && {
+  id: row.id, name: row.name, email: row.email, color: row.color,
+  superAdmin: row.super_admin === true, createdAt: toMs(row.created_at),
+};
+const mapOrg = (row) => row && {
+  id: row.id, name: row.name, city: row.city,
+  contactEmail: row.contact_email, color: row.color,
+  suspended: row.suspended === true, createdAt: toMs(row.created_at),
+};
+const mapMembership = (row) => row && {
+  id: row.id, userId: row.user_id, orgId: row.org_id,
+  role: row.role, joinedAt: toMs(row.joined_at),
+};
+const mapColony = (row) => row && {
+  id: row.id, orgId: row.org_id, name: row.name, address: row.address,
+  lat: row.lat, lng: row.lng, cuidadores: row.cuidadores, notes: row.notes,
+  createdAt: toMs(row.created_at),
+};
+const mapCat = (row) => row && {
+  id: row.id, orgId: row.org_id, colonyId: row.colony_id,
+  name: row.name, sex: row.sex, color: row.color,
+  cerStatus: row.cer_status, notes: row.notes, signs: row.signs,
+  microchip: row.microchip, age: row.age,
+  createdAt: toMs(row.created_at),
+};
+const mapEvent = (row) => row && {
+  id: row.id, catId: row.cat_id, orgId: row.org_id,
+  type: row.type, date: toMs(row.date),
+  vet: row.vet, cost: row.cost === null ? null : Number(row.cost),
+  notes: row.notes,
+};
+const mapShiftTemplate = (row) => row && {
+  id: row.id, orgId: row.org_id, colonyId: row.colony_id,
+  daysOfWeek: row.days_of_week || [],
+  slot: row.slot, task: row.task,
+  active: row.active === true,
+  createdAt: toMs(row.created_at),
+};
+// Postgres devuelve `date` como 'YYYY-MM-DD' (string) cuando es DATE puro.
+// computeShifts() y la UI ya consumen ese formato → no convertimos a ms.
+const mapShift = (row) => row && {
+  id: row.id, orgId: row.org_id, colonyId: row.colony_id,
+  templateId: row.template_id,
+  date: row.date, slot: row.slot, task: row.task,
+  assigneeId: row.assignee_id, status: row.status, notes: row.notes,
+  completedAt: row.completed_at ? toMs(row.completed_at) : null,
+  completedBy: row.completed_by,
+  createdAt: toMs(row.created_at),
+};
 
 export function useFelinaStore() {
   const [loading, setLoading] = useState(true);
@@ -70,91 +131,113 @@ export function useFelinaStore() {
     setConfirmState(null);
   };
 
-  // ───── Carga inicial + migraciones ─────
+  // ───── Carga de datos visibles para el usuario autenticado ─────
+  // RLS filtra automáticamente: super_admin ve todo, usuarios normales solo ven
+  // sus orgs, sus memberships y las colonias de sus orgs. profiles es legible
+  // por cualquier autenticado (lo necesitamos para resolver nombres de miembros).
+  //
+  // Devuelve { me, ownOrgIds } para que el llamador pueda decidir la vista y
+  // la org por defecto sin esperar al re-render de React.
+  const loadAuthenticatedData = async (userId, userEmail) => {
+    const [meRes, profilesRes, orgsRes, membersRes, coloniesRes, catsRes, eventsRes, templatesRes, shiftsRes] = await Promise.all([
+      supabase.from('profiles').select('*').eq('id', userId).single(),
+      supabase.from('profiles').select('*'),
+      supabase.from('organizations').select('*'),
+      supabase.from('memberships').select('*'),
+      supabase.from('colonies').select('*'),
+      supabase.from('cats').select('*'),
+      supabase.from('events').select('*'),
+      supabase.from('shift_templates').select('*'),
+      supabase.from('shifts').select('*'),
+    ]);
+
+    const me = mapProfile(meRes.data);
+    // El email viene ya en profiles desde la migración 0002.
+    const profiles = (profilesRes.data || []).map(mapProfile);
+    const allMemberships = (membersRes.data || []).map(mapMembership);
+
+    setUsers(profiles);
+    setOrganizations((orgsRes.data || []).map(mapOrg));
+    setMemberships(allMemberships);
+    setColonies((coloniesRes.data || []).map(mapColony));
+    setCats((catsRes.data || []).map(mapCat));
+    setEvents((eventsRes.data || []).map(mapEvent));
+    setShiftTemplates((templatesRes.data || []).map(mapShiftTemplate));
+    setShifts((shiftsRes.data || []).map(mapShift));
+
+    const ownOrgIds = allMemberships
+      .filter(m => m.userId === userId)
+      .map(m => m.orgId);
+    return { me, ownOrgIds };
+  };
+
+  // Refresca los datos del usuario actualmente autenticado. Lo llamamos tras
+  // mutaciones para que la UI refleje el nuevo estado.
+  const refresh = async () => {
+    const { data: { session: supaSession } } = await supabase.auth.getSession();
+    if (!supaSession?.user) return;
+    await loadAuthenticatedData(supaSession.user.id, supaSession.user.email);
+  };
+
+  // ───── Conexión a Supabase Auth ─────
+  // Patrón en dos pasos:
+  //   1) getSession() lee inmediatamente la sesión persistida (o null) — esto
+  //      garantiza que setLoading(false) se llame aunque INITIAL_SESSION del
+  //      listener tarde o no llegue (comportamiento observado en algunos
+  //      flujos del cliente Supabase v2).
+  //   2) onAuthStateChange escucha login/logout y refresh de token posteriores.
+  // handleSession es idempotente, así que si ambos disparan está bien.
   useEffect(() => {
-    (async () => {
-      const orgsData = await load('organizations');
-      if (!orgsData) {
-        const s = sampleData();
-        setOrganizations(s.organizations); setUsers(s.users); setMemberships(s.memberships);
-        setColonies(s.colonies); setCats(s.cats); setEvents(s.events);
-        setShiftTemplates(s.shiftTemplates); setShifts(s.shifts);
-        await save('organizations', s.organizations);
-        await save('users', s.users);
-        await save('memberships', s.memberships);
-        await save('colonies', s.colonies);
-        await save('cats', s.cats);
-        await save('events', s.events);
-        await save('shiftTemplates', s.shiftTemplates);
-        await save('shifts', s.shifts);
+    let mounted = true;
+
+    const handleSession = async (supaSession) => {
+      if (!mounted) return;
+      if (supaSession?.user) {
+        const { me, ownOrgIds } = await loadAuthenticatedData(supaSession.user.id, supaSession.user.email);
+        if (!mounted) return;
+
+        // Resolver qué org abrir:
+        //   1) La guardada si sigue siendo accesible.
+        //   2) Si no, la primera de sus memberships (para usuarios normales).
+        //   3) super_admin sin selección guardada → null y va a Plataforma.
+        const savedOrgId = await load('selectedOrgId:' + supaSession.user.id);
+        let resolvedOrgId = null;
+        if (savedOrgId && ownOrgIds.includes(savedOrgId)) {
+          resolvedOrgId = savedOrgId;
+        } else if (!me?.superAdmin && ownOrgIds.length > 0) {
+          resolvedOrgId = ownOrgIds[0];
+        }
+
+        setSession({ userId: supaSession.user.id, orgId: resolvedOrgId });
+        setView(me?.superAdmin && !resolvedOrgId ? 'platform' : 'dashboard');
+        const ack = await load('rgpdAck:' + supaSession.user.id);
+        if (mounted) setRgpdAcknowledged(ack === true);
       } else {
-        let usersData = (await load('users')) || [];
-        let orgsData2 = orgsData;
-
-        // Migración 1: asegurar que existe al menos un superadmin
-        if (!usersData.some(u => u.superAdmin)) {
-          const superAdmin = { id: 'u0', name: 'Aina Roca', email: 'aina@felina.app', password: 'demo1234', color: '#8A6B1F', superAdmin: true, createdAt: Date.now() };
-          usersData = [superAdmin, ...usersData];
-          await save('users', usersData);
-        }
-
-        // Migración 4: asegurar que todos los usuarios tienen password (prototipo: demo1234)
-        if (usersData.some(u => !u.password)) {
-          usersData = usersData.map(u => u.password ? u : { ...u, password: 'demo1234' });
-          await save('users', usersData);
-        }
-
-        // Migración 2: asegurar que las orgs tienen campo `suspended`
-        if (orgsData2.some(o => o.suspended === undefined)) {
-          orgsData2 = orgsData2.map(o => ({ ...o, suspended: o.suspended === true }));
-          await save('organizations', orgsData2);
-        }
-
-        setOrganizations(orgsData2);
-        setUsers(usersData);
-        setMemberships((await load('memberships')) || []);
-        setColonies((await load('colonies')) || []);
-        setCats((await load('cats')) || []);
-        setEvents((await load('events')) || []);
-
-        // Migración 3: turnos y plantillas pueden no existir en instalaciones previas
-        let savedTemplates = await load('shiftTemplates');
-        let savedShifts = await load('shifts');
-
-        // Migración 5: el calendario pasó de "hora exacta" a "franja" (mañana/tarde).
-        // Convertimos los `time: 'HH:MM'` heredados a `slot` para no perder programación.
-        if (Array.isArray(savedTemplates) && savedTemplates.some(t => !t.slot)) {
-          savedTemplates = savedTemplates.map(t => t.slot ? t : { ...t, slot: slotFromTime(t.time) });
-          await save('shiftTemplates', savedTemplates);
-        }
-        if (Array.isArray(savedShifts) && savedShifts.some(s => !s.slot)) {
-          savedShifts = savedShifts.map(s => s.slot ? s : { ...s, slot: slotFromTime(s.time) });
-          await save('shifts', savedShifts);
-        }
-
-        setShiftTemplates(savedTemplates || []);
-        setShifts(savedShifts || []);
-        if (!savedTemplates) await save('shiftTemplates', []);
-        if (!savedShifts) await save('shifts', []);
+        setSession(null);
+        setUsers([]); setOrganizations([]); setMemberships([]); setColonies([]);
+        setCats([]); setEvents([]); setShiftTemplates([]); setShifts([]);
       }
-      const savedSession = await load('session');
-      setSession(savedSession);
-      if (savedSession?.userId) {
-        const ack = await load('rgpdAck:' + savedSession.userId);
-        setRgpdAcknowledged(ack === true);
-      }
-      setLoading(false);
-    })();
+      if (mounted) setLoading(false);
+    };
+
+    // 1) Sesión inicial.
+    supabase.auth.getSession().then(({ data }) => handleSession(data.session));
+
+    // 2) Cambios posteriores.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, supaSession) => {
+      handleSession(supaSession);
+    });
+
+    return () => { mounted = false; subscription.unsubscribe(); };
   }, []);
 
-  // Cuando cambia el usuario de la sesión (login nuevo), recargar el flag RGPD.
-  useEffect(() => {
+  // Helper para persistir la org seleccionada por usuario. Usamos clave por
+  // userId para que si comparten dispositivo, cada uno conserve la suya.
+  const persistSelectedOrg = async (orgId) => {
     if (!session?.userId) return;
-    (async () => {
-      const ack = await load('rgpdAck:' + session.userId);
-      setRgpdAcknowledged(ack === true);
-    })();
-  }, [session?.userId]);
+    if (orgId) await save('selectedOrgId:' + session.userId, orgId);
+    else await save('selectedOrgId:' + session.userId, null);
+  };
 
   const handleAcceptRgpd = async () => {
     if (!session?.userId) return;
@@ -197,25 +280,26 @@ export function useFelinaStore() {
 
   // ───── Autenticación ─────
   // Devuelve null si el login ha ido bien, o un mensaje de error en caso contrario.
+  // El listener de onAuthStateChange se encarga de poblar la sesión y los datos
+  // tras un signIn exitoso, así que aquí solo lanzamos la llamada y mapeamos
+  // errores a mensajes legibles.
   const handleLogin = async (email, password) => {
-    const user = users.find(u => u.email?.toLowerCase() === email);
-    if (!user || user.password !== password) return 'Email o contraseña incorrectos.';
-    if (user.superAdmin) {
-      const newSession = { userId: user.id, orgId: null };
-      setSession(newSession); await save('session', newSession);
-      setView('platform');
-      return null;
+    const { error } = await supabase.auth.signInWithPassword({
+      email: normalizeEmail(email),
+      password,
+    });
+    if (!error) return null;
+    // Mensajes específicos solo cuando ayudan; en el resto, genérico para no
+    // filtrar si el email existe o no.
+    if (error.message?.toLowerCase().includes('email not confirmed')) {
+      return 'Tu cuenta aún no está confirmada. Revisa tu correo.';
     }
-    const userMems = memberships.filter(m => m.userId === user.id);
-    if (userMems.length === 0) return 'Este usuario no pertenece a ninguna organización.';
-    const newSession = { userId: user.id, orgId: userMems[0].orgId };
-    setSession(newSession); await save('session', newSession);
-    setView('dashboard');
-    return null;
+    return 'Email o contraseña incorrectos.';
   };
 
   const handleLogout = async () => {
-    setSession(null); await save('session', null);
+    await supabase.auth.signOut();
+    // El listener pone session=null y limpia arrays. Aquí solo reseteamos UI.
     setView('dashboard'); setSelectedCat(null); setSelectedColony(null);
   };
 
@@ -237,71 +321,128 @@ export function useFelinaStore() {
   };
 
   const handleCreateNewOrg = async ({ name, city, contactEmail }) => {
-    const newOrg = { id: uid(), name, city, contactEmail, color: '#2D4A3E', createdAt: Date.now() };
-    const newMem = { id: uid(), userId: session.userId, orgId: newOrg.id, role: 'admin', joinedAt: Date.now() };
-    const newOrgs = [...organizations, newOrg];
-    const newMems = [...memberships, newMem];
-    setOrganizations(newOrgs); setMemberships(newMems);
-    await save('organizations', newOrgs); await save('memberships', newMems);
-    const newSession = { ...session, orgId: newOrg.id };
-    setSession(newSession); await save('session', newSession);
+    // Crear org. Por RLS solo super_admin puede hacerlo; otros roles reciben
+    // el rechazo del servidor. El flujo de "super_admin crea org y asigna
+    // admin" es la vía estándar en producción (Plataforma).
+    const { data: newOrg, error: orgErr } = await supabase
+      .from('organizations')
+      .insert({ name, city, contact_email: contactEmail, color: '#2D4A3E', suspended: false })
+      .select()
+      .single();
+    if (orgErr) {
+      await notify({
+        title: 'No se pudo crear la organización',
+        message: orgErr.code === '42501' || /row-level security/i.test(orgErr.message)
+          ? 'Solo la administración de la plataforma puede crear nuevas organizaciones. Pídesela a un superadministrador.'
+          : orgErr.message,
+      });
+      return;
+    }
+    // El usuario que la crea queda como admin de la org (solo si no es ya
+    // super_admin "puro": super_admin no necesita membership para administrarla).
+    if (!isSuperAdmin) {
+      const { error: memErr } = await supabase.from('memberships').insert({
+        user_id: session.userId, org_id: newOrg.id, role: 'admin',
+      });
+      if (memErr) {
+        await notify({ title: 'Org creada, pero…', message: 'No se pudo asignar tu rol de admin: ' + memErr.message });
+      }
+    }
+    await refresh();
+    setSession({ ...session, orgId: newOrg.id });
+    await persistSelectedOrg(newOrg.id);
     setView('dashboard'); setModal(null);
   };
 
   const handleSwitchOrg = async (orgId) => {
-    const newSession = { ...session, orgId };
-    setSession(newSession); await save('session', newSession);
+    setSession({ ...session, orgId });
+    await persistSelectedOrg(orgId);
     setView('dashboard'); setSelectedCat(null); setSelectedColony(null);
   };
 
   // ───── Gestión de miembros ─────
-  const handleAddMember = async ({ name, email, password, role }) => {
+  // Asignar a una persona ya registrada como miembro de la org actual con un
+  // rol concreto. NOTA: en este punto NO creamos cuentas de usuario desde
+  // aquí. El flujo es:
+  //   1) La persona se registra (o el super_admin la crea desde el dashboard
+  //      de Supabase), lo cual genera su entrada en auth.users + profiles.
+  //   2) Un admin de org la asigna por email desde "Ajustes → Miembros".
+  // El form acepta `name` y `password` por compatibilidad con la UI antigua,
+  // pero los ignoramos: el nombre y contraseña los gestiona la propia persona.
+  // Cuando construyamos el flujo de invitación con magic-link, se simplificará.
+  const handleAddMember = async ({ email, role }) => {
     if (currentRole !== 'admin') return { error: 'No tienes permisos para añadir miembros.' };
     const normEmail = normalizeEmail(email);
     if (!normEmail || !isValidEmail(normEmail)) return { error: 'Email no válido.' };
-    const pwErr = validatePassword(password);
-    if (pwErr) return { error: pwErr };
-    if (users.some(u => normalizeEmail(u.email) === normEmail)) {
-      return { error: 'Ya existe una cuenta con ese email.' };
+
+    // Lookup del profile por email (case-insensitive).
+    const { data: target, error: lookupErr } = await supabase
+      .from('profiles')
+      .select('id, name, email')
+      .ilike('email', normEmail)
+      .maybeSingle();
+    if (lookupErr) return { error: 'Error buscando el usuario: ' + lookupErr.message };
+    if (!target) {
+      return { error: 'No existe ninguna cuenta con ese email. La persona debe registrarse primero, o pídele a un superadministrador que le cree la cuenta.' };
     }
-    const colors = ['#2D4A3E', '#B15A3A', '#7B6EA8', '#7A541F', '#4E4375', '#6B8E4E'];
-    const user = { id: uid(), name: name.trim(), email: normEmail, password, color: colors[users.length % colors.length], createdAt: Date.now() };
-    const newUsers = [...users, user];
-    const newMem = { id: uid(), userId: user.id, orgId: session.orgId, role, joinedAt: Date.now() };
-    const newMems = [...memberships, newMem];
-    setUsers(newUsers); setMemberships(newMems);
-    await save('users', newUsers); await save('memberships', newMems);
+
+    // Comprobar que no es ya miembro.
+    const { data: existing } = await supabase
+      .from('memberships')
+      .select('id')
+      .eq('user_id', target.id)
+      .eq('org_id', session.orgId)
+      .maybeSingle();
+    if (existing) return { error: `${target.name} ya es miembro de esta organización.` };
+
+    // Crear membership.
+    const { error: insErr } = await supabase.from('memberships').insert({
+      user_id: target.id, org_id: session.orgId, role,
+    });
+    if (insErr) return { error: 'No se pudo asignar: ' + insErr.message };
+
+    await refresh();
     return { ok: true };
   };
 
   const handleChangeMyPassword = async ({ current, next }) => {
     const me = users.find(u => u.id === session?.userId);
-    if (!me) return { error: 'No hay sesión activa.' };
-    if (me.password !== current) return { error: 'La contraseña actual no es correcta.' };
-    const newUsers = users.map(u => u.id === me.id ? { ...u, password: next } : u);
-    setUsers(newUsers); await save('users', newUsers);
+    if (!me?.email) return { error: 'No hay sesión activa.' };
+
+    // Supabase Auth no expone una API directa de "cambiar contraseña con
+    // verificación de la actual". Lo emulamos: re-autenticamos con la
+    // contraseña actual (signInWithPassword) y, si pasa, cambiamos a la nueva.
+    // Esto refresca el access token, lo cual es seguro y deseable.
+    const { error: signInErr } = await supabase.auth.signInWithPassword({
+      email: me.email,
+      password: current,
+    });
+    if (signInErr) {
+      return { error: 'La contraseña actual no es correcta.' };
+    }
+
+    const { error: updateErr } = await supabase.auth.updateUser({ password: next });
+    if (updateErr) {
+      return { error: 'No se pudo cambiar la contraseña: ' + updateErr.message };
+    }
+
     setModal(null);
     return { ok: true };
   };
 
-  const handleResetPassword = async (targetUserId, { next }) => {
+  // Reset de contraseña de OTRA persona. Supabase no permite hacerlo desde
+  // cliente con la publishable key (necesita service_role o un magic-link
+  // de recuperación por email). Hasta que montemos el flujo de magic-link
+  // (Edge Function + SMTP), guiamos al usuario a hacerlo desde el panel
+  // de Supabase. Se conserva la firma para que la UI siga funcionando sin
+  // cambios; cuando llegue el flujo real solo cambia el body.
+  const handleResetPassword = async (targetUserId) => {
     const target = users.find(u => u.id === targetUserId);
     if (!target) return { error: 'Usuario no encontrado.' };
     if (target.id === session?.userId) return { error: 'Usa "Cambiar contraseña" para tu propia cuenta.' };
-
-    if (isSuperAdmin) {
-      if (target.superAdmin) return { error: 'No puedes restablecer la contraseña de otro superadministrador.' };
-    } else {
-      if (currentRole !== 'admin') return { error: 'No tienes permisos.' };
-      const shares = memberships.some(m => m.userId === targetUserId && m.orgId === session.orgId);
-      if (!shares) return { error: 'Este usuario no pertenece a tu organización.' };
-      if (target.superAdmin) return { error: 'No puedes restablecer la contraseña de un superadministrador.' };
-    }
-
-    const newUsers = users.map(u => u.id === targetUserId ? { ...u, password: next } : u);
-    setUsers(newUsers); await save('users', newUsers);
-    setModal(null);
-    return { ok: true };
+    return {
+      error: 'Resetear la contraseña de otra persona aún no está disponible desde la app. Pídele que use el botón "He olvidado mi contraseña" en la pantalla de login (próximamente), o contacta con la administración de la plataforma para hacerlo manualmente.',
+    };
   };
 
   const handleRemoveMember = async (userId) => {
@@ -313,20 +454,42 @@ export function useFelinaStore() {
       destructive: true,
     });
     if (!ok) return;
-    const newMems = memberships.filter(m => !(m.userId === userId && m.orgId === session.orgId));
-    setMemberships(newMems); await save('memberships', newMems);
+    const { error } = await supabase.from('memberships')
+      .delete()
+      .eq('user_id', userId)
+      .eq('org_id', session.orgId);
+    if (error) {
+      await notify({ title: 'No se pudo expulsar', message: error.message });
+      return;
+    }
+    await refresh();
   };
 
   const handleChangeRole = async (userId, role) => {
-    const newMems = memberships.map(m =>
-      m.userId === userId && m.orgId === session.orgId ? { ...m, role } : m
-    );
-    setMemberships(newMems); await save('memberships', newMems);
+    const { error } = await supabase.from('memberships')
+      .update({ role })
+      .eq('user_id', userId)
+      .eq('org_id', session.orgId);
+    if (error) {
+      await notify({ title: 'No se pudo cambiar el rol', message: error.message });
+      return;
+    }
+    await refresh();
   };
 
   const handleEditOrg = async (data) => {
-    const newOrgs = organizations.map(o => o.id === session.orgId ? { ...o, ...data } : o);
-    setOrganizations(newOrgs); await save('organizations', newOrgs); setModal(null);
+    const patch = {};
+    if (data.name !== undefined) patch.name = data.name;
+    if (data.city !== undefined) patch.city = data.city;
+    if (data.contactEmail !== undefined) patch.contact_email = data.contactEmail;
+    if (data.color !== undefined) patch.color = data.color;
+    const { error } = await supabase.from('organizations').update(patch).eq('id', session.orgId);
+    if (error) {
+      await notify({ title: 'No se pudo guardar', message: error.message });
+      return;
+    }
+    await refresh();
+    setModal(null);
   };
 
   const handleLeaveOrg = async () => {
@@ -337,11 +500,24 @@ export function useFelinaStore() {
       destructive: true,
     });
     if (!ok) return;
-    const newMems = memberships.filter(m => !(m.userId === session.userId && m.orgId === session.orgId));
-    setMemberships(newMems); await save('memberships', newMems);
-    const other = newMems.find(m => m.userId === session.userId);
-    if (other) { await handleSwitchOrg(other.orgId); }
-    else { await handleLogout(); }
+    const { error } = await supabase.from('memberships')
+      .delete()
+      .eq('user_id', session.userId)
+      .eq('org_id', session.orgId);
+    if (error) {
+      await notify({ title: 'No se pudo salir', message: error.message });
+      return;
+    }
+    await refresh();
+    // Si el usuario tiene otras orgs, ir a la primera; si no, logout.
+    // Releemos memberships frescos (refresh ya los puso en state, pero el closure
+    // tiene el array viejo). Fetcheamos directamente del cliente para decidir.
+    const { data: mems } = await supabase.from('memberships')
+      .select('org_id')
+      .eq('user_id', session.userId)
+      .limit(1);
+    if (mems && mems.length > 0) await handleSwitchOrg(mems[0].org_id);
+    else await handleLogout();
   };
 
   const handleDeleteOrg = async () => {
@@ -358,26 +534,38 @@ export function useFelinaStore() {
     });
     if (!ok) return;
     const orgId = session.orgId;
-    const toDeleteCats = cats.filter(c => c.orgId === orgId).map(c => c.id);
-    const newOrgs = organizations.filter(o => o.id !== orgId);
-    const newMems = memberships.filter(m => m.orgId !== orgId);
-    const newColonies = colonies.filter(c => c.orgId !== orgId);
-    const newCats = cats.filter(c => c.orgId !== orgId);
-    const newEvents = events.filter(e => !toDeleteCats.includes(e.catId));
-    setOrganizations(newOrgs); setMemberships(newMems);
-    setColonies(newColonies); setCats(newCats); setEvents(newEvents);
-    await save('organizations', newOrgs); await save('memberships', newMems);
-    await save('colonies', newColonies); await save('cats', newCats); await save('events', newEvents);
-    const other = newMems.find(m => m.userId === session.userId);
-    if (other) { await handleSwitchOrg(other.orgId); }
-    else { await handleLogout(); }
+    // El cascade borra memberships y colonias asociadas.
+    const { error } = await supabase.from('organizations').delete().eq('id', orgId);
+    if (error) {
+      await notify({ title: 'No se pudo eliminar', message: error.message });
+      return;
+    }
+    await refresh();
+    // Decidir destino: otra org del usuario, o logout.
+    const { data: mems } = await supabase.from('memberships')
+      .select('org_id')
+      .eq('user_id', session.userId)
+      .limit(1);
+    if (mems && mems.length > 0) await handleSwitchOrg(mems[0].org_id);
+    else if (isSuperAdmin) {
+      setSession({ ...session, orgId: null });
+      await persistSelectedOrg(null);
+      setView('platform');
+    } else {
+      await handleLogout();
+    }
   };
 
   // ───── Gestión de plataforma (superadmin) ─────
   const handlePlatformCreateOrg = async ({ name, city, contactEmail }) => {
-    const newOrg = { id: uid(), name, city, contactEmail, color: '#2D4A3E', suspended: false, createdAt: Date.now() };
-    const newOrgs = [...organizations, newOrg];
-    setOrganizations(newOrgs); await save('organizations', newOrgs);
+    const { error } = await supabase.from('organizations').insert({
+      name, city, contact_email: contactEmail, color: '#2D4A3E', suspended: false,
+    });
+    if (error) {
+      await notify({ title: 'No se pudo crear la organización', message: error.message });
+      return;
+    }
+    await refresh();
     setModal(null);
   };
 
@@ -396,21 +584,18 @@ export function useFelinaStore() {
       destructive: true,
     });
     if (!ok) return;
-    const toDeleteCats = cats.filter(c => c.orgId === orgId).map(c => c.id);
-    const newOrgs = organizations.filter(o => o.id !== orgId);
-    const newMems = memberships.filter(m => m.orgId !== orgId);
-    const newColonies = colonies.filter(c => c.orgId !== orgId);
-    const newCats = cats.filter(c => c.orgId !== orgId);
-    const newEvents = events.filter(e => !toDeleteCats.includes(e.catId));
-    setOrganizations(newOrgs); setMemberships(newMems);
-    setColonies(newColonies); setCats(newCats); setEvents(newEvents);
-    await save('organizations', newOrgs); await save('memberships', newMems);
-    await save('colonies', newColonies); await save('cats', newCats); await save('events', newEvents);
+    // El cascade de la BD limpia memberships y colonies asociadas.
+    const { error } = await supabase.from('organizations').delete().eq('id', orgId);
+    if (error) {
+      await notify({ title: 'No se pudo eliminar', message: error.message });
+      return;
+    }
     if (session.orgId === orgId) {
-      const newSession = { ...session, orgId: null };
-      setSession(newSession); await save('session', newSession);
+      setSession({ ...session, orgId: null });
+      await persistSelectedOrg(null);
       setView('platform');
     }
+    await refresh();
   };
 
   const handlePlatformSuspendOrg = async (orgId) => {
@@ -426,13 +611,29 @@ export function useFelinaStore() {
       });
       if (!ok) return;
     }
-    const newOrgs = organizations.map(o => o.id === orgId ? { ...o, suspended: newSuspended } : o);
-    setOrganizations(newOrgs); await save('organizations', newOrgs);
+    const { error } = await supabase.from('organizations')
+      .update({ suspended: newSuspended })
+      .eq('id', orgId);
+    if (error) {
+      await notify({ title: 'No se pudo cambiar el estado', message: error.message });
+      return;
+    }
+    await refresh();
   };
 
   const handlePlatformEditOrg = async (data) => {
-    const newOrgs = organizations.map(o => o.id === data.id ? { ...o, ...data } : o);
-    setOrganizations(newOrgs); await save('organizations', newOrgs);
+    // data viene en camelCase del formulario; mapeamos a snake_case para la BD.
+    const patch = {};
+    if (data.name !== undefined) patch.name = data.name;
+    if (data.city !== undefined) patch.city = data.city;
+    if (data.contactEmail !== undefined) patch.contact_email = data.contactEmail;
+    if (data.color !== undefined) patch.color = data.color;
+    const { error } = await supabase.from('organizations').update(patch).eq('id', data.id);
+    if (error) {
+      await notify({ title: 'No se pudo guardar', message: error.message });
+      return;
+    }
+    await refresh();
     setModal(null);
   };
 
@@ -451,19 +652,25 @@ export function useFelinaStore() {
       destructive: user.superAdmin,
     });
     if (!ok) return;
-    const newUsers = users.map(u => u.id === userId ? { ...u, superAdmin: !u.superAdmin } : u);
-    setUsers(newUsers); await save('users', newUsers);
+    const { error } = await supabase.from('profiles')
+      .update({ super_admin: !user.superAdmin })
+      .eq('id', userId);
+    if (error) {
+      await notify({ title: 'No se pudo cambiar', message: error.message });
+      return;
+    }
+    await refresh();
   };
 
   const handleExitToPlatform = async () => {
-    const newSession = { ...session, orgId: null };
-    setSession(newSession); await save('session', newSession);
+    setSession({ ...session, orgId: null });
+    await persistSelectedOrg(null);
     setView('platform'); setSelectedCat(null); setSelectedColony(null);
   };
 
   const handleEnterOrgAsSuperAdmin = async (orgId) => {
-    const newSession = { ...session, orgId };
-    setSession(newSession); await save('session', newSession);
+    setSession({ ...session, orgId });
+    await persistSelectedOrg(orgId);
     setView('dashboard'); setSelectedCat(null); setSelectedColony(null);
   };
 
@@ -472,24 +679,68 @@ export function useFelinaStore() {
   // a la org activa y se fuerza el orgId original para que un form manipulado no
   // pueda moverlo a otra organización. Útil cuando migremos a backend.
   const saveColony = async (form) => {
-    if (!can(currentRole, form.id ? 'edit_colony' : 'add_colony')) { await notify({ title: 'Sin permiso', message: 'Tu rol actual no permite esta acción. Habla con la administración de tu organización si crees que debería.', tone: 'warning' }); return; }
-    let updated;
-    if (form.id) {
-      const existing = colonies.find(c => c.id === form.id);
-      if (!existing || existing.orgId !== session.orgId) { await notify({ title: 'Operación no válida', message: 'Esta colonia no pertenece a la organización activa.' }); return; }
-      updated = colonies.map(c => c.id === form.id ? { ...c, ...form, orgId: c.orgId } : c);
-    } else {
-      updated = [...colonies, { ...form, id: uid(), orgId: session.orgId, createdAt: Date.now() }];
+    if (!can(currentRole, form.id ? 'edit_colony' : 'add_colony')) {
+      await notify({ title: 'Sin permiso', message: 'Tu rol actual no permite esta acción. Habla con la administración de tu organización si crees que debería.', tone: 'warning' });
+      return;
     }
-    setColonies(updated); await save('colonies', updated); setModal(null);
+
+    // Campos de la BD. lat/lng vienen como string de inputs; convertimos a
+    // number o null. address/cuidadores/notes pueden venir vacíos: guardamos
+    // null en lugar de '' para que las consultas y exports queden limpios.
+    const toNumOrNull = (v) => (v === '' || v === undefined || v === null ? null : Number(v));
+    const toTextOrNull = (v) => (v === '' || v === undefined || v === null ? null : v);
+    const payload = {
+      name: form.name,
+      address: toTextOrNull(form.address),
+      lat: toNumOrNull(form.lat),
+      lng: toNumOrNull(form.lng),
+      cuidadores: toTextOrNull(form.cuidadores),
+      notes: toTextOrNull(form.notes),
+    };
+
+    if (form.id) {
+      // Edición: comprobación local de que pertenece a la org activa. RLS
+      // también lo bloquearía a nivel de BD; la doble guarda da mensaje claro.
+      const existing = colonies.find(c => c.id === form.id);
+      if (!existing || existing.orgId !== session.orgId) {
+        await notify({ title: 'Operación no válida', message: 'Esta colonia no pertenece a la organización activa.' });
+        return;
+      }
+      const { error } = await supabase.from('colonies').update(payload).eq('id', form.id);
+      if (error) {
+        await notify({ title: 'No se pudo guardar', message: error.message });
+        return;
+      }
+    } else {
+      const { error } = await supabase.from('colonies').insert({
+        ...payload,
+        org_id: session.orgId,
+      });
+      if (error) {
+        await notify({ title: 'No se pudo crear la colonia', message: error.message });
+        return;
+      }
+    }
+
+    await refresh();
+    setModal(null);
   };
 
   const deleteColony = async () => {
-    if (!selectedColony || !can(currentRole, 'delete_colony')) { await notify({ title: 'Sin permiso', message: 'Solo administración o coordinación pueden eliminar colonias.' }); return; }
+    if (!selectedColony || !can(currentRole, 'delete_colony')) {
+      await notify({ title: 'Sin permiso', message: 'Solo administración o coordinación pueden eliminar colonias.' });
+      return;
+    }
     const existing = colonies.find(c => c.id === selectedColony);
-    if (!existing || existing.orgId !== session.orgId) { await notify({ title: 'Operación no válida', message: 'Esta colonia no pertenece a la organización activa.' }); return; }
+    if (!existing || existing.orgId !== session.orgId) {
+      await notify({ title: 'Operación no válida', message: 'Esta colonia no pertenece a la organización activa.' });
+      return;
+    }
+    // El check de gatos vivos se mantiene; cuando migremos `cats` a Postgres
+    // (fase 2) volverá a tener efecto. Ahora cats=[] siempre pasa el check.
     if (cats.some(c => c.colonyId === selectedColony)) {
-      await notify({ title: 'Esta colonia tiene gatos', message: 'Antes de eliminar la colonia, mueve sus gatos a otra o elimínalos desde su ficha.' }); return;
+      await notify({ title: 'Esta colonia tiene gatos', message: 'Antes de eliminar la colonia, mueve sus gatos a otra o elimínalos desde su ficha.' });
+      return;
     }
     const ok = await confirmAsync({
       title: `Eliminar colonia "${existing.name}"`,
@@ -498,28 +749,71 @@ export function useFelinaStore() {
       destructive: true,
     });
     if (!ok) return;
-    const updated = colonies.filter(c => c.id !== selectedColony);
-    setColonies(updated); await save('colonies', updated);
-    setSelectedColony(null); setView('colonies');
+    const { error } = await supabase.from('colonies').delete().eq('id', selectedColony);
+    if (error) {
+      await notify({ title: 'No se pudo eliminar', message: error.message });
+      return;
+    }
+    await refresh();
+    setSelectedColony(null);
+    setView('colonies');
   };
 
   const saveCat = async (form) => {
-    if (!can(currentRole, form.id ? 'edit_cat' : 'add_cat')) { await notify({ title: 'Sin permiso', message: 'Tu rol actual no permite esta acción. Habla con la administración de tu organización si crees que debería.', tone: 'warning' }); return; }
-    let updated;
+    if (!can(currentRole, form.id ? 'edit_cat' : 'add_cat')) {
+      await notify({ title: 'Sin permiso', message: 'Tu rol actual no permite esta acción. Habla con la administración de tu organización si crees que debería.', tone: 'warning' });
+      return;
+    }
+
+    const toTextOrNull = (v) => (v === '' || v === undefined || v === null ? null : v);
+    const payload = {
+      name: form.name,
+      sex: form.sex || 'D',
+      color: toTextOrNull(form.color),
+      colony_id: toTextOrNull(form.colonyId),
+      cer_status: form.cerStatus || 'pendiente',
+      notes: toTextOrNull(form.notes),
+      signs: toTextOrNull(form.signs),
+      microchip: toTextOrNull(form.microchip),
+      age: toTextOrNull(form.age),
+    };
+
     if (form.id) {
       const existing = cats.find(c => c.id === form.id);
-      if (!existing || existing.orgId !== session.orgId) { await notify({ title: 'Operación no válida', message: 'Este gato no pertenece a la organización activa.' }); return; }
-      updated = cats.map(c => c.id === form.id ? { ...c, ...form, orgId: c.orgId } : c);
+      if (!existing || existing.orgId !== session.orgId) {
+        await notify({ title: 'Operación no válida', message: 'Este gato no pertenece a la organización activa.' });
+        return;
+      }
+      const { error } = await supabase.from('cats').update(payload).eq('id', form.id);
+      if (error) {
+        await notify({ title: 'No se pudo guardar', message: error.message });
+        return;
+      }
     } else {
-      updated = [...cats, { ...form, id: uid(), orgId: session.orgId, createdAt: Date.now() }];
+      const { error } = await supabase.from('cats').insert({
+        ...payload,
+        org_id: session.orgId,
+      });
+      if (error) {
+        await notify({ title: 'No se pudo crear el gato', message: error.message });
+        return;
+      }
     }
-    setCats(updated); await save('cats', updated); setModal(null);
+
+    await refresh();
+    setModal(null);
   };
 
   const deleteCat = async () => {
-    if (!selectedCat || !can(currentRole, 'delete_cat')) { await notify({ title: 'Sin permiso', message: 'Solo administración o coordinación pueden eliminar fichas de gato.' }); return; }
+    if (!selectedCat || !can(currentRole, 'delete_cat')) {
+      await notify({ title: 'Sin permiso', message: 'Solo administración o coordinación pueden eliminar fichas de gato.' });
+      return;
+    }
     const existing = cats.find(c => c.id === selectedCat);
-    if (!existing || existing.orgId !== session.orgId) { await notify({ title: 'Operación no válida', message: 'Este gato no pertenece a la organización activa.' }); return; }
+    if (!existing || existing.orgId !== session.orgId) {
+      await notify({ title: 'Operación no válida', message: 'Este gato no pertenece a la organización activa.' });
+      return;
+    }
     const eventCount = events.filter(e => e.catId === selectedCat).length;
     const ok = await confirmAsync({
       title: `Eliminar a ${existing.name}`,
@@ -530,48 +824,119 @@ export function useFelinaStore() {
       destructive: true,
     });
     if (!ok) return;
-    const updatedCats = cats.filter(c => c.id !== selectedCat);
-    const updatedEvents = events.filter(e => e.catId !== selectedCat);
-    setCats(updatedCats); setEvents(updatedEvents);
-    await save('cats', updatedCats); await save('events', updatedEvents);
-    setSelectedCat(null); setView('cats');
+    // El cascade en events.cat_id borra los eventos asociados automáticamente.
+    const { error } = await supabase.from('cats').delete().eq('id', selectedCat);
+    if (error) {
+      await notify({ title: 'No se pudo eliminar', message: error.message });
+      return;
+    }
+    await refresh();
+    setSelectedCat(null);
+    setView('cats');
   };
 
   const changeCatStatus = async (status) => {
-    if (!can(currentRole, 'change_status')) { await notify({ title: 'Sin permiso', message: 'Tu rol actual no permite esta acción. Habla con la administración de tu organización si crees que debería.', tone: 'warning' }); return; }
+    if (!can(currentRole, 'change_status')) {
+      await notify({ title: 'Sin permiso', message: 'Tu rol actual no permite esta acción. Habla con la administración de tu organización si crees que debería.', tone: 'warning' });
+      return;
+    }
     const existing = cats.find(c => c.id === selectedCat);
-    if (!existing || existing.orgId !== session.orgId) { await notify({ title: 'Operación no válida', message: 'Este gato no pertenece a la organización activa.' }); return; }
-    const updated = cats.map(c => c.id === selectedCat ? { ...c, cerStatus: status } : c);
-    setCats(updated); await save('cats', updated);
+    if (!existing || existing.orgId !== session.orgId) {
+      await notify({ title: 'Operación no válida', message: 'Este gato no pertenece a la organización activa.' });
+      return;
+    }
+    const { error } = await supabase.from('cats').update({ cer_status: status }).eq('id', selectedCat);
+    if (error) {
+      await notify({ title: 'No se pudo cambiar el estado', message: error.message });
+      return;
+    }
+    await refresh();
   };
 
   const saveEvent = async (form) => {
-    if (!can(currentRole, 'add_event')) { await notify({ title: 'Sin permiso', message: 'Tu rol actual no permite esta acción. Habla con la administración de tu organización si crees que debería.', tone: 'warning' }); return; }
+    if (!can(currentRole, 'add_event')) {
+      await notify({ title: 'Sin permiso', message: 'Tu rol actual no permite esta acción. Habla con la administración de tu organización si crees que debería.', tone: 'warning' });
+      return;
+    }
     const cat = cats.find(c => c.id === selectedCat);
-    if (!cat || cat.orgId !== session.orgId) { await notify({ title: 'Operación no válida', message: 'Este gato no pertenece a la organización activa.' }); return; }
-    const updated = [...events, { ...form, id: uid(), catId: selectedCat }];
-    setEvents(updated); await save('events', updated); setModal(null);
+    if (!cat || cat.orgId !== session.orgId) {
+      await notify({ title: 'Operación no válida', message: 'Este gato no pertenece a la organización activa.' });
+      return;
+    }
+    // form.date llega como ms (Date.now() en el form) o ISO string. Postgres
+    // acepta ambos en una columna timestamptz, pero normalizamos a ISO para
+    // evitar sorpresas con timezones.
+    const dateIso = form.date
+      ? new Date(form.date).toISOString()
+      : new Date().toISOString();
+    const payload = {
+      cat_id: selectedCat,
+      org_id: session.orgId,
+      type: form.type,
+      date: dateIso,
+      vet: form.vet || null,
+      cost: form.cost === '' || form.cost === undefined || form.cost === null ? null : Number(form.cost),
+      notes: form.notes || null,
+    };
+    const { error } = await supabase.from('events').insert(payload);
+    if (error) {
+      await notify({ title: 'No se pudo registrar el evento', message: error.message });
+      return;
+    }
+    await refresh();
+    setModal(null);
   };
 
   // ───── Datos (calendario: plantillas y turnos) ─────
   const saveShiftTemplate = async (form) => {
-    if (!can(currentRole, 'manage_shifts')) { await notify({ title: 'Sin permiso', message: 'Tu rol actual no permite esta acción. Habla con la administración de tu organización si crees que debería.', tone: 'warning' }); return; }
-    let updated;
+    if (!can(currentRole, 'manage_shifts')) {
+      await notify({ title: 'Sin permiso', message: 'Tu rol actual no permite esta acción. Habla con la administración de tu organización si crees que debería.', tone: 'warning' });
+      return;
+    }
+    const payload = {
+      colony_id: form.colonyId,
+      days_of_week: form.daysOfWeek || [],
+      slot: form.slot || slotFromTime(form.time),
+      task: form.task,
+      active: form.active !== false,
+    };
+
     if (form.id) {
       const existing = shiftTemplates.find(t => t.id === form.id);
-      if (!existing || existing.orgId !== session.orgId) { await notify({ title: 'Operación no válida', message: 'Esta plantilla no pertenece a la organización activa.' }); return; }
-      updated = shiftTemplates.map(t => t.id === form.id ? { ...t, ...form, orgId: t.orgId } : t);
+      if (!existing || existing.orgId !== session.orgId) {
+        await notify({ title: 'Operación no válida', message: 'Esta plantilla no pertenece a la organización activa.' });
+        return;
+      }
+      const { error } = await supabase.from('shift_templates').update(payload).eq('id', form.id);
+      if (error) {
+        await notify({ title: 'No se pudo guardar', message: error.message });
+        return;
+      }
     } else {
-      updated = [...shiftTemplates, { ...form, id: uid(), orgId: session.orgId, createdAt: Date.now() }];
+      const { error } = await supabase.from('shift_templates').insert({
+        ...payload,
+        org_id: session.orgId,
+      });
+      if (error) {
+        await notify({ title: 'No se pudo crear la plantilla', message: error.message });
+        return;
+      }
     }
-    setShiftTemplates(updated); await save('shiftTemplates', updated);
+
+    await refresh();
     setModal(null); setSelectedTemplate(null);
   };
 
   const deleteShiftTemplate = async (templateId) => {
-    if (!can(currentRole, 'manage_shifts')) { await notify({ title: 'Sin permiso', message: 'Tu rol actual no permite esta acción. Habla con la administración de tu organización si crees que debería.', tone: 'warning' }); return; }
+    if (!can(currentRole, 'manage_shifts')) {
+      await notify({ title: 'Sin permiso', message: 'Tu rol actual no permite esta acción. Habla con la administración de tu organización si crees que debería.', tone: 'warning' });
+      return;
+    }
     const existing = shiftTemplates.find(t => t.id === templateId);
-    if (!existing || existing.orgId !== session.orgId) { await notify({ title: 'Operación no válida', message: 'Esta plantilla no pertenece a la organización activa.' }); return; }
+    if (!existing || existing.orgId !== session.orgId) {
+      await notify({ title: 'Operación no válida', message: 'Esta plantilla no pertenece a la organización activa.' });
+      return;
+    }
     const ok = await confirmAsync({
       title: 'Eliminar plantilla de turno',
       message: 'Los turnos ya asignados o completados se conservan como registro histórico, pero no se generarán nuevos a partir de esta plantilla.',
@@ -579,47 +944,88 @@ export function useFelinaStore() {
       destructive: true,
     });
     if (!ok) return;
-    const updated = shiftTemplates.filter(t => t.id !== templateId);
-    setShiftTemplates(updated); await save('shiftTemplates', updated);
+    // FK template_id → on delete set null: los turnos existentes se conservan
+    // como histórico (sin templateId). Coherente con el mensaje de arriba.
+    const { error } = await supabase.from('shift_templates').delete().eq('id', templateId);
+    if (error) {
+      await notify({ title: 'No se pudo eliminar', message: error.message });
+      return;
+    }
+    await refresh();
     setModal(null); setSelectedTemplate(null);
   };
 
-  // Materializa un turno virtual a real, o actualiza el existente. Devuelve el
-  // turno persistido. El objeto retornado conserva `_template` (no se persiste,
-  // solo para mantener el contexto visual).
+  // Materializa un turno virtual a real, o actualiza el existente. Devuelve
+  // el turno persistido. Cuando es virtual, hacemos INSERT y leemos la fila
+  // creada (con id real) para devolverla al llamador.
   const upsertShift = async (virtualOrReal, patch) => {
-    if (virtualOrReal.orgId !== session.orgId) { await notify({ title: 'Operación no válida', message: 'Este turno no pertenece a la organización activa.' }); return null; }
-    let updated;
-    let saved;
-    if (virtualOrReal._virtual) {
-      const real = {
-        id: uid(),
-        orgId: session.orgId,
-        colonyId: virtualOrReal.colonyId,
-        templateId: virtualOrReal.templateId,
-        date: virtualOrReal.date,
-        slot: virtualOrReal.slot || slotFromTime(virtualOrReal.time),
-        task: virtualOrReal.task,
-        assigneeId: null,
-        status: 'open',
-        notes: '',
-        createdAt: Date.now(),
-        ...patch,
-      };
-      updated = [...shifts, real];
-      saved = { ...real, _template: virtualOrReal._template, _virtual: false };
-    } else {
-      const stored = { ...virtualOrReal, ...patch, orgId: virtualOrReal.orgId };
-      delete stored._template; delete stored._virtual;
-      updated = shifts.map(s => s.id === virtualOrReal.id ? stored : s);
-      saved = { ...stored, _template: virtualOrReal._template, _virtual: false };
+    if (virtualOrReal.orgId !== session.orgId) {
+      await notify({ title: 'Operación no válida', message: 'Este turno no pertenece a la organización activa.' });
+      return null;
     }
-    setShifts(updated); await save('shifts', updated);
-    return saved;
+
+    // Construye el payload a partir del shift original + patch. Los nombres
+    // que contienen ms (completedAt) se convierten a ISO para timestamptz.
+    const buildPayload = (base, p) => {
+      const merged = { ...base, ...p };
+      const out = {
+        slot: merged.slot || slotFromTime(merged.time),
+        task: merged.task,
+        assignee_id: merged.assigneeId ?? null,
+        status: merged.status,
+        notes: merged.notes ?? null,
+        completed_at: merged.completedAt ? new Date(merged.completedAt).toISOString() : null,
+        completed_by: merged.completedBy ?? null,
+      };
+      return out;
+    };
+
+    if (virtualOrReal._virtual) {
+      // Virtual → INSERT. Hay que enviar también las claves estáticas
+      // (org_id, colony_id, template_id, date) que en un UPDATE no tocaríamos.
+      const insertPayload = {
+        org_id: session.orgId,
+        colony_id: virtualOrReal.colonyId,
+        template_id: virtualOrReal.templateId,
+        date: virtualOrReal.date, // 'YYYY-MM-DD'
+        ...buildPayload(virtualOrReal, patch),
+      };
+      const { data, error } = await supabase.from('shifts').insert(insertPayload).select().single();
+      if (error) {
+        await notify({ title: 'No se pudo guardar el turno', message: error.message });
+        return null;
+      }
+      const saved = mapShift(data);
+      saved._template = virtualOrReal._template;
+      saved._virtual = false;
+      // Reflejar localmente sin esperar al refresh: el calendario reacciona al instante.
+      setShifts(prev => [...prev, saved]);
+      return saved;
+    } else {
+      // Real → UPDATE solo de los campos que pueden cambiar (no org_id, no
+      // colony_id, no template_id, no date).
+      const updatePayload = buildPayload(virtualOrReal, patch);
+      const { data, error } = await supabase.from('shifts')
+        .update(updatePayload)
+        .eq('id', virtualOrReal.id)
+        .select().single();
+      if (error) {
+        await notify({ title: 'No se pudo actualizar el turno', message: error.message });
+        return null;
+      }
+      const saved = mapShift(data);
+      saved._template = virtualOrReal._template;
+      saved._virtual = false;
+      setShifts(prev => prev.map(s => s.id === saved.id ? saved : s));
+      return saved;
+    }
   };
 
   const claimShift = async (shift) => {
-    if (!can(currentRole, 'claim_shift')) { await notify({ title: 'Sin permiso', message: 'Tu rol actual no permite esta acción. Habla con la administración de tu organización si crees que debería.', tone: 'warning' }); return; }
+    if (!can(currentRole, 'claim_shift')) {
+      await notify({ title: 'Sin permiso', message: 'Tu rol actual no permite esta acción. Habla con la administración de tu organización si crees que debería.', tone: 'warning' });
+      return;
+    }
     const saved = await upsertShift(shift, { assigneeId: session.userId, status: 'assigned' });
     if (!saved) return;
     setSelectedShift(saved);
@@ -627,28 +1033,55 @@ export function useFelinaStore() {
 
   const unclaimShift = async (shift) => {
     const mine = shift.assigneeId === session.userId;
-    if (!mine && !can(currentRole, 'assign_shift')) { await notify({ title: 'Sin permiso', message: 'Tu rol actual no permite esta acción. Habla con la administración de tu organización si crees que debería.', tone: 'warning' }); return; }
+    if (!mine && !can(currentRole, 'assign_shift')) {
+      await notify({ title: 'Sin permiso', message: 'Tu rol actual no permite esta acción. Habla con la administración de tu organización si crees que debería.', tone: 'warning' });
+      return;
+    }
+
+    // Caso especial: turno limpio (sin notas, no completado, vinculado a una
+    // plantilla) → DELETE para devolverlo a estado virtual. La política de
+    // RLS permite borrar al propio assignee, así que un voluntario que se
+    // desapunta puede limpiar su rastro. Es importante hacer DELETE ANTES de
+    // anular assignee_id, porque la política se evalúa contra la fila actual.
+    const isClean = !shift._virtual && !shift.notes && shift.templateId && shift.status !== 'done';
+    if (isClean) {
+      const { error } = await supabase.from('shifts').delete().eq('id', shift.id);
+      if (error) {
+        await notify({ title: 'No se pudo desapuntar', message: error.message });
+        return;
+      }
+      // Reflejo local + actualización de selectedShift a virtual.
+      setShifts(prev => prev.filter(s => s.id !== shift.id));
+      setSelectedShift({
+        ...shift,
+        id: `v:${shift.templateId}|${shift.date}|${shift.slot}`,
+        _virtual: true, _template: shift._template,
+        assigneeId: null, status: 'open', notes: '',
+      });
+      return;
+    }
+
+    // Caso normal: solo desasignar.
     const saved = await upsertShift(shift, { assigneeId: null, status: 'open' });
     if (!saved) return;
-    // Si el turno no tiene nada más (no notas, no completado), podemos borrarlo para dejarlo virtual
-    if (!saved.notes && saved.status === 'open' && saved.templateId) {
-      const cleaned = shifts.filter(s => s.id !== saved.id);
-      setShifts(cleaned); await save('shifts', cleaned);
-      setSelectedShift({ ...shift, _virtual: true, assigneeId: null, status: 'open' });
-    } else {
-      setSelectedShift(saved);
-    }
+    setSelectedShift(saved);
   };
 
   const assignShiftTo = async (shift, userId) => {
-    if (!can(currentRole, 'assign_shift')) { await notify({ title: 'Sin permiso', message: 'Tu rol actual no permite esta acción. Habla con la administración de tu organización si crees que debería.', tone: 'warning' }); return; }
+    if (!can(currentRole, 'assign_shift')) {
+      await notify({ title: 'Sin permiso', message: 'Tu rol actual no permite esta acción. Habla con la administración de tu organización si crees que debería.', tone: 'warning' });
+      return;
+    }
     const saved = await upsertShift(shift, { assigneeId: userId, status: 'assigned' });
     if (!saved) return;
     setSelectedShift(saved); setModal('viewShift');
   };
 
   const completeShift = async (shift) => {
-    if (!can(currentRole, 'complete_shift')) { await notify({ title: 'Sin permiso', message: 'Tu rol actual no permite esta acción. Habla con la administración de tu organización si crees que debería.', tone: 'warning' }); return; }
+    if (!can(currentRole, 'complete_shift')) {
+      await notify({ title: 'Sin permiso', message: 'Tu rol actual no permite esta acción. Habla con la administración de tu organización si crees que debería.', tone: 'warning' });
+      return;
+    }
     const saved = await upsertShift(shift, {
       status: 'done',
       completedAt: Date.now(),
@@ -660,7 +1093,10 @@ export function useFelinaStore() {
   };
 
   const uncompleteShift = async (shift) => {
-    if (!can(currentRole, 'complete_shift')) { await notify({ title: 'Sin permiso', message: 'Tu rol actual no permite esta acción. Habla con la administración de tu organización si crees que debería.', tone: 'warning' }); return; }
+    if (!can(currentRole, 'complete_shift')) {
+      await notify({ title: 'Sin permiso', message: 'Tu rol actual no permite esta acción. Habla con la administración de tu organización si crees que debería.', tone: 'warning' });
+      return;
+    }
     const saved = await upsertShift(shift, {
       status: shift.assigneeId ? 'assigned' : 'open',
       completedAt: null,

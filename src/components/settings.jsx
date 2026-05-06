@@ -6,7 +6,7 @@ import { useState } from 'react';
 import {
   Edit3, UserPlus, Check, MoreHorizontal, LogOut, Shield, RefreshCw, AlertTriangle,
 } from 'lucide-react';
-import { PASSWORD_MIN, isValidEmail, normalizeEmail, validatePassword } from '../lib/auth.js';
+import { isValidEmail, normalizeEmail } from '../lib/auth.js';
 import { ROLES } from '../constants.js';
 import { OrgAvatar, UserAvatar, RoleBadge, Modal } from './ui.jsx';
 import { inputStyle, labelStyle } from '../styles.jsx';
@@ -199,20 +199,21 @@ export const MemberRow = ({ member, isCurrentUser, canManage, onChangeRole, onRe
 };
 
 export const InviteForm = ({ onSave, onCancel }) => {
-  const [form, setForm] = useState({ name: '', email: '', password: '', passwordConfirm: '', role: 'volunteer' });
+  // Tras la migración a Supabase Auth, el form solo necesita email + rol:
+  // las contraseñas y nombres los gestiona la propia persona en su cuenta.
+  // La persona debe tener cuenta antes de ser asignada (vía registro o
+  // creación manual desde el dashboard de Supabase). El flujo "invitar por
+  // email automático" llegará en una sub-fase posterior.
+  const [form, setForm] = useState({ email: '', role: 'volunteer' });
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
   const submit = async () => {
     if (busy) return;
-    const name = form.name.trim();
     const email = normalizeEmail(form.email);
-    if (!name) { setError('El nombre es obligatorio.'); return; }
-    if (!email || !isValidEmail(email)) { setError('Introduce un email válido (será su nombre de usuario).'); return; }
-    const pwErr = validatePassword(form.password, form.passwordConfirm);
-    if (pwErr) { setError(pwErr); return; }
+    if (!email || !isValidEmail(email)) { setError('Introduce un email válido.'); return; }
     setBusy(true);
-    const result = await onSave({ name, email, password: form.password, role: form.role });
+    const result = await onSave({ email, role: form.role });
     setBusy(false);
     if (result?.error) setError(result.error);
   };
@@ -220,31 +221,13 @@ export const InviteForm = ({ onSave, onCancel }) => {
   return (
     <div className="space-y-4">
       <p className="text-xs rounded-lg p-3" style={{ color: '#78706A', backgroundColor: '#F2EADB' }}>
-        Le creas una cuenta con email y contraseña. <strong>Comparte la contraseña de forma segura</strong> — puede cambiarla desde sus ajustes al entrar.
+        Asignas a una persona ya registrada como miembro de la organización. Si aún no tiene cuenta, pídele que se registre primero (o que un superadministrador le cree la cuenta).
       </p>
       <div>
-        <label className="block text-xs font-medium mb-1" style={labelStyle}>Nombre completo *</label>
-        <input type="text" value={form.name} onChange={e => { setForm({ ...form, name: e.target.value }); setError(''); }}
-               className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} placeholder="Nombre Apellido" />
-      </div>
-      <div>
-        <label className="block text-xs font-medium mb-1" style={labelStyle}>Email (nombre de usuario) *</label>
-        <input type="email" autoComplete="off" value={form.email} onChange={e => { setForm({ ...form, email: e.target.value }); setError(''); }}
+        <label className="block text-xs font-medium mb-1" style={labelStyle}>Email de la persona *</label>
+        <input type="email" autoComplete="off" autoFocus value={form.email}
+               onChange={e => { setForm({ ...form, email: e.target.value }); setError(''); }}
                className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} placeholder="persona@ejemplo.org" />
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <div>
-          <label className="block text-xs font-medium mb-1" style={labelStyle}>Contraseña * <span style={{ color: '#8A7A5C' }}>(mín. {PASSWORD_MIN})</span></label>
-          <input type="password" autoComplete="new-password" value={form.password}
-                 onChange={e => { setForm({ ...form, password: e.target.value }); setError(''); }}
-                 className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} placeholder="••••••••" />
-        </div>
-        <div>
-          <label className="block text-xs font-medium mb-1" style={labelStyle}>Confirmar contraseña *</label>
-          <input type="password" autoComplete="new-password" value={form.passwordConfirm}
-                 onChange={e => { setForm({ ...form, passwordConfirm: e.target.value }); setError(''); }}
-                 className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} placeholder="••••••••" />
-        </div>
       </div>
       <div>
         <label className="block text-xs font-medium mb-2" style={labelStyle}>Rol en la organización</label>

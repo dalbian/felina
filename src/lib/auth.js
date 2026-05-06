@@ -4,11 +4,12 @@
 
 export const PASSWORD_MIN = 8;
 
-// En dev mostramos el panel con las credenciales demo para facilitar pruebas
-// rápidas. En producción queda oculto; para forzarlo en un deploy concreto:
-// VITE_SHOW_DEMO_CREDENTIALS=true.
+// El panel con credenciales demo era útil mientras la app vivía solo en
+// localStorage. Con Supabase Auth real esos usuarios no existen en la BD,
+// así que mostrar el panel solo despista. Queda controlable por env por si
+// alguna vez se monta un entorno de demo aparte: VITE_SHOW_DEMO_CREDENTIALS=true.
 export const SHOW_DEMO_CREDENTIALS =
-  import.meta.env.DEV || import.meta.env.VITE_SHOW_DEMO_CREDENTIALS === 'true';
+  import.meta.env.VITE_SHOW_DEMO_CREDENTIALS === 'true';
 
 export const normalizeEmail = (e) => (e || '').trim().toLowerCase();
 

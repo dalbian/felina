@@ -166,13 +166,43 @@ export default function App() {
     );
   }
 
-  // Usuario regular sin org (caso raro) → volver al login
-  if (!currentOrg && !isSuperAdmin) {
+  // Usuario autenticado pero sin pertenencia a ninguna org. Antes (con datos
+  // sembrados en localStorage) era un caso raro; con Supabase Auth pasa con
+  // frecuencia: cualquier persona registrada queda en este estado hasta que
+  // un admin la asigna. Mostrar mensaje claro en lugar de rebotar al login.
+  if (!currentOrg && !isSuperAdmin && userOrgs.length === 0) {
     return (
       <>
         {globalStyle}
         <PrototypeBanner />
-        <LoginScreen onLogin={handleLogin} />
+        {!rgpdAcknowledged && <RgpdGate userName={currentUser.name} onAccept={handleAcceptRgpd} />}
+        <div className="min-h-screen flex items-center justify-center p-5" style={{ backgroundColor: '#F8F3E8' }}>
+          <div className="max-w-md w-full rounded-3xl p-8 text-center"
+               style={{ backgroundColor: '#FDFAF3', boxShadow: '0 0 0 1px #EADFC9' }}>
+            <div className="w-14 h-14 rounded-full mx-auto mb-4 flex items-center justify-center"
+                 style={{ backgroundColor: '#FDF4DE' }}>
+              <AlertTriangle className="w-7 h-7" style={{ color: '#8A6B1F' }} />
+            </div>
+            <h1 className="font-serif text-2xl mb-2" style={{ color: '#1A1712' }}>
+              Hola{currentUser.name ? `, ${currentUser.name.split(' ')[0]}` : ''}
+            </h1>
+            <p className="text-sm mb-2" style={{ color: '#6B635A' }}>
+              Tu cuenta existe, pero todavía no perteneces a ninguna organización.
+            </p>
+            <p className="text-sm mb-6" style={{ color: '#6B635A' }}>
+              Pídele a la administración de tu protectora que te asigne acceso usando este email:
+            </p>
+            <div className="px-4 py-2.5 rounded-lg mb-6 font-mono text-sm break-all"
+                 style={{ backgroundColor: '#F8F3E8', color: '#1A1712', boxShadow: '0 0 0 1px #EADFC9' }}>
+              {currentUser.email}
+            </div>
+            <button onClick={handleLogout}
+                    className="w-full py-2.5 rounded-xl text-sm font-medium"
+                    style={{ backgroundColor: '#F2EADB', color: '#4A433C' }}>
+              Cerrar sesión
+            </button>
+          </div>
+        </div>
       </>
     );
   }
@@ -281,7 +311,10 @@ export default function App() {
                             onEnterOrg={handleEnterOrgAsSuperAdmin}
                             onEditOrg={(org) => { setSelectedColony(null); setModal({ type: 'platformEditOrg', org }); }}
                             onToggleSuperAdmin={handleToggleSuperAdmin}
-                            onResetUserPassword={(user) => setModal({ type: 'resetPassword', userId: user.id, userName: user.name })}
+                            onResetUserPassword={(user) => notify({
+                              title: 'Restablecer contraseña',
+                              message: `${user.name} debe pulsar "He olvidado mi contraseña" en la pantalla de login para recibir un email de recuperación. Si necesitas hacerlo manualmente, contacta con la administración de la plataforma.`,
+                            })}
                             onLogout={handleLogout} />
             )}
             {view === 'dashboard' && currentOrg && (
@@ -332,6 +365,7 @@ export default function App() {
             {view === 'calendar' && currentOrg && (
               <CalendarView templates={orgTemplates} shifts={orgShifts}
                             colonies={orgColonies} members={orgMembers}
+                            users={users}
                             currentUser={currentUser} currentRole={currentRole}
                             onSelectShift={(s) => { setSelectedShift(s); setModal('viewShift'); }}
                             onAddTemplate={() => can(currentRole, 'manage_shifts')
@@ -346,7 +380,10 @@ export default function App() {
                             onAddMember={handleAddMember}
                             onRemoveMember={handleRemoveMember}
                             onChangeRole={handleChangeRole}
-                            onResetMemberPassword={(member) => setModal({ type: 'resetPassword', userId: member.userId, userName: member.name })}
+                            onResetMemberPassword={(member) => notify({
+                              title: 'Restablecer contraseña',
+                              message: `${member.name} debe pulsar "He olvidado mi contraseña" en la pantalla de login para recibir un email de recuperación. Si necesitas hacerlo manualmente, contacta con la administración de la plataforma.`,
+                            })}
                             onChangeMyPassword={() => setModal('changeMyPassword')}
                             onLogout={handleLogout}
                             onLeaveOrg={handleLeaveOrg}
@@ -368,6 +405,7 @@ export default function App() {
           setSelectedTemplate={setSelectedTemplate}
           currentOrg={currentOrg} currentUser={currentUser} currentRole={currentRole}
           orgColonies={orgColonies} orgMembers={orgMembers} orgTemplates={orgTemplates}
+          users={users}
           currentColony={currentColony} currentCat={currentCat}
           notify={notify}
           saveColony={saveColony}

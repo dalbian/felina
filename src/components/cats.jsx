@@ -271,18 +271,21 @@ export const CatForm = ({ cat, colonies, onSave, onCancel, onError }) => {
   return (
     <div className="space-y-4">
       <div className="flex gap-4 items-start">
+        {/*
+          Subida de foto deshabilitada hasta que migremos las fotos a
+          Supabase Storage. Mantenemos el contenedor (avatar tipo "?")
+          para que el layout no salte; mostraremos la cámara del placeholder
+          y, en su día, restauraremos el botón + el input file.
+          Cuando llegue, descomentar el botón y el input que está más abajo.
+        */}
         <div className="relative flex-shrink-0">
-          <div className="w-24 h-24 rounded-2xl overflow-hidden"
+          <div className="w-24 h-24 rounded-2xl overflow-hidden flex items-center justify-center"
                style={{ backgroundColor: '#F2EADB' }}>
-            {form.photo ? <img src={form.photo} alt="" className="w-full h-full object-cover" /> :
-              <div className="w-full h-full flex items-center justify-center"><Camera className="w-7 h-7" style={{ color: '#B8A888' }} /></div>}
+            <Camera className="w-7 h-7" style={{ color: '#B8A888' }} />
           </div>
-          <button type="button" onClick={() => fileRef.current?.click()}
-                  className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full flex items-center justify-center"
-                  style={{ backgroundColor: '#1F3A2F', color: '#F8F3E8' }}>
-            <Camera className="w-4 h-4" />
-          </button>
-          <input ref={fileRef} type="file" accept="image/*" onChange={handlePhoto} className="hidden" />
+          <div className="text-[10px] mt-1 text-center" style={{ color: '#8A7A5C' }}>
+            Foto próximamente
+          </div>
         </div>
         <div className="flex-1 space-y-3">
           <div>

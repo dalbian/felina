@@ -17,4 +17,7 @@ yarn-error.log*
 # Editor
 .vscode
 .idea
-package-lock.json 
+package-lock.json
+
+# Claude Code metadatos / worktrees
+.claude/ 
