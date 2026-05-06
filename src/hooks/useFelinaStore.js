@@ -220,12 +220,30 @@ export function useFelinaStore() {
       if (mounted) setLoading(false);
     };
 
+    // Comparamos el userId entre eventos para distinguir un login real (o
+    // logout) de eventos "ruido" que Supabase emite mientras la sesión está
+    // viva: TOKEN_REFRESHED (el JWT se refresca solo cada cierto tiempo),
+    // USER_UPDATED (cambio de contraseña), o re-emisiones tras volver al
+    // tab. Si el userId no cambió, ignoramos el evento — eso preserva la
+    // vista actual y evita re-fetches innecesarios.
+    //
+    // Sentinel undefined = "no hemos visto ningún estado todavía", para que
+    // la primera llamada con sesión null (usuario no logueado al arrancar)
+    // sí pase el filtro y libere el spinner de carga.
+    let currentUserId = undefined;
+    const handleAuthEvent = (supaSession) => {
+      const newUserId = supaSession?.user?.id ?? null;
+      if (currentUserId !== undefined && newUserId === currentUserId) return;
+      currentUserId = newUserId;
+      handleSession(supaSession);
+    };
+
     // 1) Sesión inicial.
-    supabase.auth.getSession().then(({ data }) => handleSession(data.session));
+    supabase.auth.getSession().then(({ data }) => handleAuthEvent(data.session));
 
     // 2) Cambios posteriores.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, supaSession) => {
-      handleSession(supaSession);
+      handleAuthEvent(supaSession);
     });
 
     return () => { mounted = false; subscription.unsubscribe(); };
