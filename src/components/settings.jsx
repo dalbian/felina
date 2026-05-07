@@ -199,11 +199,11 @@ export const MemberRow = ({ member, isCurrentUser, canManage, onChangeRole, onRe
 };
 
 export const InviteForm = ({ onSave, onCancel }) => {
-  // Tras la migración a Supabase Auth, el form solo necesita email + rol:
-  // las contraseñas y nombres los gestiona la propia persona en su cuenta.
-  // La persona debe tener cuenta antes de ser asignada (vía registro o
-  // creación manual desde el dashboard de Supabase). El flujo "invitar por
-  // email automático" llegará en una sub-fase posterior.
+  // El admin introduce email + rol. La Edge Function `invite-member` decide:
+  //   - si la persona ya tiene cuenta en Felina → la añade directa y no
+  //     manda email.
+  //   - si no tiene cuenta → envía un email con un link para que active
+  //     su cuenta. La membership se crea sola al activarla.
   const [form, setForm] = useState({ email: '', role: 'volunteer' });
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -221,7 +221,7 @@ export const InviteForm = ({ onSave, onCancel }) => {
   return (
     <div className="space-y-4">
       <p className="text-xs rounded-lg p-3" style={{ color: '#78706A', backgroundColor: '#F2EADB' }}>
-        Asignas a una persona ya registrada como miembro de la organización. Si aún no tiene cuenta, pídele que se registre primero (o que un superadministrador le cree la cuenta).
+        Si la persona ya tiene cuenta en Felina, la añadimos directamente como miembro. Si no, recibirá un email con un enlace para activar su cuenta (puede tardar unos minutos en llegar y, las primeras veces, puede caer en spam).
       </p>
       <div>
         <label className="block text-xs font-medium mb-1" style={labelStyle}>Email de la persona *</label>

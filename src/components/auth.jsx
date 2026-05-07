@@ -3,8 +3,8 @@
 // (ver memoria del proyecto: felina_temporary_pieces).
 
 import { useState } from 'react';
-import { AlertTriangle, Heart, Shield, PawPrint, ChevronRight } from 'lucide-react';
-import { PASSWORD_MIN, SHOW_DEMO_CREDENTIALS, validatePassword } from '../lib/auth.js';
+import { AlertTriangle, Heart, Shield, PawPrint, ChevronRight, Mail, KeyRound } from 'lucide-react';
+import { PASSWORD_MIN, SHOW_DEMO_CREDENTIALS, validatePassword, isValidEmail, normalizeEmail } from '../lib/auth.js';
 import { inputStyle, labelStyle } from '../styles.jsx';
 
 // Banner fino siempre visible. Avisa de que la app está en versión inicial
@@ -58,12 +58,13 @@ export const RgpdGate = ({ userName, onAccept }) => (
   </div>
 );
 
-export const LoginScreen = ({ onLogin }) => {
+export const LoginScreen = ({ onLogin, onForgotPassword }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [hintOpen, setHintOpen] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [forgotMode, setForgotMode] = useState(false);
 
   const submit = async (e) => {
     e?.preventDefault?.();
@@ -92,30 +93,43 @@ export const LoginScreen = ({ onLogin }) => {
         <p className="text-sm mb-6" style={{ color: '#6B635A' }}>
           Introduce tus credenciales para acceder a la plataforma.
         </p>
-        <form onSubmit={submit} className="space-y-4 rounded-2xl p-5" style={{ backgroundColor: '#FDFAF3', boxShadow: '0 0 0 1px #EADFC9' }}>
-          <div>
-            <label className="block text-xs font-medium mb-1" style={labelStyle}>Email</label>
-            <input type="email" autoFocus autoComplete="username"
-                   value={email} onChange={e => { setEmail(e.target.value); setError(''); }}
-                   className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} placeholder="tu@email.org" />
-          </div>
-          <div>
-            <label className="block text-xs font-medium mb-1" style={labelStyle}>Contraseña</label>
-            <input type="password" autoComplete="current-password"
-                   value={password} onChange={e => { setPassword(e.target.value); setError(''); }}
-                   className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} placeholder="••••••••" />
-          </div>
-          {error && (
-            <div className="text-xs px-3 py-2 rounded-lg" style={{ backgroundColor: '#F5DDCE', color: '#8A3A1F' }}>
-              {error}
-            </div>
-          )}
-          <button type="submit" disabled={!email.trim() || !password || busy}
-                  className="w-full py-2.5 rounded-xl text-sm font-medium disabled:opacity-50"
-                  style={{ backgroundColor: '#1F3A2F', color: '#F8F3E8' }}>
-            {busy ? 'Entrando…' : 'Entrar'}
-          </button>
-        </form>
+        {forgotMode ? (
+          <ForgotPasswordForm
+            onSubmit={async (em) => onForgotPassword?.(em) || { error: 'No disponible' }}
+            onCancel={() => setForgotMode(false)} />
+        ) : (
+          <>
+            <form onSubmit={submit} className="space-y-4 rounded-2xl p-5" style={{ backgroundColor: '#FDFAF3', boxShadow: '0 0 0 1px #EADFC9' }}>
+              <div>
+                <label className="block text-xs font-medium mb-1" style={labelStyle}>Email</label>
+                <input type="email" autoFocus autoComplete="username"
+                       value={email} onChange={e => { setEmail(e.target.value); setError(''); }}
+                       className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} placeholder="tu@email.org" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium mb-1" style={labelStyle}>Contraseña</label>
+                <input type="password" autoComplete="current-password"
+                       value={password} onChange={e => { setPassword(e.target.value); setError(''); }}
+                       className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} placeholder="••••••••" />
+              </div>
+              {error && (
+                <div className="text-xs px-3 py-2 rounded-lg" style={{ backgroundColor: '#F5DDCE', color: '#8A3A1F' }}>
+                  {error}
+                </div>
+              )}
+              <button type="submit" disabled={!email.trim() || !password || busy}
+                      className="w-full py-2.5 rounded-xl text-sm font-medium disabled:opacity-50"
+                      style={{ backgroundColor: '#1F3A2F', color: '#F8F3E8' }}>
+                {busy ? 'Entrando…' : 'Entrar'}
+              </button>
+            </form>
+            <button type="button" onClick={() => { setForgotMode(true); setError(''); }}
+                    className="w-full mt-3 py-2 text-xs font-medium hover:underline"
+                    style={{ color: '#8A7A5C', backgroundColor: 'transparent' }}>
+              ¿He olvidado mi contraseña?
+            </button>
+          </>
+        )}
 
         {SHOW_DEMO_CREDENTIALS && (
           <div className="mt-6 rounded-xl p-4" style={{ backgroundColor: '#FDF4DE', boxShadow: '0 0 0 1px #E8D4A0' }}>
@@ -252,5 +266,169 @@ export const ResetPasswordForm = ({ targetName, onSave, onCancel }) => {
         </button>
       </div>
     </div>
+  );
+};
+
+// Pantalla de "Define tu contraseña". Se muestra:
+//   - mode='invite': cuando el usuario llega desde el email de invitación.
+//     Es la primera contraseña que va a tener su cuenta — antes de definirla
+//     no podría volver a entrar.
+//   - mode='recovery': cuando llega desde el email de "He olvidado mi
+//     contraseña". Cambia la antigua por una nueva.
+//
+// Recibe userEmail y orgName (opcional) para que la persona vea claramente
+// con qué cuenta y a qué org se está activando.
+export const SetPasswordScreen = ({ mode, userEmail, orgName, onSubmit, onLogout }) => {
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const submit = async (e) => {
+    e?.preventDefault?.();
+    if (busy) return;
+    setError('');
+    const pwErr = validatePassword(password, confirm);
+    if (pwErr) { setError(pwErr); return; }
+    setBusy(true);
+    const result = await onSubmit(password);
+    setBusy(false);
+    if (result?.error) setError(result.error);
+  };
+
+  const isInvite = mode === 'invite';
+
+  return (
+    <div className="min-h-screen flex items-center justify-center p-5" style={{ backgroundColor: '#F8F3E8' }}>
+      <div className="w-full max-w-md">
+        <div className="flex items-center gap-2 mb-4">
+          <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#1F3A2F' }}>
+            <PawPrint className="w-5 h-5" style={{ color: '#F5EDD8' }} />
+          </div>
+          <div>
+            <div className="font-serif text-2xl leading-none" style={{ color: '#1A1712' }}>Felina</div>
+            <div className="text-[10px] uppercase tracking-widest" style={{ color: '#8A7A5C' }}>gestión CER</div>
+          </div>
+        </div>
+        <h1 className="font-serif text-4xl mb-2" style={{ color: '#1A1712' }}>
+          {isInvite ? <>Activa tu <span className="italic" style={{ color: '#C67B5C' }}>cuenta</span></> : <>Define tu <span className="italic" style={{ color: '#C67B5C' }}>nueva contraseña</span></>}
+        </h1>
+        <p className="text-sm mb-6" style={{ color: '#6B635A' }}>
+          {isInvite
+            ? <>Te han invitado{orgName ? <> a <strong>{orgName}</strong></> : ''}. Para empezar a usar Felina, define una contraseña para tu cuenta.</>
+            : <>Introduce una contraseña nueva para volver a entrar en Felina.</>}
+        </p>
+        <form onSubmit={submit} className="space-y-4 rounded-2xl p-5" style={{ backgroundColor: '#FDFAF3', boxShadow: '0 0 0 1px #EADFC9' }}>
+          {userEmail && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm" style={{ backgroundColor: '#F2EADB', color: '#4A433C' }}>
+              <Mail className="w-4 h-4 flex-shrink-0" style={{ color: '#8A7A5C' }} />
+              <span className="truncate font-mono">{userEmail}</span>
+            </div>
+          )}
+          <div>
+            <label className="block text-xs font-medium mb-1" style={labelStyle}>Contraseña nueva * <span style={{ color: '#8A7A5C' }}>(mín. {PASSWORD_MIN})</span></label>
+            <input type="password" autoComplete="new-password" autoFocus value={password}
+                   onChange={e => { setPassword(e.target.value); setError(''); }}
+                   className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} placeholder="••••••••" />
+          </div>
+          <div>
+            <label className="block text-xs font-medium mb-1" style={labelStyle}>Confirmar contraseña *</label>
+            <input type="password" autoComplete="new-password" value={confirm}
+                   onChange={e => { setConfirm(e.target.value); setError(''); }}
+                   className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} placeholder="••••••••" />
+          </div>
+          {error && (
+            <div className="text-xs px-3 py-2 rounded-lg" style={{ backgroundColor: '#F5DDCE', color: '#8A3A1F' }}>
+              {error}
+            </div>
+          )}
+          <button type="submit" disabled={!password || !confirm || busy}
+                  className="w-full py-2.5 rounded-xl text-sm font-medium disabled:opacity-50"
+                  style={{ backgroundColor: '#1F3A2F', color: '#F8F3E8' }}>
+            {busy ? 'Guardando…' : (isInvite ? 'Activar cuenta y entrar' : 'Guardar y entrar')}
+          </button>
+        </form>
+        {onLogout && (
+          <button onClick={onLogout}
+                  className="w-full mt-3 py-2 rounded-xl text-xs font-medium"
+                  style={{ backgroundColor: 'transparent', color: '#8A7A5C' }}>
+            Cancelar y cerrar sesión
+          </button>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// Form pequeño para pedir email de recuperación de contraseña. Se muestra
+// como overlay/expansión bajo el LoginScreen cuando el usuario pulsa
+// "He olvidado mi contraseña".
+export const ForgotPasswordForm = ({ onSubmit, onCancel }) => {
+  const [email, setEmail] = useState('');
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [sent, setSent] = useState(false);
+
+  const submit = async (e) => {
+    e?.preventDefault?.();
+    if (busy) return;
+    const norm = normalizeEmail(email);
+    if (!norm || !isValidEmail(norm)) { setError('Introduce un email válido.'); return; }
+    setBusy(true);
+    const result = await onSubmit(norm);
+    setBusy(false);
+    if (result?.error) setError(result.error);
+    else setSent(true);
+  };
+
+  if (sent) {
+    return (
+      <div className="rounded-2xl p-5" style={{ backgroundColor: '#DDE6CC', boxShadow: '0 0 0 1px #C3CFB1' }}>
+        <div className="flex items-center gap-2 mb-2">
+          <Mail className="w-4 h-4" style={{ color: '#4A6332' }} />
+          <span className="text-sm font-medium" style={{ color: '#4A6332' }}>Email enviado</span>
+        </div>
+        <p className="text-xs" style={{ color: '#4A6332' }}>
+          Si <strong>{email}</strong> tiene cuenta en Felina, recibirás un email con instrucciones para crear una contraseña nueva. Las primeras veces puede tardar unos minutos y, si no llega, mira la carpeta de spam.
+        </p>
+        <button onClick={onCancel}
+                className="mt-3 w-full py-2 rounded-xl text-xs font-medium"
+                style={{ backgroundColor: '#FDFAF3', color: '#4A433C' }}>
+          Volver al login
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <form onSubmit={submit} className="space-y-3 rounded-2xl p-5" style={{ backgroundColor: '#FDFAF3', boxShadow: '0 0 0 1px #EADFC9' }}>
+      <div className="flex items-center gap-2 mb-1">
+        <KeyRound className="w-4 h-4" style={{ color: '#8A6B1F' }} />
+        <span className="text-sm font-medium" style={{ color: '#1A1712' }}>Recuperar contraseña</span>
+      </div>
+      <p className="text-xs" style={{ color: '#6B635A' }}>
+        Introduce el email de tu cuenta. Te enviaremos un enlace para crear una contraseña nueva.
+      </p>
+      <input type="email" autoFocus autoComplete="username" value={email}
+             onChange={e => { setEmail(e.target.value); setError(''); }}
+             className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} placeholder="tu@email.org" />
+      {error && (
+        <div className="text-xs px-3 py-2 rounded-lg" style={{ backgroundColor: '#F5DDCE', color: '#8A3A1F' }}>
+          {error}
+        </div>
+      )}
+      <div className="flex gap-2 pt-1">
+        <button type="button" onClick={onCancel}
+                className="flex-1 py-2 rounded-xl text-xs font-medium"
+                style={{ backgroundColor: '#F2EADB', color: '#4A433C' }}>
+          Cancelar
+        </button>
+        <button type="submit" disabled={!email.trim() || busy}
+                className="flex-1 py-2 rounded-xl text-xs font-medium disabled:opacity-50"
+                style={{ backgroundColor: '#1F3A2F', color: '#F8F3E8' }}>
+          {busy ? 'Enviando…' : 'Enviar enlace'}
+        </button>
+      </div>
+    </form>
   );
 };
