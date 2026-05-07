@@ -18,7 +18,7 @@ import { normalizeEmail, isValidEmail, validatePassword } from '../lib/auth.js';
 import { can } from '../lib/permissions.js';
 import { sampleData } from '../lib/seed.js';
 import { slotFromTime } from '../lib/shifts.js';
-import { supabase } from '../lib/supabaseClient.js';
+import { supabase, initialAuthFlow } from '../lib/supabaseClient.js';
 
 // Mappers fila Postgres (snake_case) ↔ forma in-memory (camelCase) que ya
 // consumen los componentes. Mantenerlos centralizados aquí evita reescribir
@@ -84,6 +84,12 @@ export function useFelinaStore() {
   const [loading, setLoading] = useState(true);
   const [session, setSession] = useState(null); // { userId, orgId }
   const [rgpdAcknowledged, setRgpdAcknowledged] = useState(true); // optimista: evita parpadeo
+  // Modo "Define tu contraseña". Se inicializa desde el hash de la URL si
+  // el usuario llega de un email (invite o recovery). El listener de auth
+  // también lo activa al detectar el evento PASSWORD_RECOVERY.
+  const [passwordSetupMode, setPasswordSetupMode] = useState(
+    initialAuthFlow === 'invite' || initialAuthFlow === 'recovery' ? initialAuthFlow : null
+  );
 
   // Datos globales
   const [organizations, setOrganizations] = useState([]);
@@ -242,7 +248,13 @@ export function useFelinaStore() {
     supabase.auth.getSession().then(({ data }) => handleAuthEvent(data.session));
 
     // 2) Cambios posteriores.
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, supaSession) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, supaSession) => {
+      // PASSWORD_RECOVERY se dispara cuando el usuario llega desde un link
+      // de "He olvidado mi contraseña". Activamos el modo de set-password
+      // para que App.jsx muestre la pantalla correspondiente. La sesión
+      // temporal sigue procesándose normalmente para tener acceso a su
+      // perfil.
+      if (event === 'PASSWORD_RECOVERY') setPasswordSetupMode('recovery');
       handleAuthEvent(supaSession);
     });
 
@@ -319,6 +331,38 @@ export function useFelinaStore() {
     await supabase.auth.signOut();
     // El listener pone session=null y limpia arrays. Aquí solo reseteamos UI.
     setView('dashboard'); setSelectedCat(null); setSelectedColony(null);
+    setPasswordSetupMode(null);
+  };
+
+  // "He olvidado mi contraseña" desde el LoginScreen. Manda email con un
+  // link de recuperación que, al abrirse, dispara el flujo de set-password.
+  // Devuelve siempre éxito aunque el email no exista — esto evita revelar
+  // qué emails están registrados en la plataforma.
+  const handleForgotPassword = async (email) => {
+    const redirectTo = (typeof window !== 'undefined' ? window.location.origin : 'https://gestiofelina.org') + '/';
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+    if (error) {
+      // Solo registramos en consola por si hace falta diagnóstico; no
+      // distinguimos en UI si el email existe o no.
+      console.warn('resetPasswordForEmail error:', error.message);
+    }
+    return { ok: true };
+  };
+
+  // Define la contraseña tras llegar desde un email de invitación o
+  // recuperación. Limpia el modo de set-password al terminar para que la
+  // app vuelva al flujo normal.
+  const handleSetPassword = async (newPassword) => {
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) {
+      return { error: 'No se pudo establecer la contraseña: ' + error.message };
+    }
+    setPasswordSetupMode(null);
+    // Refrescar datos para que aparezcan orgs/colonias/etc. tras la
+    // activación (en el caso de invitación, el trigger handle_new_user
+    // ya creó la membership).
+    await refresh();
+    return { ok: true };
   };
 
   // Pieza temporal de la fase piloto: borra todo el estado persistido en este
@@ -379,48 +423,57 @@ export function useFelinaStore() {
   };
 
   // ───── Gestión de miembros ─────
-  // Asignar a una persona ya registrada como miembro de la org actual con un
-  // rol concreto. NOTA: en este punto NO creamos cuentas de usuario desde
-  // aquí. El flujo es:
-  //   1) La persona se registra (o el super_admin la crea desde el dashboard
-  //      de Supabase), lo cual genera su entrada en auth.users + profiles.
-  //   2) Un admin de org la asigna por email desde "Ajustes → Miembros".
-  // El form acepta `name` y `password` por compatibilidad con la UI antigua,
-  // pero los ignoramos: el nombre y contraseña los gestiona la propia persona.
-  // Cuando construyamos el flujo de invitación con magic-link, se simplificará.
+  // Invitar a una persona a la org actual. Se delega en la Edge Function
+  // `invite-member` (Supabase) porque crear cuentas de auth.users requiere
+  // permisos admin (service_role) que no pueden vivir en el cliente.
+  //
+  // La función decide automáticamente entre dos modos:
+  //   - existing_user: la persona ya tiene cuenta → membership inmediata,
+  //     sin email.
+  //   - invited: persona nueva → email de invitación con magic-link. Al
+  //     activar la cuenta, el trigger handle_new_user crea la membership
+  //     usando la metadata embebida (migración 0005).
+  //
+  // Devuelve { ok, mode, name? } o { error } para que la UI muestre el
+  // mensaje apropiado en cada caso.
   const handleAddMember = async ({ email, role }) => {
     if (currentRole !== 'admin') return { error: 'No tienes permisos para añadir miembros.' };
     const normEmail = normalizeEmail(email);
     if (!normEmail || !isValidEmail(normEmail)) return { error: 'Email no válido.' };
 
-    // Lookup del profile por email (case-insensitive).
-    const { data: target, error: lookupErr } = await supabase
-      .from('profiles')
-      .select('id, name, email')
-      .ilike('email', normEmail)
-      .maybeSingle();
-    if (lookupErr) return { error: 'Error buscando el usuario: ' + lookupErr.message };
-    if (!target) {
-      return { error: 'No existe ninguna cuenta con ese email. La persona debe registrarse primero, o pídele a un superadministrador que le cree la cuenta.' };
+    const { data, error } = await supabase.functions.invoke('invite-member', {
+      body: { email: normEmail, role, orgId: session.orgId },
+    });
+
+    // supabase-js devuelve `error` para fallos HTTP (no-2xx). El cuerpo de la
+    // respuesta de error está dentro de error.context.body como string JSON.
+    if (error) {
+      let message = 'No se pudo invitar.';
+      try {
+        const body = error.context && typeof error.context.json === 'function'
+          ? await error.context.json()
+          : null;
+        if (body?.error) message = body.error;
+      } catch { /* ignoramos errores parseando, dejamos el mensaje genérico */ }
+      return { error: message };
     }
 
-    // Comprobar que no es ya miembro.
-    const { data: existing } = await supabase
-      .from('memberships')
-      .select('id')
-      .eq('user_id', target.id)
-      .eq('org_id', session.orgId)
-      .maybeSingle();
-    if (existing) return { error: `${target.name} ya es miembro de esta organización.` };
-
-    // Crear membership.
-    const { error: insErr } = await supabase.from('memberships').insert({
-      user_id: target.id, org_id: session.orgId, role,
-    });
-    if (insErr) return { error: 'No se pudo asignar: ' + insErr.message };
+    if (data?.error) return { error: data.error };
 
     await refresh();
-    return { ok: true };
+
+    // Cuando se envía email de invitación, el miembro no aparece todavía
+    // en la lista (no hay membership hasta que active la cuenta). Sin
+    // feedback explícito, el admin no sabría si pasó algo. Para el caso
+    // existing_user, el cambio en la lista ya es feedback suficiente.
+    if (data?.mode === 'invited') {
+      await notify({
+        title: 'Invitación enviada',
+        message: `Hemos enviado un email a ${normEmail} con el enlace de activación. Aparecerá como miembro cuando lo abra y defina su contraseña. Las primeras invitaciones pueden tardar unos minutos y, si no llega, conviene mirar la carpeta de spam.`,
+      });
+    }
+
+    return { ok: true, mode: data?.mode, name: data?.name };
   };
 
   const handleChangeMyPassword = async ({ current, next }) => {
@@ -1155,6 +1208,7 @@ export function useFelinaStore() {
     // Handlers de sesión y RGPD
     handleAcceptRgpd,
     handleLogin, handleLogout, handleResetData,
+    handleForgotPassword, handleSetPassword, passwordSetupMode,
 
     // Handlers de organización
     handleCreateNewOrg, handleSwitchOrg,

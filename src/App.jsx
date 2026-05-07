@@ -14,7 +14,7 @@ import { ColoniesView, ColonyDetail } from './components/colonies.jsx';
 import { CatsView, CatDetail } from './components/cats.jsx';
 import { MapView } from './components/map.jsx';
 import { CalendarView } from './components/calendar.jsx';
-import { PrototypeBanner, RgpdGate, LoginScreen } from './components/auth.jsx';
+import { PrototypeBanner, RgpdGate, LoginScreen, SetPasswordScreen } from './components/auth.jsx';
 import { SettingsView } from './components/settings.jsx';
 import { PlatformView } from './components/platform.jsx';
 import { Sidebar, BottomNav } from './components/layout.jsx';
@@ -127,6 +127,7 @@ export default function App() {
     // Handlers
     handleAcceptRgpd,
     handleLogin, handleLogout, handleResetData,
+    handleForgotPassword, handleSetPassword, passwordSetupMode,
     handleCreateNewOrg, handleSwitchOrg,
     handleEditOrg, handleLeaveOrg, handleDeleteOrg,
     handleAddMember, handleRemoveMember, handleChangeRole,
@@ -161,7 +162,29 @@ export default function App() {
       <>
         {globalStyle}
         <PrototypeBanner />
-        <LoginScreen onLogin={handleLogin} />
+        <LoginScreen onLogin={handleLogin} onForgotPassword={handleForgotPassword} />
+      </>
+    );
+  }
+
+  // Usuario llegó desde un email de invitación o recuperación: forzar
+  // pantalla de "Define tu contraseña" antes de dejarle ver/usar la app.
+  // Para invitaciones, el trigger handle_new_user ya creó la membership
+  // con la org invitante; la sacamos de userOrgs para mostrar su nombre.
+  // Para recovery, no mostramos nombre de org (no aplica).
+  if (passwordSetupMode) {
+    const orgName = passwordSetupMode === 'invite'
+      ? (userOrgs?.[0]?.org?.name || null)
+      : null;
+    return (
+      <>
+        {globalStyle}
+        <SetPasswordScreen
+          mode={passwordSetupMode}
+          userEmail={currentUser?.email}
+          orgName={orgName}
+          onSubmit={handleSetPassword}
+          onLogout={handleLogout} />
       </>
     );
   }
