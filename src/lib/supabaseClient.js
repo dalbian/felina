@@ -22,17 +22,21 @@ if (!url || !anonKey) {
   );
 }
 
-// Captura del tipo de flujo de auth desde el hash de la URL ANTES de
-// instanciar el cliente. Cuando alguien llega desde un email (invitación,
-// recuperación), Supabase incluye `type=invite` o `type=recovery` en el
-// hash. createClient con detectSessionInUrl=true lo procesa y limpia
-// inmediatamente, así que si esperamos a useEffect ya se ha perdido. La
-// store lee `initialAuthFlow` para decidir si mostrar la pantalla de
+// Captura del tipo de flujo de auth desde la URL ANTES de instanciar el
+// cliente. Cuando alguien llega desde un email (invitación, recuperación),
+// Supabase incluye `type=invite` o `type=recovery` en el hash (flujo
+// implícito) o en la query (algunas versiones / flujos PKCE).
+// createClient con detectSessionInUrl=true lo procesa y limpia
+// inmediatamente, así que si esperamos a useEffect ya se ha perdido.
+// La store lee `initialAuthFlow` para decidir si mostrar la pantalla
 // "Define tu contraseña".
 export let initialAuthFlow = null;
-if (typeof window !== 'undefined' && window.location.hash) {
-  const params = new URLSearchParams(window.location.hash.slice(1));
-  const type = params.get('type');
+if (typeof window !== 'undefined') {
+  const hashParams = window.location.hash
+    ? new URLSearchParams(window.location.hash.slice(1))
+    : null;
+  const searchParams = new URLSearchParams(window.location.search);
+  const type = hashParams?.get('type') || searchParams.get('type');
   if (type === 'invite' || type === 'recovery') {
     initialAuthFlow = type;
   }
