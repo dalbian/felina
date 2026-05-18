@@ -18,9 +18,9 @@ export const StatusBadge = ({ status, size = 'md' }) => {
 };
 
 export const CatAvatar = ({ cat, size = 56 }) => {
-  if (cat.photo) {
+  if (cat.photoUrl) {
     return (
-      <img src={cat.photo} alt={cat.name}
+      <img src={cat.photoUrl} alt={cat.name}
            className="object-cover rounded-full ring-2 ring-white"
            style={{ width: size, height: size, boxShadow: '0 2px 8px rgba(42,37,32,0.12)' }} />
     );

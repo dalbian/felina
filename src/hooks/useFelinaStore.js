@@ -19,6 +19,7 @@ import { can } from '../lib/permissions.js';
 import { sampleData } from '../lib/seed.js';
 import { slotFromTime } from '../lib/shifts.js';
 import { supabase, initialAuthFlow } from '../lib/supabaseClient.js';
+import { uploadCatPhoto, deleteCatPhoto } from '../lib/images.js';
 
 // Mappers fila Postgres (snake_case) ↔ forma in-memory (camelCase) que ya
 // consumen los componentes. Mantenerlos centralizados aquí evita reescribir
@@ -53,6 +54,7 @@ const mapCat = (row) => row && {
   name: row.name, sex: row.sex, color: row.color,
   cerStatus: row.cer_status, notes: row.notes, signs: row.signs,
   microchip: row.microchip, age: row.age,
+  photoUrl: row.photo_url,
   createdAt: toMs(row.created_at),
 };
 const mapEvent = (row) => row && {
@@ -849,26 +851,58 @@ export function useFelinaStore() {
       age: toTextOrNull(form.age),
     };
 
+    // El campo `photoUrl` lo gestionamos APARTE tras el insert/update:
+    // necesitamos el catId para construir la ruta de Storage, y queremos
+    // poder guardar la ficha aunque el upload falle (la foto es secundaria).
+    let savedCatId;
+    let oldPhotoUrl = null;
+
     if (form.id) {
       const existing = cats.find(c => c.id === form.id);
       if (!existing || existing.orgId !== session.orgId) {
         await notify({ title: 'Operación no válida', message: 'Este gato no pertenece a la organización activa.' });
         return;
       }
+      oldPhotoUrl = existing.photoUrl || null;
       const { error } = await supabase.from('cats').update(payload).eq('id', form.id);
       if (error) {
         await notify({ title: 'No se pudo guardar', message: error.message });
         return;
       }
+      savedCatId = form.id;
     } else {
-      const { error } = await supabase.from('cats').insert({
-        ...payload,
-        org_id: session.orgId,
-      });
+      const { data, error } = await supabase.from('cats')
+        .insert({ ...payload, org_id: session.orgId })
+        .select('id')
+        .single();
       if (error) {
         await notify({ title: 'No se pudo crear el gato', message: error.message });
         return;
       }
+      savedCatId = data.id;
+    }
+
+    // Gestión de la foto. Tres casos:
+    //   - Hay File nuevo: subir, actualizar photo_url. upsert sobrescribe
+    //     la foto anterior (si la había) sin dejar huérfano.
+    //   - No hay File pero el form pide quitar la foto (photoUrl vacío y
+    //     había una previa): borrar del bucket y limpiar photo_url.
+    //   - Resto: no se toca la foto.
+    if (form.photoFile instanceof File) {
+      try {
+        const newUrl = await uploadCatPhoto(form.photoFile, session.orgId, savedCatId);
+        const { error } = await supabase.from('cats')
+          .update({ photo_url: newUrl })
+          .eq('id', savedCatId);
+        if (error) {
+          await notify({ title: 'Foto no guardada', message: 'La ficha del gato se guardó, pero la foto no: ' + error.message });
+        }
+      } catch (e) {
+        await notify({ title: 'Foto no guardada', message: 'La ficha se guardó pero la foto no: ' + e.message });
+      }
+    } else if (oldPhotoUrl && !form.photoUrl) {
+      await supabase.from('cats').update({ photo_url: null }).eq('id', savedCatId);
+      await deleteCatPhoto(oldPhotoUrl);
     }
 
     await refresh();
@@ -901,6 +935,8 @@ export function useFelinaStore() {
       await notify({ title: 'No se pudo eliminar', message: error.message });
       return;
     }
+    // Limpiar también la foto del bucket si la tenía. No bloqueamos si falla.
+    if (existing.photoUrl) await deleteCatPhoto(existing.photoUrl);
     await refresh();
     setSelectedCat(null);
     setView('cats');

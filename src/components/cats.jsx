@@ -1,12 +1,11 @@
 // Todo lo relacionado con fichas de gatos: tarjeta, lista, ficha detallada,
 // formulario de alta/edición y formulario de eventos veterinarios.
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import {
   MapPin, Plus, Search, ChevronLeft, ChevronRight, Edit3, Trash2,
-  PawPrint, Camera, Check, Stethoscope,
+  PawPrint, Camera, Check, Stethoscope, X as XIcon,
 } from 'lucide-react';
-import { resizeImage } from '../lib/images.js';
 import { fmtDate } from '../lib/dates.js';
 import { CER_STATUS, SEX_OPTIONS, EVENT_TYPES } from '../constants.js';
 import { CatAvatar, StatusBadge, FilterPill, EmptyState, Field } from './ui.jsx';
@@ -128,8 +127,8 @@ export const CatDetail = ({ cat, colony, events, onBack, onEdit, onAddEvent, onD
         <div>
           <div className="aspect-square rounded-2xl overflow-hidden relative"
                style={{ backgroundColor: status.bg }}>
-            {cat.photo ? (
-              <img src={cat.photo} alt={cat.name} className="w-full h-full object-cover" />
+            {cat.photoUrl ? (
+              <img src={cat.photoUrl} alt={cat.name} className="w-full h-full object-cover" />
             ) : (
               <div className="w-full h-full flex items-center justify-center font-serif" style={{ color: status.color, fontSize: 96 }}>
                 {cat.name.slice(0,1).toUpperCase()}
@@ -249,21 +248,46 @@ export const CatDetail = ({ cat, colony, events, onBack, onEdit, onAddEvent, onD
 };
 
 export const CatForm = ({ cat, colonies, onSave, onCancel, onError }) => {
-  const [form, setForm] = useState(cat || {
+  // Modelo de la foto en el form:
+  //   - photoUrl: URL pública guardada en BD (existente o null si no hay).
+  //   - photoFile: File pendiente de subir (solo en memoria, null si no hay).
+  // El upload real se hace en saveCat al confirmar el form; aquí mostramos
+  // un preview local con createObjectURL para feedback inmediato.
+  const [form, setForm] = useState(cat ? { ...cat, photoFile: null } : {
     name: '', sex: 'D', color: '', colonyId: colonies[0]?.id || '',
-    cerStatus: 'pendiente', age: '', microchip: '', signs: '', notes: '', photo: ''
+    cerStatus: 'pendiente', age: '', microchip: '', signs: '', notes: '',
+    photoUrl: null, photoFile: null,
   });
   const fileRef = useRef(null);
 
-  const handlePhoto = async (e) => {
+  // Preview local del File pendiente. Se revoca al cambiar de archivo o
+  // al desmontar para no acumular URLs en memoria.
+  const [photoPreview, setPhotoPreview] = useState(null);
+  useEffect(() => {
+    if (!form.photoFile) { setPhotoPreview(null); return; }
+    const objUrl = URL.createObjectURL(form.photoFile);
+    setPhotoPreview(objUrl);
+    return () => URL.revokeObjectURL(objUrl);
+  }, [form.photoFile]);
+
+  const displayedPhoto = photoPreview || form.photoUrl || null;
+
+  const handlePhoto = (e) => {
     const f = e.target.files?.[0];
     if (!f) return;
-    try { setForm({ ...form, photo: await resizeImage(f, 600) }); }
-    catch {
-      const msg = { title: 'No se pudo cargar la imagen', message: 'Prueba con otra foto. Si el problema persiste, puede que el archivo esté dañado o sea demasiado grande.' };
-      if (onError) onError(msg);
-      else alert(msg.message);
+    // Validación básica: tamaño máximo antes de comprimir, evita procesar
+    // archivos absurdos. 10 MB ya es generoso para fotos de móvil.
+    if (f.size > 10 * 1024 * 1024) {
+      const msg = { title: 'Foto demasiado grande', message: 'La imagen supera 10 MB. Prueba con otra más ligera.' };
+      if (onError) onError(msg); else alert(msg.message);
+      return;
     }
+    setForm({ ...form, photoFile: f });
+  };
+
+  const removePhoto = () => {
+    setForm({ ...form, photoFile: null, photoUrl: null });
+    if (fileRef.current) fileRef.current.value = '';
   };
 
   const valid = form.name.trim() && form.colonyId;
@@ -271,21 +295,32 @@ export const CatForm = ({ cat, colonies, onSave, onCancel, onError }) => {
   return (
     <div className="space-y-4">
       <div className="flex gap-4 items-start">
-        {/*
-          Subida de foto deshabilitada hasta que migremos las fotos a
-          Supabase Storage. Mantenemos el contenedor (avatar tipo "?")
-          para que el layout no salte; mostraremos la cámara del placeholder
-          y, en su día, restauraremos el botón + el input file.
-          Cuando llegue, descomentar el botón y el input que está más abajo.
-        */}
         <div className="relative flex-shrink-0">
-          <div className="w-24 h-24 rounded-2xl overflow-hidden flex items-center justify-center"
+          <div className="w-24 h-24 rounded-2xl overflow-hidden"
                style={{ backgroundColor: '#F2EADB' }}>
-            <Camera className="w-7 h-7" style={{ color: '#B8A888' }} />
+            {displayedPhoto ? (
+              <img src={displayedPhoto} alt="" className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center">
+                <Camera className="w-7 h-7" style={{ color: '#B8A888' }} />
+              </div>
+            )}
           </div>
-          <div className="text-[10px] mt-1 text-center" style={{ color: '#8A7A5C' }}>
-            Foto próximamente
-          </div>
+          <button type="button" onClick={() => fileRef.current?.click()}
+                  title={displayedPhoto ? 'Cambiar foto' : 'Añadir foto'}
+                  className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full flex items-center justify-center"
+                  style={{ backgroundColor: '#1F3A2F', color: '#F8F3E8' }}>
+            <Camera className="w-4 h-4" />
+          </button>
+          {displayedPhoto && (
+            <button type="button" onClick={removePhoto}
+                    title="Quitar foto"
+                    className="absolute -top-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center"
+                    style={{ backgroundColor: '#B15A3A', color: '#F8F3E8' }}>
+              <XIcon className="w-3 h-3" />
+            </button>
+          )}
+          <input ref={fileRef} type="file" accept="image/*" onChange={handlePhoto} className="hidden" />
         </div>
         <div className="flex-1 space-y-3">
           <div>
