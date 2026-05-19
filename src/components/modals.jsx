@@ -4,7 +4,7 @@
 
 import { Modal } from './ui.jsx';
 import { ColonyForm } from './colonies.jsx';
-import { CatForm, EventForm } from './cats.jsx';
+import { CatForm, EventForm, ReminderForm } from './cats.jsx';
 import { OrgForm } from './settings.jsx';
 import { ChangePasswordForm, ResetPasswordForm } from './auth.jsx';
 import { ShiftTemplateForm, ShiftAssignForm, ShiftDetailView } from './calendar.jsx';
@@ -31,6 +31,7 @@ export const GlobalModals = ({
   saveColony,
   saveCat,
   saveEvent,
+  saveCatReminder,
   handleCreateNewOrg, handleEditOrg,
   handlePlatformCreateOrg, handlePlatformEditOrg,
   handleChangeMyPassword, handleResetPassword,
@@ -61,6 +62,22 @@ export const GlobalModals = ({
     </Modal>
     <Modal open={modal === 'addEvent'} onClose={() => setModal(null)} title="Nuevo evento veterinario">
       <EventForm onSave={saveEvent} onCancel={() => setModal(null)} />
+    </Modal>
+
+    <Modal open={modal === 'addReminder'} onClose={() => setModal(null)} title="Nuevo recordatorio">
+      {currentCat && (
+        <ReminderForm
+          onSave={(form) => saveCatReminder({ ...form, catId: currentCat.id })}
+          onCancel={() => setModal(null)} />
+      )}
+    </Modal>
+    <Modal open={modal?.type === 'editReminder'} onClose={() => setModal(null)} title="Editar recordatorio">
+      {modal?.type === 'editReminder' && modal.reminder && (
+        <ReminderForm
+          reminder={modal.reminder}
+          onSave={(form) => saveCatReminder(form)}
+          onCancel={() => setModal(null)} />
+      )}
     </Modal>
 
     <Modal open={modal === 'createOrg'} onClose={() => setModal(null)} title="Nueva organización">

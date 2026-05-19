@@ -63,6 +63,16 @@ const mapEvent = (row) => row && {
   vet: row.vet, cost: row.cost === null ? null : Number(row.cost),
   notes: row.notes,
 };
+// Postgres devuelve `due_date` como string 'YYYY-MM-DD'. Lo mantenemos así
+// para mostrarlo y comparar con `todayYmd()`, mismo patrón que shifts.date.
+const mapCatReminder = (row) => row && {
+  id: row.id, catId: row.cat_id, orgId: row.org_id,
+  type: row.type, dueDate: row.due_date,
+  title: row.title, notes: row.notes,
+  completedAt: row.completed_at ? toMs(row.completed_at) : null,
+  completedBy: row.completed_by,
+  createdAt: toMs(row.created_at),
+};
 const mapShiftTemplate = (row) => row && {
   id: row.id, orgId: row.org_id, colonyId: row.colony_id,
   daysOfWeek: row.days_of_week || [],
@@ -102,6 +112,7 @@ export function useFelinaStore() {
   const [events, setEvents] = useState([]);
   const [shiftTemplates, setShiftTemplates] = useState([]);
   const [shifts, setShifts] = useState([]);
+  const [reminders, setReminders] = useState([]);
 
   // UI
   const [view, setView] = useState('dashboard');
@@ -147,7 +158,7 @@ export function useFelinaStore() {
   // Devuelve { me, ownOrgIds } para que el llamador pueda decidir la vista y
   // la org por defecto sin esperar al re-render de React.
   const loadAuthenticatedData = async (userId, userEmail) => {
-    const [meRes, profilesRes, orgsRes, membersRes, coloniesRes, catsRes, eventsRes, templatesRes, shiftsRes] = await Promise.all([
+    const [meRes, profilesRes, orgsRes, membersRes, coloniesRes, catsRes, eventsRes, templatesRes, shiftsRes, remindersRes] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', userId).single(),
       supabase.from('profiles').select('*'),
       supabase.from('organizations').select('*'),
@@ -157,6 +168,7 @@ export function useFelinaStore() {
       supabase.from('events').select('*'),
       supabase.from('shift_templates').select('*'),
       supabase.from('shifts').select('*'),
+      supabase.from('cat_reminders').select('*'),
     ]);
 
     const me = mapProfile(meRes.data);
@@ -172,6 +184,7 @@ export function useFelinaStore() {
     setEvents((eventsRes.data || []).map(mapEvent));
     setShiftTemplates((templatesRes.data || []).map(mapShiftTemplate));
     setShifts((shiftsRes.data || []).map(mapShift));
+    setReminders((remindersRes.data || []).map(mapCatReminder));
 
     const ownOrgIds = allMemberships
       .filter(m => m.userId === userId)
@@ -223,7 +236,7 @@ export function useFelinaStore() {
       } else {
         setSession(null);
         setUsers([]); setOrganizations([]); setMemberships([]); setColonies([]);
-        setCats([]); setEvents([]); setShiftTemplates([]); setShifts([]);
+        setCats([]); setEvents([]); setShiftTemplates([]); setShifts([]); setReminders([]);
       }
       if (mounted) setLoading(false);
     };
@@ -292,6 +305,7 @@ export function useFelinaStore() {
   const orgEvents = events.filter(e => orgCatIds.has(e.catId));
   const orgTemplates = shiftTemplates.filter(t => t.orgId === session?.orgId);
   const orgShifts = shifts.filter(s => s.orgId === session?.orgId);
+  const orgReminders = reminders.filter(r => r.orgId === session?.orgId);
 
   // Orgs del usuario actual (superadmin ve todas)
   const userOrgs = isSuperAdmin
@@ -994,6 +1008,110 @@ export function useFelinaStore() {
     setModal(null);
   };
 
+  // ───── Recordatorios médicos (próximas vacunas, desparasitaciones, etc.) ─────
+  // Conceptualmente separados de events: events = pasado, reminders = pendiente.
+  // Las RLS reflejan permissions.js: cualquiera con add_event gestiona; solo
+  // admin/coord borra.
+  const saveCatReminder = async (form) => {
+    if (!can(currentRole, 'add_event')) {
+      await notify({ title: 'Sin permiso', message: 'Tu rol actual no permite gestionar recordatorios.' });
+      return;
+    }
+    const payload = {
+      type: form.type,
+      due_date: form.dueDate,
+      title: form.title || null,
+      notes: form.notes || null,
+    };
+
+    if (form.id) {
+      const existing = reminders.find(r => r.id === form.id);
+      if (!existing || existing.orgId !== session.orgId) {
+        await notify({ title: 'Operación no válida', message: 'Este recordatorio no pertenece a la organización activa.' });
+        return;
+      }
+      const { error } = await supabase.from('cat_reminders').update(payload).eq('id', form.id);
+      if (error) {
+        await notify({ title: 'No se pudo guardar', message: error.message });
+        return;
+      }
+    } else {
+      if (!form.catId) {
+        await notify({ title: 'Operación no válida', message: 'Falta el gato asociado al recordatorio.' });
+        return;
+      }
+      const cat = cats.find(c => c.id === form.catId);
+      if (!cat || cat.orgId !== session.orgId) {
+        await notify({ title: 'Operación no válida', message: 'Este gato no pertenece a la organización activa.' });
+        return;
+      }
+      const { error } = await supabase.from('cat_reminders').insert({
+        ...payload, cat_id: form.catId, org_id: session.orgId,
+      });
+      if (error) {
+        await notify({ title: 'No se pudo crear el recordatorio', message: error.message });
+        return;
+      }
+    }
+    await refresh();
+    setModal(null);
+  };
+
+  const deleteCatReminder = async (reminderId) => {
+    const allowed = isSuperAdmin || currentRole === 'admin' || currentRole === 'coordinator';
+    if (!allowed) {
+      await notify({ title: 'Sin permiso', message: 'Solo administración o coordinación puede eliminar recordatorios.' });
+      return;
+    }
+    const ok = await confirmAsync({
+      title: 'Eliminar recordatorio',
+      message: 'Esto solo borra el recordatorio. Los eventos veterinarios ya registrados se mantienen.',
+      confirmLabel: 'Eliminar',
+      destructive: true,
+    });
+    if (!ok) return;
+    const { error } = await supabase.from('cat_reminders').delete().eq('id', reminderId);
+    if (error) {
+      await notify({ title: 'No se pudo eliminar', message: error.message });
+      return;
+    }
+    await refresh();
+  };
+
+  // Marca un recordatorio como hecho. Quien complete queda registrado en
+  // completed_by para trazabilidad. Si el llamador quiere registrar también
+  // el evento veterinario, lo hace después abriendo el modal de evento
+  // — esa orquestación es responsabilidad de la UI, no del store.
+  const completeCatReminder = async (reminderId) => {
+    if (!can(currentRole, 'add_event')) {
+      await notify({ title: 'Sin permiso', message: 'Tu rol actual no permite esta acción.' });
+      return;
+    }
+    const { error } = await supabase.from('cat_reminders')
+      .update({ completed_at: new Date().toISOString(), completed_by: session.userId })
+      .eq('id', reminderId);
+    if (error) {
+      await notify({ title: 'No se pudo marcar', message: error.message });
+      return;
+    }
+    await refresh();
+  };
+
+  const uncompleteCatReminder = async (reminderId) => {
+    if (!can(currentRole, 'add_event')) {
+      await notify({ title: 'Sin permiso', message: 'Tu rol actual no permite esta acción.' });
+      return;
+    }
+    const { error } = await supabase.from('cat_reminders')
+      .update({ completed_at: null, completed_by: null })
+      .eq('id', reminderId);
+    if (error) {
+      await notify({ title: 'No se pudo deshacer', message: error.message });
+      return;
+    }
+    await refresh();
+  };
+
   // ───── Datos (calendario: plantillas y turnos) ─────
   const saveShiftTemplate = async (form) => {
     if (!can(currentRole, 'manage_shifts')) {
@@ -1235,10 +1353,11 @@ export function useFelinaStore() {
     organizations, users, memberships,
     colonies, cats, events,
     shiftTemplates, shifts,
+    reminders,
 
     // Derivados
     currentUser, currentOrg, isSuperAdmin, realMembership, currentRole,
-    orgColonies, orgCats, orgEvents, orgTemplates, orgShifts,
+    orgColonies, orgCats, orgEvents, orgTemplates, orgShifts, orgReminders,
     userOrgs, orgMembers,
 
     // Handlers de sesión y RGPD
@@ -1266,6 +1385,7 @@ export function useFelinaStore() {
     saveColony, deleteColony,
     saveCat, deleteCat, changeCatStatus,
     saveEvent,
+    saveCatReminder, deleteCatReminder, completeCatReminder, uncompleteCatReminder,
     saveShiftTemplate, deleteShiftTemplate,
     upsertShift,
     claimShift, unclaimShift, assignShiftTo, completeShift, uncompleteShift,

@@ -1,8 +1,8 @@
 // Panel principal al entrar a una organización: KPIs, alerta de turnos sin
 // cubrir, últimas intervenciones veterinarias y lista abreviada de colonias.
 
-import { MapPin, AlertTriangle, ChevronRight, CalendarClock, Stethoscope } from 'lucide-react';
-import { addDays, parseYmd, todayYmd } from '../lib/dates.js';
+import { MapPin, AlertTriangle, ChevronRight, CalendarClock, Stethoscope, Bell } from 'lucide-react';
+import { addDays, parseYmd, todayYmd, fmtDate } from '../lib/dates.js';
 import { fmtRelative } from '../lib/dates.js';
 import { computeShifts, isShiftPast as isShiftPastRaw } from '../lib/shifts.js';
 import { EVENT_TYPES, SHIFT_TASKS, SHIFT_SLOTS } from '../constants.js';
@@ -10,7 +10,7 @@ import { UserAvatar } from './ui.jsx';
 
 const isShiftPast = (shift) => isShiftPastRaw(shift, todayYmd());
 
-export const Dashboard = ({ cats, colonies, events, templates, shifts, members, onNavigate }) => {
+export const Dashboard = ({ cats, colonies, events, reminders = [], templates, shifts, members, onNavigate }) => {
   const totalCats = cats.length;
   const sterilized = cats.filter(c => ['esterilizado','en_colonia','en_acogida','adoptado'].includes(c.cerStatus)).length;
   const pendientes = cats.filter(c => c.cerStatus === 'pendiente' || c.cerStatus === 'capturado').length;
@@ -27,6 +27,17 @@ export const Dashboard = ({ cats, colonies, events, templates, shifts, members, 
   const upcoming = weekShifts.filter(s => s.status !== 'done' && !isShiftPast(s)).slice(0, 5);
   const colonyById = Object.fromEntries(colonies.map(c => [c.id, c]));
   const memberById = Object.fromEntries((members || []).map(m => [m.userId, m]));
+
+  // Recordatorios médicos: solo pendientes, ordenados por fecha. Mostramos
+  // vencidos + próximos 30 días, hasta 6 en total para no saturar.
+  const today = todayYmd();
+  const horizon = addDays(rangeFrom, 30);
+  const horizonYmd = `${horizon.getFullYear()}-${String(horizon.getMonth() + 1).padStart(2, '0')}-${String(horizon.getDate()).padStart(2, '0')}`;
+  const pendingReminders = (reminders || [])
+    .filter(r => !r.completedAt && r.dueDate <= horizonYmd)
+    .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
+    .slice(0, 6);
+  const overdueReminders = pendingReminders.filter(r => r.dueDate < today);
 
   const stat = ({ value, label, sub, color = '#2D4A3E', onClick }) => (
     <button onClick={onClick}
@@ -122,6 +133,69 @@ export const Dashboard = ({ cats, colonies, events, templates, shifts, members, 
               })}
             </div>
           )}
+        </div>
+      )}
+
+      {pendingReminders.length > 0 && (
+        <div className="rounded-2xl p-5"
+             style={{
+               backgroundColor: overdueReminders.length > 0 ? '#F5DDCE' : '#FDFAF3',
+               boxShadow: `0 0 0 1px ${overdueReminders.length > 0 ? '#E5B8A8' : '#EADFC9'}`,
+             }}>
+          <div className="flex items-start justify-between gap-3 flex-wrap mb-4">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
+                   style={{ backgroundColor: overdueReminders.length > 0 ? '#FDFAF3' : '#FDF4DE' }}>
+                <Bell className="w-5 h-5" style={{ color: overdueReminders.length > 0 ? '#B15A3A' : '#8A6B1F' }} />
+              </div>
+              <div>
+                <h2 className="font-serif text-xl" style={{ color: '#1A1712' }}>
+                  {overdueReminders.length > 0
+                    ? <>{overdueReminders.length} recordatorio{overdueReminders.length > 1 ? 's' : ''} vencido{overdueReminders.length > 1 ? 's' : ''}</>
+                    : 'Recordatorios próximos'}
+                </h2>
+                <p className="text-xs mt-1" style={{ color: overdueReminders.length > 0 ? '#8A4A2F' : '#78706A' }}>
+                  {overdueReminders.length > 0
+                    ? 'Hay revisiones médicas que se han pasado de fecha. Revisa los gatos afectados.'
+                    : `${pendingReminders.length} pendiente${pendingReminders.length !== 1 ? 's' : ''} en los próximos 30 días.`}
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            {pendingReminders.map(r => {
+              const cat = catsById[r.catId];
+              const type = EVENT_TYPES[r.type] || { label: 'Otro', icon: Bell, color: '#6B635A' };
+              const Icon = type.icon;
+              const overdue = r.dueDate < today;
+              const isToday = r.dueDate === today;
+              const dateLabel = overdue
+                ? `Vencido · ${fmtDate(parseYmd(r.dueDate))}`
+                : isToday
+                  ? 'Hoy'
+                  : fmtDate(parseYmd(r.dueDate));
+              return (
+                <button key={r.id} onClick={() => cat && onNavigate('cat', cat.id)}
+                        disabled={!cat}
+                        className="w-full flex items-center gap-3 p-2.5 rounded-xl text-left transition-colors hover:bg-white disabled:opacity-50 disabled:cursor-default"
+                        style={{ backgroundColor: '#FDFAF3', boxShadow: '0 0 0 1px #EADFC9' }}>
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                       style={{ backgroundColor: '#F2EADB' }}>
+                    <Icon className="w-4 h-4" style={{ color: type.color }} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-medium truncate" style={{ color: '#1A1712' }}>
+                      {cat?.name || 'Gato eliminado'} · {r.title || type.label}
+                    </div>
+                    <div className="text-xs font-mono" style={{ color: overdue ? '#B15A3A' : (isToday ? '#8A6B1F' : '#78706A') }}>
+                      {dateLabel}
+                    </div>
+                  </div>
+                  {cat && <ChevronRight className="w-4 h-4 flex-shrink-0" style={{ color: '#B8A888' }} />}
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
 
