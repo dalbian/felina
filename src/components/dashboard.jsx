@@ -2,15 +2,17 @@
 // cubrir, últimas intervenciones veterinarias y lista abreviada de colonias.
 
 import { MapPin, AlertTriangle, ChevronRight, CalendarClock, Stethoscope, Bell } from 'lucide-react';
-import { addDays, parseYmd, todayYmd, fmtDate } from '../lib/dates.js';
+import { addDays, parseYmd, todayYmd, fmtDate, fmtShortDay } from '../lib/dates.js';
 import { fmtRelative } from '../lib/dates.js';
 import { computeShifts, isShiftPast as isShiftPastRaw } from '../lib/shifts.js';
 import { EVENT_TYPES, SHIFT_TASKS, SHIFT_SLOTS } from '../constants.js';
 import { UserAvatar } from './ui.jsx';
+import { useTranslation } from '../lib/i18n.jsx';
 
 const isShiftPast = (shift) => isShiftPastRaw(shift, todayYmd());
 
 export const Dashboard = ({ cats, colonies, events, reminders = [], templates, shifts, members, onNavigate }) => {
+  const { t } = useTranslation();
   const totalCats = cats.length;
   const sterilized = cats.filter(c => ['esterilizado','en_colonia','en_acogida','adoptado'].includes(c.cerStatus)).length;
   const pendientes = cats.filter(c => c.cerStatus === 'pendiente' || c.cerStatus === 'capturado').length;
@@ -52,20 +54,20 @@ export const Dashboard = ({ cats, colonies, events, reminders = [], templates, s
   return (
     <div className="space-y-8">
       <div>
-        <div className="text-xs uppercase tracking-[0.18em] mb-2" style={{ color: '#8A7A5C' }}>Panel</div>
+        <div className="text-xs uppercase tracking-[0.18em] mb-2" style={{ color: '#8A7A5C' }}>{t('dash.kicker')}</div>
         <h1 className="font-serif text-4xl md:text-5xl leading-tight" style={{ color: '#1A1712' }}>
-          Resumen <span className="italic" style={{ color: '#C67B5C' }}>general</span>
+          {t('dash.title')} <span className="italic" style={{ color: '#C67B5C' }}>{t('dash.titleEm')}</span>
         </h1>
         <p className="mt-3 text-[15px] max-w-xl" style={{ color: '#6B635A' }}>
-          Estado actual de las colonias, gatos fichados y últimas intervenciones registradas.
+          {t('dash.subtitle')}
         </p>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-        {stat({ value: colonies.length, label: 'Colonias', sub: 'activas', onClick: () => onNavigate('colonies') })}
-        {stat({ value: totalCats,       label: 'Gatos',    sub: `fichados en la app`, onClick: () => onNavigate('cats') })}
-        {stat({ value: `${sterilizedPct}%`, label: 'Esterilizados', sub: `${sterilized} de ${totalCats}`, color: '#6B8E4E' })}
-        {stat({ value: pendientes, label: 'Por capturar', sub: pendientes > 0 ? 'requieren atención' : 'al día', color: pendientes > 0 ? '#C67B5C' : '#6B8E4E' })}
+        {stat({ value: colonies.length, label: t('dash.stat.colonies'), sub: t('dash.stat.coloniesSub'), onClick: () => onNavigate('colonies') })}
+        {stat({ value: totalCats,       label: t('dash.stat.cats'),     sub: t('dash.stat.catsSub'), onClick: () => onNavigate('cats') })}
+        {stat({ value: `${sterilizedPct}%`, label: t('dash.stat.sterilized'), sub: t('dash.stat.sterilizedSub', { n: sterilized, total: totalCats }), color: '#6B8E4E' })}
+        {stat({ value: pendientes, label: t('dash.stat.toCapture'), sub: pendientes > 0 ? t('dash.stat.toCaptureAtt') : t('dash.stat.toCaptureOk'), color: pendientes > 0 ? '#C67B5C' : '#6B8E4E' })}
       </div>
 
       {(upcoming.length > 0 || uncovered.length > 0) && (
@@ -85,20 +87,20 @@ export const Dashboard = ({ cats, colonies, events, reminders = [], templates, s
               <div>
                 <h2 className="font-serif text-xl" style={{ color: '#1A1712' }}>
                   {uncovered.length > 0
-                    ? <>{uncovered.length} turno{uncovered.length > 1 ? 's' : ''} sin cubrir esta semana</>
-                    : 'Semana bien organizada'}
+                    ? t(uncovered.length === 1 ? 'dash.shifts.uncoveredOne' : 'dash.shifts.uncoveredMany', { n: uncovered.length })
+                    : t('dash.shifts.wellOrganized')}
                 </h2>
                 <p className="text-xs mt-1" style={{ color: uncovered.length > 0 ? '#8A4A2F' : '#78706A' }}>
                   {uncovered.length > 0
-                    ? 'Hay turnos programados que han quedado sin asignar. Revisa el calendario.'
-                    : `${upcoming.length} próximo${upcoming.length !== 1 ? 's' : ''} turno${upcoming.length !== 1 ? 's' : ''} programado${upcoming.length !== 1 ? 's' : ''} en los próximos 7 días.`}
+                    ? t('dash.shifts.uncoveredDesc')
+                    : t(upcoming.length === 1 ? 'dash.shifts.upcomingDescOne' : 'dash.shifts.upcomingDescMany', { n: upcoming.length })}
                 </p>
               </div>
             </div>
             <button onClick={() => onNavigate('calendar')}
                     className="text-xs font-medium px-3 py-1.5 rounded-lg inline-flex items-center gap-1"
                     style={{ backgroundColor: uncovered.length > 0 ? '#B15A3A' : '#1F3A2F', color: '#F8F3E8' }}>
-              Ir al calendario <ChevronRight className="w-3 h-3" />
+              {t('dash.shifts.goCalendar')} <ChevronRight className="w-3 h-3" />
             </button>
           </div>
           {upcoming.length > 0 && (
@@ -106,25 +108,27 @@ export const Dashboard = ({ cats, colonies, events, reminders = [], templates, s
               {upcoming.map(s => {
                 const col = colonyById[s.colonyId];
                 const asg = memberById[s.assigneeId];
-                const t = SHIFT_TASKS[s.task];
-                const Icon = t.icon;
+                // OJO: no llamar a esta variable `t` — taparía la función de
+                // traducción del hook useTranslation y rompería t('...').
+                const task = SHIFT_TASKS[s.task];
+                const Icon = task.icon;
                 const d = parseYmd(s.date);
                 const open = s.status === 'open';
                 return (
                   <div key={s.id} className="flex items-center gap-3 p-2.5 rounded-xl"
                        style={{ backgroundColor: '#FDFAF3', boxShadow: '0 0 0 1px #EADFC9' }}>
                     <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                         style={{ backgroundColor: t.bg }}>
-                      <Icon className="w-4 h-4" style={{ color: t.color }} />
+                         style={{ backgroundColor: task.bg }}>
+                      <Icon className="w-4 h-4" style={{ color: task.color }} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-medium truncate" style={{ color: '#1A1712' }}>{col?.name || '—'}</div>
                       <div className="text-xs font-mono" style={{ color: '#78706A' }}>
-                        {d.toLocaleDateString('es-ES', { weekday: 'short', day: '2-digit' })} · {SHIFT_SLOTS[s.slot]?.label || ''}
+                        {fmtShortDay(d)} · {SHIFT_SLOTS[s.slot]?.label || ''}
                       </div>
                     </div>
                     {open ? (
-                      <span className="text-[10px] px-2 py-1 rounded-full" style={{ backgroundColor: '#F2EADB', color: '#8A7A5C' }}>libre</span>
+                      <span className="text-[10px] px-2 py-1 rounded-full" style={{ backgroundColor: '#F2EADB', color: '#8A7A5C' }}>{t('dash.shifts.free')}</span>
                     ) : (
                       <UserAvatar name={asg?.name} color={asg?.color} size={28} />
                     )}
@@ -151,13 +155,13 @@ export const Dashboard = ({ cats, colonies, events, reminders = [], templates, s
               <div>
                 <h2 className="font-serif text-xl" style={{ color: '#1A1712' }}>
                   {overdueReminders.length > 0
-                    ? <>{overdueReminders.length} recordatorio{overdueReminders.length > 1 ? 's' : ''} vencido{overdueReminders.length > 1 ? 's' : ''}</>
-                    : 'Recordatorios próximos'}
+                    ? t(overdueReminders.length === 1 ? 'dash.reminders.overdueOne' : 'dash.reminders.overdueMany', { n: overdueReminders.length })
+                    : t('dash.reminders.upcomingTitle')}
                 </h2>
                 <p className="text-xs mt-1" style={{ color: overdueReminders.length > 0 ? '#8A4A2F' : '#78706A' }}>
                   {overdueReminders.length > 0
-                    ? 'Hay revisiones médicas que se han pasado de fecha. Revisa los gatos afectados.'
-                    : `${pendingReminders.length} pendiente${pendingReminders.length !== 1 ? 's' : ''} en los próximos 30 días.`}
+                    ? t('dash.reminders.overdueDesc')
+                    : t(pendingReminders.length === 1 ? 'dash.reminders.upcomingDescOne' : 'dash.reminders.upcomingDescMany', { n: pendingReminders.length })}
                 </p>
               </div>
             </div>
@@ -170,9 +174,9 @@ export const Dashboard = ({ cats, colonies, events, reminders = [], templates, s
               const overdue = r.dueDate < today;
               const isToday = r.dueDate === today;
               const dateLabel = overdue
-                ? `Vencido · ${fmtDate(parseYmd(r.dueDate))}`
+                ? `${t('dash.reminders.overdue')} · ${fmtDate(parseYmd(r.dueDate))}`
                 : isToday
-                  ? 'Hoy'
+                  ? t('dash.reminders.today')
                   : fmtDate(parseYmd(r.dueDate));
               return (
                 <button key={r.id} onClick={() => cat && onNavigate('cat', cat.id)}
@@ -185,7 +189,7 @@ export const Dashboard = ({ cats, colonies, events, reminders = [], templates, s
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium truncate" style={{ color: '#1A1712' }}>
-                      {cat?.name || 'Gato eliminado'} · {r.title || type.label}
+                      {cat?.name || t('dash.catDeleted')} · {r.title || type.label}
                     </div>
                     <div className="text-xs font-mono" style={{ color: overdue ? '#B15A3A' : (isToday ? '#8A6B1F' : '#78706A') }}>
                       {dateLabel}
@@ -202,12 +206,12 @@ export const Dashboard = ({ cats, colonies, events, reminders = [], templates, s
       <div className="grid md:grid-cols-3 gap-6">
         <div className="md:col-span-2">
           <div className="flex items-end justify-between mb-4">
-            <h2 className="font-serif text-2xl" style={{ color: '#1A1712' }}>Últimas intervenciones</h2>
-            <button className="text-xs font-medium hover:underline" style={{ color: '#2D4A3E' }}>Ver historial</button>
+            <h2 className="font-serif text-2xl" style={{ color: '#1A1712' }}>{t('dash.events.title')}</h2>
+            <button className="text-xs font-medium hover:underline" style={{ color: '#2D4A3E' }}>{t('dash.events.seeHistory')}</button>
           </div>
           <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: '#FDFAF3', boxShadow: '0 0 0 1px #EADFC9' }}>
             {recentEvents.length === 0 ? (
-              <div className="p-8 text-center text-sm" style={{ color: '#78706A' }}>Aún no hay intervenciones registradas.</div>
+              <div className="p-8 text-center text-sm" style={{ color: '#78706A' }}>{t('dash.events.empty')}</div>
             ) : recentEvents.map((e, i) => {
               const cat = catsById[e.catId];
               const type = EVENT_TYPES[e.type];
@@ -221,7 +225,7 @@ export const Dashboard = ({ cats, colonies, events, reminders = [], templates, s
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-baseline gap-2">
-                      <span className="font-medium text-sm truncate" style={{ color: '#1A1712' }}>{cat?.name || 'Gato eliminado'}</span>
+                      <span className="font-medium text-sm truncate" style={{ color: '#1A1712' }}>{cat?.name || t('dash.catDeleted')}</span>
                       <span className="text-xs" style={{ color: '#8A7A5C' }}>·</span>
                       <span className="text-sm" style={{ color: '#4A433C' }}>{type?.label}</span>
                     </div>
@@ -237,7 +241,7 @@ export const Dashboard = ({ cats, colonies, events, reminders = [], templates, s
         </div>
 
         <div>
-          <h2 className="font-serif text-2xl mb-4" style={{ color: '#1A1712' }}>Colonias</h2>
+          <h2 className="font-serif text-2xl mb-4" style={{ color: '#1A1712' }}>{t('dash.colonies.title')}</h2>
           <div className="space-y-2">
             {colonies.slice(0, 4).map(col => {
               const count = cats.filter(c => c.colonyId === col.id).length;
@@ -251,7 +255,7 @@ export const Dashboard = ({ cats, colonies, events, reminders = [], templates, s
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="font-medium text-sm truncate" style={{ color: '#1A1712' }}>{col.name}</div>
-                    <div className="text-xs mt-0.5" style={{ color: '#78706A' }}>{count} gato{count !== 1 ? 's' : ''}</div>
+                    <div className="text-xs mt-0.5" style={{ color: '#78706A' }}>{t(count === 1 ? 'dash.colonies.catCountOne' : 'dash.colonies.catCountMany', { n: count })}</div>
                   </div>
                   <ChevronRight className="w-4 h-4 mt-2 flex-shrink-0" style={{ color: '#B8A888' }} />
                 </button>
