@@ -5,8 +5,9 @@ import { useState, useRef, useEffect } from 'react';
 import {
   MapPin, Plus, Search, ChevronLeft, ChevronRight, Edit3, Trash2,
   PawPrint, Camera, Check, Stethoscope, X as XIcon,
+  Bell, CheckCircle2, RotateCcw, AlertCircle,
 } from 'lucide-react';
-import { fmtDate } from '../lib/dates.js';
+import { fmtDate, parseYmd, todayYmd } from '../lib/dates.js';
 import { CER_STATUS, SEX_OPTIONS, EVENT_TYPES } from '../constants.js';
 import { CatAvatar, StatusBadge, FilterPill, EmptyState, Field } from './ui.jsx';
 import { inputStyle, labelStyle } from '../styles.jsx';
@@ -112,10 +113,30 @@ export const CatsView = ({ cats, colonies, onSelect, onAdd, filter, setFilter })
   );
 };
 
-export const CatDetail = ({ cat, colony, events, onBack, onEdit, onAddEvent, onDelete, onChangeStatus, canEdit = true, canDelete = true, canAddEvent = true, canChangeStatus = true }) => {
+export const CatDetail = ({
+  cat, colony, events, reminders = [], members = [],
+  onBack, onEdit, onAddEvent, onDelete, onChangeStatus,
+  onAddReminder, onEditReminder, onDeleteReminder, onCompleteReminder, onUncompleteReminder,
+  canEdit = true, canDelete = true, canAddEvent = true, canChangeStatus = true,
+  canManageReminders = true, canDeleteReminders = true,
+}) => {
   const [statusMenu, setStatusMenu] = useState(false);
+  const [showCompletedReminders, setShowCompletedReminders] = useState(false);
   const catEvents = events.filter(e => e.catId === cat.id).sort((a,b) => b.date - a.date);
   const status = CER_STATUS[cat.cerStatus] || CER_STATUS.pendiente;
+
+  // Recordatorios del gato. Los pendientes (completed_at = null) van
+  // arriba, ordenados por fecha. Los completados se cuelgan al final, ocultos
+  // por defecto detrás de un toggle, para no enterrar lo pendiente.
+  const catReminders = reminders.filter(r => r.catId === cat.id);
+  const pendingReminders = catReminders
+    .filter(r => !r.completedAt)
+    .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+  const completedReminders = catReminders
+    .filter(r => r.completedAt)
+    .sort((a, b) => b.completedAt - a.completedAt);
+
+  const memberById = Object.fromEntries(members.map(m => [m.userId, m]));
 
   return (
     <div className="space-y-6">
@@ -201,6 +222,143 @@ export const CatDetail = ({ cat, colony, events, onBack, onEdit, onAddEvent, onD
             </div>
           )}
         </div>
+      </div>
+
+      {/* Sección de recordatorios: pendientes (vencidos primero) + completados colapsables */}
+      <div>
+        <div className="flex items-end justify-between mb-4">
+          <h2 className="font-serif text-2xl inline-flex items-center gap-2" style={{ color: '#1A1712' }}>
+            <Bell className="w-5 h-5" style={{ color: '#B15A3A' }} /> Recordatorios
+          </h2>
+          {canManageReminders && (
+            <button onClick={onAddReminder}
+                    className="inline-flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg"
+                    style={{ backgroundColor: '#F2EADB', color: '#2D4A3E' }}>
+              <Plus className="w-4 h-4" /> Añadir recordatorio
+            </button>
+          )}
+        </div>
+        {pendingReminders.length === 0 && completedReminders.length === 0 ? (
+          <div className="rounded-xl p-4 text-sm text-center"
+               style={{ backgroundColor: '#FDFAF3', color: '#78706A', boxShadow: '0 0 0 1px #EADFC9' }}>
+            No hay recordatorios para este gato. Añade uno para que no se te pase la próxima vacuna o desparasitación.
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {pendingReminders.map(r => {
+              const type = EVENT_TYPES[r.type] || { label: 'Otro', icon: Bell, color: '#6B635A' };
+              const Icon = type.icon;
+              const today = todayYmd();
+              const overdue = r.dueDate < today;
+              const dueTone = overdue
+                ? { bg: '#F5DDCE', accent: '#B15A3A', label: 'Vencido' }
+                : r.dueDate === today
+                  ? { bg: '#FDF4DE', accent: '#8A6B1F', label: 'Hoy' }
+                  : { bg: '#FDFAF3', accent: '#4A6332', label: null };
+              return (
+                <div key={r.id} className="rounded-xl p-3 flex items-start gap-3"
+                     style={{ backgroundColor: dueTone.bg, boxShadow: `0 0 0 1px ${overdue ? '#F5C6AE' : '#EADFC9'}` }}>
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+                       style={{ backgroundColor: '#FDFAF3' }}>
+                    <Icon className="w-4 h-4" style={{ color: type.color }} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-baseline gap-2 flex-wrap">
+                      <span className="font-medium text-sm" style={{ color: '#1A1712' }}>
+                        {r.title || type.label}
+                      </span>
+                      {dueTone.label && (
+                        <span className="text-[10px] uppercase tracking-wider font-medium"
+                              style={{ color: dueTone.accent }}>
+                          {dueTone.label}
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-xs mt-0.5" style={{ color: '#78706A' }}>
+                      {!r.title && type.label !== r.title && <span className="mr-1">{type.label} ·</span>}
+                      {fmtDate(parseYmd(r.dueDate))}
+                    </div>
+                    {r.notes && (
+                      <p className="text-xs mt-2 leading-relaxed" style={{ color: '#4A433C' }}>{r.notes}</p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    {canManageReminders && (
+                      <button onClick={() => onCompleteReminder(r.id)}
+                              title="Marcar como hecho"
+                              className="p-1.5 rounded-lg hover:bg-white"
+                              style={{ color: '#4A6332' }}>
+                        <CheckCircle2 className="w-4 h-4" />
+                      </button>
+                    )}
+                    {canManageReminders && (
+                      <button onClick={() => onEditReminder(r)}
+                              title="Editar"
+                              className="p-1.5 rounded-lg hover:bg-white"
+                              style={{ color: '#4A433C' }}>
+                        <Edit3 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                    {canDeleteReminders && (
+                      <button onClick={() => onDeleteReminder(r.id)}
+                              title="Eliminar"
+                              className="p-1.5 rounded-lg hover:bg-white"
+                              style={{ color: '#B15A3A' }}>
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+
+            {completedReminders.length > 0 && (
+              <div className="pt-2">
+                <button onClick={() => setShowCompletedReminders(v => !v)}
+                        className="text-xs font-medium inline-flex items-center gap-1.5"
+                        style={{ color: '#8A7A5C' }}>
+                  <ChevronRight className="w-3 h-3 transition-transform"
+                                style={{ transform: showCompletedReminders ? 'rotate(90deg)' : 'none' }} />
+                  {showCompletedReminders ? 'Ocultar' : 'Ver'} completados ({completedReminders.length})
+                </button>
+                {showCompletedReminders && (
+                  <div className="space-y-2 mt-2">
+                    {completedReminders.map(r => {
+                      const type = EVENT_TYPES[r.type] || { label: 'Otro', icon: Bell, color: '#6B635A' };
+                      const Icon = type.icon;
+                      const completedByName = memberById[r.completedBy]?.name || null;
+                      return (
+                        <div key={r.id} className="rounded-xl p-3 flex items-start gap-3 opacity-75"
+                             style={{ backgroundColor: '#DDE6CC', boxShadow: '0 0 0 1px #C3CFB1' }}>
+                          <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+                               style={{ backgroundColor: '#FDFAF3' }}>
+                            <Icon className="w-4 h-4" style={{ color: type.color }} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium line-through" style={{ color: '#4A6332' }}>
+                              {r.title || type.label}
+                            </div>
+                            <div className="text-xs mt-0.5" style={{ color: '#4A6332' }}>
+                              Hecho {fmtDate(r.completedAt)}{completedByName ? ` por ${completedByName}` : ''}
+                            </div>
+                          </div>
+                          {canManageReminders && (
+                            <button onClick={() => onUncompleteReminder(r.id)}
+                                    title="Deshacer"
+                                    className="p-1.5 rounded-lg hover:bg-white flex-shrink-0"
+                                    style={{ color: '#4A6332' }}>
+                              <RotateCcw className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div>
@@ -462,6 +620,85 @@ export const EventForm = ({ onSave, onCancel }) => {
         })}
                 className="flex-1 py-2.5 rounded-xl text-sm font-medium"
                 style={{ backgroundColor: '#1F3A2F', color: '#F8F3E8' }}>Guardar</button>
+      </div>
+    </div>
+  );
+};
+
+// Formulario para crear/editar un recordatorio médico de un gato.
+// El selector de tipo reutiliza EVENT_TYPES para mantener vocabulario único:
+// los recordatorios son "lo que toca de tipo X", se completan registrando un
+// event del mismo tipo cuando aplica.
+export const ReminderForm = ({ reminder, onSave, onCancel }) => {
+  const today = new Date().toISOString().slice(0, 10);
+  const [form, setForm] = useState(reminder
+    ? { id: reminder.id, type: reminder.type, dueDate: reminder.dueDate, title: reminder.title || '', notes: reminder.notes || '' }
+    : { type: 'vacunacion', dueDate: today, title: '', notes: '' }
+  );
+  const [busy, setBusy] = useState(false);
+
+  const submit = async () => {
+    if (busy || !form.dueDate) return;
+    setBusy(true);
+    await onSave(form);
+    setBusy(false);
+  };
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <label className="block text-xs font-medium mb-2" style={labelStyle}>Tipo</label>
+        <div className="grid grid-cols-2 gap-2">
+          {Object.entries(EVENT_TYPES).map(([k, v]) => {
+            const Icon = v.icon;
+            const active = form.type === k;
+            return (
+              <button key={k} type="button" onClick={() => setForm({ ...form, type: k })}
+                      className="inline-flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium transition-all"
+                      style={{
+                        backgroundColor: active ? v.color : '#FFFFFF',
+                        color: active ? '#FDFAF3' : '#4A433C',
+                        boxShadow: active ? 'none' : '0 0 0 1px #EADFC9'
+                      }}>
+                <Icon className="w-4 h-4" /> {v.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-xs font-medium mb-1" style={labelStyle}>Fecha prevista *</label>
+        <input type="date" value={form.dueDate} onChange={e => setForm({ ...form, dueDate: e.target.value })}
+               className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
+      </div>
+
+      <div>
+        <label className="block text-xs font-medium mb-1" style={labelStyle}>
+          Título <span style={{ color: '#8A7A5C' }}>(opcional)</span>
+        </label>
+        <input type="text" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })}
+               className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle}
+               placeholder="Ej.: Vacuna trivalente anual" />
+      </div>
+
+      <div>
+        <label className="block text-xs font-medium mb-1" style={labelStyle}>
+          Notas <span style={{ color: '#8A7A5C' }}>(opcional)</span>
+        </label>
+        <textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })}
+                  rows={3} className="w-full px-3 py-2 rounded-lg text-sm outline-none resize-none" style={inputStyle}
+                  placeholder="Indicaciones, dosis, anotaciones…" />
+      </div>
+
+      <div className="flex gap-2 pt-2">
+        <button type="button" onClick={onCancel} className="flex-1 py-2.5 rounded-xl text-sm font-medium"
+                style={{ backgroundColor: '#F2EADB', color: '#4A433C' }}>Cancelar</button>
+        <button type="button" onClick={submit} disabled={busy || !form.dueDate}
+                className="flex-1 py-2.5 rounded-xl text-sm font-medium disabled:opacity-50"
+                style={{ backgroundColor: '#1F3A2F', color: '#F8F3E8' }}>
+          {busy ? 'Guardando…' : 'Guardar recordatorio'}
+        </button>
       </div>
     </div>
   );

@@ -122,7 +122,7 @@ export default function App() {
     organizations, users, memberships, colonies, cats, events, shiftTemplates, shifts,
     // Derivados
     currentUser, currentOrg, isSuperAdmin, currentRole,
-    orgColonies, orgCats, orgEvents, orgTemplates, orgShifts,
+    orgColonies, orgCats, orgEvents, orgTemplates, orgShifts, orgReminders,
     userOrgs, orgMembers, realMembership,
     // Handlers
     handleAcceptRgpd,
@@ -139,6 +139,7 @@ export default function App() {
     saveColony, deleteColony,
     saveCat, deleteCat, changeCatStatus,
     saveEvent,
+    saveCatReminder, deleteCatReminder, completeCatReminder, uncompleteCatReminder,
     saveShiftTemplate, deleteShiftTemplate,
     claimShift, unclaimShift, assignShiftTo, completeShift, uncompleteShift,
     onNav,
@@ -342,6 +343,7 @@ export default function App() {
             )}
             {view === 'dashboard' && currentOrg && (
               <Dashboard cats={orgCats} colonies={orgColonies} events={orgEvents}
+                         reminders={orgReminders}
                          templates={orgTemplates} shifts={orgShifts} members={orgMembers}
                          onNavigate={onNav} />
             )}
@@ -375,15 +377,23 @@ export default function App() {
             )}
             {view === 'cat' && currentCat && (
               <CatDetail cat={currentCat} colony={currentCatColony} events={events}
+                         reminders={orgReminders} members={orgMembers}
                          onBack={() => setView(selectedColony && currentCat.colonyId === selectedColony ? 'colony' : 'cats')}
                          onEdit={() => can(currentRole, 'edit_cat') ? setModal('editCat') : notify({ title: 'Sin permiso', message: 'Tu rol actual no permite esta acción.' })}
                          onAddEvent={() => can(currentRole, 'add_event') ? setModal('addEvent') : notify({ title: 'Sin permiso', message: 'Tu rol actual no permite esta acción.' })}
                          onDelete={deleteCat}
                          onChangeStatus={changeCatStatus}
+                         onAddReminder={() => can(currentRole, 'add_event') ? setModal('addReminder') : notify({ title: 'Sin permiso', message: 'Tu rol actual no permite gestionar recordatorios.' })}
+                         onEditReminder={(reminder) => setModal({ type: 'editReminder', reminder })}
+                         onDeleteReminder={deleteCatReminder}
+                         onCompleteReminder={completeCatReminder}
+                         onUncompleteReminder={uncompleteCatReminder}
                          canEdit={can(currentRole, 'edit_cat')}
                          canDelete={can(currentRole, 'delete_cat')}
                          canAddEvent={can(currentRole, 'add_event')}
-                         canChangeStatus={can(currentRole, 'change_status')} />
+                         canChangeStatus={can(currentRole, 'change_status')}
+                         canManageReminders={can(currentRole, 'add_event')}
+                         canDeleteReminders={isSuperAdmin || currentRole === 'admin' || currentRole === 'coordinator'} />
             )}
             {view === 'calendar' && currentOrg && (
               <CalendarView templates={orgTemplates} shifts={orgShifts}
@@ -434,6 +444,7 @@ export default function App() {
           saveColony={saveColony}
           saveCat={saveCat}
           saveEvent={saveEvent}
+          saveCatReminder={saveCatReminder}
           handleCreateNewOrg={handleCreateNewOrg} handleEditOrg={handleEditOrg}
           handlePlatformCreateOrg={handlePlatformCreateOrg}
           handlePlatformEditOrg={handlePlatformEditOrg}
