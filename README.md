@@ -1,163 +1,106 @@
 # Felina — Gestión de colonias felinas
 
-Aplicación web para la gestión integral de colonias felinas por parte de organizaciones de protección animal. Prototipo React single-page pensado para validar la experiencia con protectoras reales antes de construir el backend definitivo.
+Aplicación web para que protectoras y asociaciones de protección animal gestionen
+colonias de gatos: fichas de gatos, programa CER (Captura–Esterilización–Retorno),
+historial veterinario, turnos de voluntariado y recordatorios médicos.
 
-## Estado actual: prototipo para validación
+Pensada como herramienta gratuita para el tejido asociativo, mantenida por una
+sola persona. Multi-organización: cada protectora ve y gestiona solo sus datos.
 
-Esta versión guarda todos los datos en **`localStorage` del navegador**. Cada dispositivo tiene su propia base de datos local. Útil para:
+**En producción:** https://gestiofelina.org
 
-- Enseñar la herramienta a protectoras y recoger feedback.
-- Que una voluntaria la pruebe en su propio móvil.
-- Hacer demos sin montar infraestructura.
+---
 
-**Limitaciones importantes que deben entender las usuarias antes de probar:**
+## Estado del proyecto
 
-- Los datos **no se sincronizan** entre dispositivos ni entre usuarias.
-- Si vacías la caché del navegador, pierdes los datos.
-- El login con usuarios de demostración no es autenticación real.
-- No está pensado para uso productivo con datos personales reales de donantes, adoptantes o socios (RGPD).
+Aplicación completa en producción con backend real (Supabase). Ya **no** es el
+prototipo en `localStorage` de las primeras versiones — si lees referencias
+antiguas a "datos solo en el navegador", están obsoletas.
 
-Para uso productivo real hay que montar backend — ver sección "Siguientes pasos" al final.
+Funcionalidad cubierta:
+
+- Multi-organización con aislamiento de datos a nivel de base de datos (RLS).
+- Autenticación real (email + contraseña, recuperación por email).
+- Roles: superadministración global, y por organización admin / coordinador /
+  voluntario / veterinario.
+- Invitación de miembros por email autónoma (sin intervención del mantenedor).
+- Colonias (con mapa), gatos (con foto y estado CER), eventos veterinarios.
+- Calendario de turnos recurrentes de voluntariado.
+- Recordatorios médicos por gato con avisos en el panel.
 
 ## Stack
 
-- **React 18** + **Vite**
-- **Tailwind CSS** (solo utilidades core, sin plugins)
-- **lucide-react** para iconos
-- **Leaflet** + **OpenStreetMap** para mapas (se cargan por CDN, sin API key)
-- Persistencia en `localStorage`
-
-Sin backend. Sin base de datos. Sin servicios externos de pago.
+| Capa | Tecnología |
+|---|---|
+| Frontend | React 18 + Vite + Tailwind CSS |
+| Iconos / mapas | lucide-react · Leaflet + OpenStreetMap (CDN) |
+| Backend | Supabase (Postgres + Auth + Storage + Edge Functions), región EU/Irlanda |
+| Email transaccional | Resend (SMTP de Supabase Auth) |
+| Hosting + CI/CD | Cloudflare Pages (auto-deploy desde `main`) |
+| Dominio + DNS | Cloudflare Registrar — `gestiofelina.org` |
 
 ## Requisitos
 
 - **Node.js 18 o superior** ([descargar](https://nodejs.org/))
 - npm (viene con Node)
+- Acceso al proyecto de Supabase y a la cuenta de Cloudflare (para desplegar)
 
-## Desarrollo en local
+## Arranque en local
 
 ```bash
+git clone https://github.com/dalbian/felina.git
+cd felina
 npm install
-npm run dev
 ```
 
-Abre `http://localhost:5173`. El servidor hace hot reload al guardar cambios.
+Crea un archivo **`.env.local`** en la raíz (está en `.gitignore`, nunca se sube):
 
-## Compilar para producción
+```
+VITE_SUPABASE_URL=https://<ref-del-proyecto>.supabase.co
+VITE_SUPABASE_ANON_KEY=sb_publishable_xxxxxxxxxxxxx
+```
+
+Los valores exactos están en el dashboard de Supabase → Project Settings → API.
+Luego:
 
 ```bash
-npm run build
+npm run dev      # servidor de desarrollo en http://localhost:5173
+npm run build    # compila a dist/ (lo que despliega Cloudflare)
+npm run test     # tests unitarios (vitest)
 ```
 
-Genera la carpeta `dist/` con HTML, JS y CSS estáticos minificados. Eso es **todo** lo que hay que subir al servidor. No hace falta Node ni base de datos en el host.
+El `npm run dev` se conecta al **mismo** Supabase que producción. No hay base de
+datos local: trabajas contra datos reales. Cuidado con lo que borras.
 
-Para probar el resultado en local antes de subirlo:
+## Documentación
 
-```bash
-npm run preview
-```
+- **[docs/ARQUITECTURA.md](docs/ARQUITECTURA.md)** — cómo está montado todo por
+  dentro: estructura del código, modelo de datos, seguridad (RLS), migraciones,
+  despliegue, y cómo retomar el proyecto tras meses sin tocarlo.
+- **[docs/GUIA-USUARIO.md](docs/GUIA-USUARIO.md)** — manual para las protectoras:
+  roles, cómo gestionar colonias, gatos, turnos y recordatorios.
 
-## Despliegue
-
-Como `dist/` es HTML estático puro, vale cualquier hosting de estáticos. Listados por facilidad:
-
-### Opción 1 — Netlify (más simple, gratis)
-
-1. Regístrate en [netlify.com](https://www.netlify.com/).
-2. Arrastra la carpeta `dist/` sobre su página de deploys. Te da una URL `https://algo.netlify.app`.
-3. Para actualizar: arrastra la nueva carpeta `dist/`. Se publica en segundos.
-
-Ventaja: puedes conectar tu repositorio de GitHub y que Netlify ejecute `npm run build` por ti cada vez que hagas push.
-
-### Opción 2 — Cloudflare Pages (gratis, rápido en Europa)
-
-1. Regístrate en [pages.cloudflare.com](https://pages.cloudflare.com/).
-2. Conecta tu repositorio o sube un zip de `dist/`.
-3. Configura el comando de build `npm run build` y el directorio de salida `dist`.
-
-### Opción 3 — Vercel (gratis)
-
-Similar a Netlify. [vercel.com](https://vercel.com/). También detecta Vite automáticamente.
-
-### Opción 4 — GitHub Pages
-
-Si ya tienes repo en GitHub, puedes servir `dist/` desde una rama `gh-pages`. Requiere un par de pasos adicionales; avísame si tiras por aquí y te pongo el workflow de GitHub Actions.
-
-### Opción 5 — VPS propio (Hetzner ~5€/mes, OVH, etc.)
-
-Sube el contenido de `dist/` a cualquier directorio que sirva Nginx o Apache. Ejemplo con Nginx:
-
-```nginx
-server {
-  listen 80;
-  server_name felina.tudominio.org;
-  root /var/www/felina/dist;
-  index index.html;
-
-  location / {
-    try_files $uri $uri/ /index.html;
-  }
-}
-```
-
-La línea `try_files` es importante para que las URLs directas funcionen si más adelante añades rutas.
-
-## Estructura del proyecto
+## Estructura rápida
 
 ```
-felina-app/
-├── index.html              # Punto de entrada HTML
-├── package.json            # Dependencias y scripts
-├── vite.config.js          # Configuración de Vite
-├── tailwind.config.js      # Tailwind solo en src/
-├── postcss.config.js       # Autoprefixer + Tailwind
-├── public/
-│   └── favicon.svg         # Icono de la app
-└── src/
-    ├── main.jsx            # Monta React en #root
-    ├── index.css           # Directivas de Tailwind
-    └── App.jsx             # Toda la aplicación (~4000 líneas, 1 archivo)
+felina/
+├── index.html
+├── package.json
+├── vite.config.js
+├── .env.local            # credenciales (NO en git)
+├── src/
+│   ├── App.jsx           # orquestador: routing por vista, ramas de sesión
+│   ├── constants.js      # diccionarios de dominio (estados, roles, tareas)
+│   ├── hooks/
+│   │   └── useFelinaStore.js   # TODO el estado y la lógica de negocio
+│   ├── lib/              # helpers puros + cliente Supabase
+│   └── components/       # vistas (dashboard, cats, calendar, …)
+└── supabase/
+    ├── migrations/       # esquema SQL versionado (0001…0007)
+    └── functions/        # Edge Functions (invite-member)
 ```
-
-El código sigue siendo **single-file** a propósito. Cuando toque pasar a producción, se trocea, pero hasta entonces tener todo junto acelera las iteraciones.
-
-## Usuarios de demostración
-
-Al arrancar en un navegador limpio se crean dos organizaciones y varios usuarios demo. Para probar todos los roles:
-
-| Usuario | Rol | Qué puede hacer |
-|---|---|---|
-| Aina Roca | Superadmin global | Ver y gestionar todas las orgs |
-| Marta Vidal | Admin de Gats del Barri | Gestión completa de la org |
-| Jordi Puig | Coordinador | CRUD de colonias, gatos, turnos |
-| Laia Martínez | Voluntaria | Añadir gatos/eventos, apuntarse a turnos |
-| Dr. Pere Vila | Veterinario | Solo lectura + registrar eventos vet. |
-| Anna Bosch | Admin de Felins del Maresme | Segunda org para probar multi-tenant |
-
-## Reiniciar los datos de demo
-
-Abre la consola del navegador y ejecuta:
-
-```js
-Object.keys(localStorage).filter(k => k.startsWith('felina:')).forEach(k => localStorage.removeItem(k));
-location.reload();
-```
-
-Volverás a tener los datos de ejemplo recién generados.
-
-## Siguientes pasos hacia producción
-
-Cuando el feedback de las protectoras valide que la herramienta es útil, toca montar un backend real para poder usarlo en el día a día. Opciones, en orden de esfuerzo:
-
-1. **Supabase + Next.js** (más rápido). Postgres gestionado + auth + storage de fotos. Pasas de prototipo a producción en un par de semanas manteniendo los componentes de React.
-2. **Django + PostgreSQL** (más control). El admin de Django ahorra semanas en la parte de gestión interna. Frontend sigue siendo React (Next.js o SvelteKit).
-
-Ambas tienen hosting barato (Railway, Fly.io, Hetzner VPS ~5€/mes).
 
 ## Licencia
 
-Sin decidir aún. Si la herramienta te resulta útil y acaba publicándose como open source, la licencia probable será **MIT** o **GPL**.
-
----
-
-Proyecto mantenido por una persona sola desde Cataluña. Pensado para ser regalado al tejido asociativo catalán y español. Feedback bienvenido.
+Sin decidir formalmente. La intención es que sea software libre regalado al
+tejido asociativo. Licencia probable: MIT o GPL.
