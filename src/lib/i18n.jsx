@@ -514,6 +514,141 @@ const dict = {
     'app.notify.resetPwdTitle': 'Restablecer contraseña',
     'app.notify.resetPwdBody': '{name} debe pulsar "He olvidado mi contraseña" en la pantalla de login para recibir un email de recuperación. Si necesitas hacerlo manualmente, contacta con la administración de la plataforma.',
 
+    // ─── Mensajes del store (useFelinaStore.js): notify/confirm ───
+    // Permisos genéricos
+    'store.noPerm.title': 'Sin permiso',
+    'store.noPerm.body': 'Tu rol actual no permite esta acción. Habla con la administración de tu organización si crees que debería.',
+    'store.noPerm.bodyShort': 'Tu rol actual no permite esta acción.',
+    'store.noPerm.deleteColony': 'Solo administración o coordinación pueden eliminar colonias.',
+    'store.noPerm.deleteCat': 'Solo administración o coordinación pueden eliminar fichas de gato.',
+    'store.noPerm.reminder': 'Tu rol actual no permite gestionar recordatorios.',
+    'store.noPerm.deleteReminder': 'Solo administración o coordinación puede eliminar recordatorios.',
+
+    // Errores de validación de pertenencia a org
+    'store.invalidOp.title': 'Operación no válida',
+    'store.invalidOp.colonyOrg': 'Esta colonia no pertenece a la organización activa.',
+    'store.invalidOp.catOrg': 'Este gato no pertenece a la organización activa.',
+    'store.invalidOp.reminderOrg': 'Este recordatorio no pertenece a la organización activa.',
+    'store.invalidOp.templateOrg': 'Esta plantilla no pertenece a la organización activa.',
+    'store.invalidOp.shiftOrg': 'Este turno no pertenece a la organización activa.',
+    'store.invalidOp.missingCat': 'Falta el gato asociado al recordatorio.',
+
+    // Errores genéricos de save/delete
+    'store.err.saveFail': 'No se pudo guardar',
+    'store.err.deleteFail': 'No se pudo eliminar',
+    'store.err.changeFail': 'No se pudo cambiar',
+    'store.err.changeStatusFail': 'No se pudo cambiar el estado',
+    'store.err.changeRoleFail': 'No se pudo cambiar el rol',
+    'store.err.expelFail': 'No se pudo expulsar',
+    'store.err.leaveFail': 'No se pudo salir',
+
+    // Crear/editar organización (no plataforma)
+    'store.createOrg.errTitle': 'No se pudo crear la organización',
+    'store.createOrg.errRls': 'Solo la administración de la plataforma puede crear nuevas organizaciones. Pídesela a un superadministrador.',
+    'store.createOrg.partialTitle': 'Org creada, pero…',
+    'store.createOrg.partialBody': 'No se pudo asignar tu rol de admin: {message}',
+
+    // Invitar miembro
+    'store.invite.sentTitle': 'Invitación enviada',
+    'store.invite.sentBody': 'Hemos enviado un email a {email} con el enlace de activación. Aparecerá como miembro cuando lo abra y defina su contraseña. Las primeras invitaciones pueden tardar unos minutos y, si no llega, conviene mirar la carpeta de spam.',
+    'store.invite.errNoPerm': 'No tienes permisos para añadir miembros.',
+    'store.invite.errBadEmail': 'Email no válido.',
+    'store.invite.errGeneric': 'No se pudo invitar.',
+
+    // Cambiar mi contraseña
+    'store.changeMyPwd.errNoSession': 'No hay sesión activa.',
+    'store.changeMyPwd.errWrongCurrent': 'La contraseña actual no es correcta.',
+    'store.changeMyPwd.errUpdate': 'No se pudo cambiar la contraseña: {message}',
+    'store.setPwd.errSet': 'No se pudo establecer la contraseña: {message}',
+
+    // Reset contraseña (otra persona)
+    'store.resetOtherPwd.errNotFound': 'Usuario no encontrado.',
+    'store.resetOtherPwd.errSelf': 'Usa "Cambiar contraseña" para tu propia cuenta.',
+    'store.resetOtherPwd.errUnavailable': 'Resetear la contraseña de otra persona aún no está disponible desde la app. Pídele que use el botón "He olvidado mi contraseña" en la pantalla de login (próximamente), o contacta con la administración de la plataforma para hacerlo manualmente.',
+
+    // Expulsar miembro
+    'store.expel.title': 'Expulsar miembro',
+    'store.expel.bodyName': 'Vas a expulsar a {name} de la organización. Perderá el acceso pero su histórico se conserva.',
+    'store.expel.bodyAnon': 'Vas a expulsar a este miembro de la organización. Perderá el acceso pero su histórico se conserva.',
+    'store.expel.confirm': 'Expulsar',
+
+    // Salir de la organización
+    'store.leaveOrg.title': 'Salir de la organización',
+    'store.leaveOrg.body': 'Dejarás de tener acceso a las colonias, gatos y turnos de esta organización. La administración tendrá que volver a invitarte si quieres entrar de nuevo.',
+    'store.leaveOrg.confirm': 'Sí, salir',
+
+    // Eliminar organización (admin de org)
+    'store.deleteOrg.title': 'Eliminar "{name}"',
+    'store.deleteOrg.bodyOne': 'Se borrarán definitivamente {cols} colonia, {cats} gato y {mems} miembro, junto con todo su historial veterinario. Esta acción no se puede deshacer.',
+    'store.deleteOrg.bodyMany': 'Se borrarán definitivamente {cols} colonias, {cats} gatos y {mems} miembros, junto con todo su historial veterinario. Esta acción no se puede deshacer.',
+    'store.deleteOrg.confirm': 'Eliminar definitivamente',
+
+    // Reiniciar datos (modo demo)
+    'store.resetData.title': 'Reiniciar datos de prueba',
+    'store.resetData.body': 'Se perderán todas las organizaciones, colonias, gatos, eventos y turnos guardados en este navegador. Solo afecta a este dispositivo y no se puede deshacer.',
+    'store.resetData.confirm': 'Sí, reiniciar todo',
+
+    // Plataforma: eliminar org
+    'store.platDeleteOrg.title': 'Eliminar "{name}"',
+    'store.platDeleteOrg.body': 'Como superadministración, vas a borrar esta organización con {mems} miembro(s), {cols} colonia(s) y {cats} gato(s). La acción es irreversible.',
+    'store.platDeleteOrg.confirm': 'Eliminar definitivamente',
+
+    // Plataforma: suspender org
+    'store.platSuspendOrg.title': 'Suspender "{name}"',
+    'store.platSuspendOrg.body': 'Mientras esté suspendida, sus miembros no podrán acceder a sus datos. Podrás reactivarla en cualquier momento sin perder nada.',
+    'store.platSuspendOrg.confirm': 'Suspender',
+
+    // Toggle superadmin
+    'store.toggleSuper.onlyOneTitle': 'Es el único superadministrador',
+    'store.toggleSuper.onlyOneBody': 'Antes de retirarle los permisos, concede superadmin a otra persona. Si no, nadie podría administrar la plataforma.',
+    'store.toggleSuper.removeTitle': 'Retirar permisos a {name}',
+    'store.toggleSuper.giveTitle': 'Dar permisos a {name}',
+    'store.toggleSuper.removeBody': 'Dejará de tener acceso a la administración global de la plataforma. Mantendrá sus pertenencias en cada organización.',
+    'store.toggleSuper.giveBody': 'Pasará a poder ver y gestionar todas las organizaciones de la plataforma. Concédelo solo a personas de máxima confianza.',
+    'store.toggleSuper.removeConfirm': 'Retirar',
+    'store.toggleSuper.giveConfirm': 'Conceder',
+
+    // Eliminar colonia
+    'store.deleteColony.hasCatsTitle': 'Esta colonia tiene gatos',
+    'store.deleteColony.hasCatsBody': 'Antes de eliminar la colonia, mueve sus gatos a otra o elimínalos desde su ficha.',
+    'store.deleteColony.title': 'Eliminar colonia "{name}"',
+    'store.deleteColony.body': 'La colonia desaparecerá del listado y del mapa. Esta acción no se puede deshacer.',
+    'store.createColony.errTitle': 'No se pudo crear la colonia',
+
+    // Guardar foto del gato
+    'store.savePhoto.errTitle': 'Foto no guardada',
+    'store.savePhoto.errSaved': 'La ficha del gato se guardó, pero la foto no: {message}',
+
+    // Eliminar gato
+    'store.createCat.errTitle': 'No se pudo crear el gato',
+    'store.deleteCat.title': 'Eliminar a {name}',
+    'store.deleteCat.bodyNoEvents': 'Se borrará la ficha completa. Esta acción no se puede deshacer.',
+    'store.deleteCat.bodyOneEvent': 'Se borrará la ficha y el {n} evento veterinario asociado. Esta acción no se puede deshacer.',
+    'store.deleteCat.bodyManyEvents': 'Se borrará la ficha y los {n} eventos veterinarios asociados. Esta acción no se puede deshacer.',
+    'store.deleteCat.confirm': 'Eliminar gato',
+
+    // Eventos
+    'store.event.errTitle': 'No se pudo registrar el evento',
+
+    // Recordatorios
+    'store.createReminder.errTitle': 'No se pudo crear el recordatorio',
+    'store.completeReminder.errTitle': 'No se pudo marcar',
+    'store.uncompleteReminder.errTitle': 'No se pudo deshacer',
+    'store.deleteReminder.title': 'Eliminar recordatorio',
+    'store.deleteReminder.body': 'Esto solo borra el recordatorio. Los eventos veterinarios ya registrados se mantienen.',
+    'store.deleteReminder.confirm': 'Eliminar',
+
+    // Plantillas de turno
+    'store.createTemplate.errTitle': 'No se pudo crear la plantilla',
+    'store.deleteTemplate.title': 'Eliminar plantilla de turno',
+    'store.deleteTemplate.body': 'Los turnos ya asignados o completados se conservan como registro histórico, pero no se generarán nuevos a partir de esta plantilla.',
+    'store.deleteTemplate.confirm': 'Eliminar plantilla',
+
+    // Turnos
+    'store.saveShift.errTitle': 'No se pudo guardar el turno',
+    'store.updateShift.errTitle': 'No se pudo actualizar el turno',
+    'store.unclaimShift.errTitle': 'No se pudo desapuntar',
+
     'login.brandTag': 'gestión CER',
     'login.welcome': 'Bienvenido/a',
     'login.welcomeEm': 'de vuelta',
@@ -1048,6 +1183,120 @@ const dict = {
     'app.notify.noPermShifts': 'Només l\'administració o coordinació poden gestionar plantilles de torns.',
     'app.notify.resetPwdTitle': 'Restableix la contrasenya',
     'app.notify.resetPwdBody': '{name} ha de prémer "He oblidat la contrasenya" a la pantalla d\'inici de sessió per rebre un correu de recuperació. Si necessites fer-ho manualment, contacta amb l\'administració de la plataforma.',
+
+    // ─── Missatges del store (useFelinaStore.js): notify/confirm ───
+    'store.noPerm.title': 'Sense permís',
+    'store.noPerm.body': 'El teu rol actual no permet aquesta acció. Parla amb l\'administració de la teva organització si creus que hauria.',
+    'store.noPerm.bodyShort': 'El teu rol actual no permet aquesta acció.',
+    'store.noPerm.deleteColony': 'Només l\'administració o coordinació poden eliminar colònies.',
+    'store.noPerm.deleteCat': 'Només l\'administració o coordinació poden eliminar fitxes de gat.',
+    'store.noPerm.reminder': 'El teu rol actual no permet gestionar recordatoris.',
+    'store.noPerm.deleteReminder': 'Només l\'administració o coordinació poden eliminar recordatoris.',
+
+    'store.invalidOp.title': 'Operació no vàlida',
+    'store.invalidOp.colonyOrg': 'Aquesta colònia no pertany a l\'organització activa.',
+    'store.invalidOp.catOrg': 'Aquest gat no pertany a l\'organització activa.',
+    'store.invalidOp.reminderOrg': 'Aquest recordatori no pertany a l\'organització activa.',
+    'store.invalidOp.templateOrg': 'Aquesta plantilla no pertany a l\'organització activa.',
+    'store.invalidOp.shiftOrg': 'Aquest torn no pertany a l\'organització activa.',
+    'store.invalidOp.missingCat': 'Falta el gat associat al recordatori.',
+
+    'store.err.saveFail': 'No s\'ha pogut desar',
+    'store.err.deleteFail': 'No s\'ha pogut eliminar',
+    'store.err.changeFail': 'No s\'ha pogut canviar',
+    'store.err.changeStatusFail': 'No s\'ha pogut canviar l\'estat',
+    'store.err.changeRoleFail': 'No s\'ha pogut canviar el rol',
+    'store.err.expelFail': 'No s\'ha pogut expulsar',
+    'store.err.leaveFail': 'No s\'ha pogut sortir',
+
+    'store.createOrg.errTitle': 'No s\'ha pogut crear l\'organització',
+    'store.createOrg.errRls': 'Només l\'administració de la plataforma pot crear noves organitzacions. Demana-ho a un superadministrador.',
+    'store.createOrg.partialTitle': 'Org creada, però…',
+    'store.createOrg.partialBody': 'No s\'ha pogut assignar el teu rol d\'admin: {message}',
+
+    'store.invite.sentTitle': 'Convidatòria enviada',
+    'store.invite.sentBody': 'Hem enviat un correu a {email} amb l\'enllaç d\'activació. Apareixerà com a membre quan l\'obri i defineixi una contrasenya. Les primeres invitacions poden trigar uns minuts a arribar i, si no arriben, convé mirar la safata de correu brossa.',
+    'store.invite.errNoPerm': 'No tens permisos per afegir membres.',
+    'store.invite.errBadEmail': 'Correu no vàlid.',
+    'store.invite.errGeneric': 'No s\'ha pogut convidar.',
+
+    'store.changeMyPwd.errNoSession': 'No hi ha cap sessió activa.',
+    'store.changeMyPwd.errWrongCurrent': 'La contrasenya actual no és correcta.',
+    'store.changeMyPwd.errUpdate': 'No s\'ha pogut canviar la contrasenya: {message}',
+    'store.setPwd.errSet': 'No s\'ha pogut establir la contrasenya: {message}',
+
+    'store.resetOtherPwd.errNotFound': 'Usuari no trobat.',
+    'store.resetOtherPwd.errSelf': 'Fes servir "Canvia la contrasenya" per al teu propi compte.',
+    'store.resetOtherPwd.errUnavailable': 'Restablir la contrasenya d\'una altra persona encara no està disponible des de l\'app. Demana-li que faci servir el botó "He oblidat la contrasenya" a la pantalla d\'inici de sessió (pròximament), o contacta amb l\'administració de la plataforma per fer-ho manualment.',
+
+    'store.expel.title': 'Expulsa membre',
+    'store.expel.bodyName': 'Expulsaràs {name} de l\'organització. Perdrà l\'accés però es conserva el seu historial.',
+    'store.expel.bodyAnon': 'Expulsaràs aquest membre de l\'organització. Perdrà l\'accés però es conserva el seu historial.',
+    'store.expel.confirm': 'Expulsa',
+
+    'store.leaveOrg.title': 'Surt de l\'organització',
+    'store.leaveOrg.body': 'Deixaràs de tenir accés a les colònies, gats i torns d\'aquesta organització. L\'administració t\'haurà de tornar a convidar si vols entrar de nou.',
+    'store.leaveOrg.confirm': 'Sí, surt',
+
+    'store.deleteOrg.title': 'Elimina "{name}"',
+    'store.deleteOrg.bodyOne': 'S\'esborraran definitivament {cols} colònia, {cats} gat i {mems} membre, juntament amb tot el seu historial veterinari. Aquesta acció no es pot desfer.',
+    'store.deleteOrg.bodyMany': 'S\'esborraran definitivament {cols} colònies, {cats} gats i {mems} membres, juntament amb tot el seu historial veterinari. Aquesta acció no es pot desfer.',
+    'store.deleteOrg.confirm': 'Elimina definitivament',
+
+    'store.resetData.title': 'Reinicia dades de proves',
+    'store.resetData.body': 'Es perdran totes les organitzacions, colònies, gats, esdeveniments i torns desats en aquest navegador. Només afecta a aquest dispositiu i no es pot desfer.',
+    'store.resetData.confirm': 'Sí, reinicia-ho tot',
+
+    'store.platDeleteOrg.title': 'Elimina "{name}"',
+    'store.platDeleteOrg.body': 'Com a superadministració, esborraràs aquesta organització amb {mems} membre(s), {cols} colònia/es i {cats} gat(s). L\'acció és irreversible.',
+    'store.platDeleteOrg.confirm': 'Elimina definitivament',
+
+    'store.platSuspendOrg.title': 'Suspèn "{name}"',
+    'store.platSuspendOrg.body': 'Mentre estigui suspesa, els seus membres no podran accedir a les seves dades. Podràs reactivar-la en qualsevol moment sense perdre res.',
+    'store.platSuspendOrg.confirm': 'Suspèn',
+
+    'store.toggleSuper.onlyOneTitle': 'És l\'únic superadministrador',
+    'store.toggleSuper.onlyOneBody': 'Abans de retirar-li els permisos, concedeix superadmin a una altra persona. Si no, ningú podria administrar la plataforma.',
+    'store.toggleSuper.removeTitle': 'Retira els permisos a {name}',
+    'store.toggleSuper.giveTitle': 'Dóna permisos a {name}',
+    'store.toggleSuper.removeBody': 'Deixarà de tenir accés a l\'administració global de la plataforma. Mantindrà les seves pertinences a cada organització.',
+    'store.toggleSuper.giveBody': 'Passarà a poder veure i gestionar totes les organitzacions de la plataforma. Concedeix-ho només a persones de màxima confiança.',
+    'store.toggleSuper.removeConfirm': 'Retira',
+    'store.toggleSuper.giveConfirm': 'Concedeix',
+
+    'store.deleteColony.hasCatsTitle': 'Aquesta colònia té gats',
+    'store.deleteColony.hasCatsBody': 'Abans d\'eliminar la colònia, mou els seus gats a una altra o elimina\'ls des de la seva fitxa.',
+    'store.deleteColony.title': 'Elimina la colònia "{name}"',
+    'store.deleteColony.body': 'La colònia desapareixerà del llistat i del mapa. Aquesta acció no es pot desfer.',
+    'store.createColony.errTitle': 'No s\'ha pogut crear la colònia',
+
+    'store.savePhoto.errTitle': 'Foto no desada',
+    'store.savePhoto.errSaved': 'La fitxa del gat s\'ha desat, però la foto no: {message}',
+
+    'store.createCat.errTitle': 'No s\'ha pogut crear el gat',
+    'store.deleteCat.title': 'Elimina {name}',
+    'store.deleteCat.bodyNoEvents': 'S\'esborrarà la fitxa completa. Aquesta acció no es pot desfer.',
+    'store.deleteCat.bodyOneEvent': 'S\'esborrarà la fitxa i l\'{n} esdeveniment veterinari associat. Aquesta acció no es pot desfer.',
+    'store.deleteCat.bodyManyEvents': 'S\'esborrarà la fitxa i els {n} esdeveniments veterinaris associats. Aquesta acció no es pot desfer.',
+    'store.deleteCat.confirm': 'Elimina el gat',
+
+    'store.event.errTitle': 'No s\'ha pogut registrar l\'esdeveniment',
+
+    'store.createReminder.errTitle': 'No s\'ha pogut crear el recordatori',
+    'store.completeReminder.errTitle': 'No s\'ha pogut marcar',
+    'store.uncompleteReminder.errTitle': 'No s\'ha pogut desfer',
+    'store.deleteReminder.title': 'Elimina recordatori',
+    'store.deleteReminder.body': 'Això només esborra el recordatori. Els esdeveniments veterinaris ja registrats es mantenen.',
+    'store.deleteReminder.confirm': 'Elimina',
+
+    'store.createTemplate.errTitle': 'No s\'ha pogut crear la plantilla',
+    'store.deleteTemplate.title': 'Elimina plantilla de torn',
+    'store.deleteTemplate.body': 'Els torns ja assignats o completats es conserven com a registre històric, però no se\'n generaran de nous a partir d\'aquesta plantilla.',
+    'store.deleteTemplate.confirm': 'Elimina la plantilla',
+
+    'store.saveShift.errTitle': 'No s\'ha pogut desar el torn',
+    'store.updateShift.errTitle': 'No s\'ha pogut actualitzar el torn',
+    'store.unclaimShift.errTitle': 'No s\'ha pogut desapuntar',
 
     'login.brandTag': 'gestió CER',
     'login.welcome': 'Benvingut/da',

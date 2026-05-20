@@ -20,6 +20,7 @@ import { sampleData } from '../lib/seed.js';
 import { slotFromTime } from '../lib/shifts.js';
 import { supabase, initialAuthFlow } from '../lib/supabaseClient.js';
 import { uploadCatPhoto, deleteCatPhoto } from '../lib/images.js';
+import { useTranslation } from '../lib/i18n.jsx';
 
 // Mappers fila Postgres (snake_case) ↔ forma in-memory (camelCase) que ya
 // consumen los componentes. Mantenerlos centralizados aquí evita reescribir
@@ -93,6 +94,7 @@ const mapShift = (row) => row && {
 };
 
 export function useFelinaStore() {
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [session, setSession] = useState(null); // { userId, orgId }
   const [rgpdAcknowledged, setRgpdAcknowledged] = useState(true); // optimista: evita parpadeo
@@ -371,7 +373,7 @@ export function useFelinaStore() {
   const handleSetPassword = async (newPassword) => {
     const { error } = await supabase.auth.updateUser({ password: newPassword });
     if (error) {
-      return { error: 'No se pudo establecer la contraseña: ' + error.message };
+      return { error: t('store.setPwd.errSet', { message: error.message }) };
     }
     setPasswordSetupMode(null);
     // Refrescar datos para que aparezcan orgs/colonias/etc. tras la
@@ -385,9 +387,9 @@ export function useFelinaStore() {
   // navegador (claves felina:*) y recarga para resembrar los datos de demo.
   const handleResetData = async () => {
     const ok = await confirmAsync({
-      title: 'Reiniciar datos de prueba',
-      message: 'Se perderán todas las organizaciones, colonias, gatos, eventos y turnos guardados en este navegador. Solo afecta a este dispositivo y no se puede deshacer.',
-      confirmLabel: 'Sí, reiniciar todo',
+      title: t('store.resetData.title'),
+      message: t('store.resetData.body'),
+      confirmLabel: t('store.resetData.confirm'),
       destructive: true,
     });
     if (!ok) return;
@@ -409,9 +411,9 @@ export function useFelinaStore() {
       .single();
     if (orgErr) {
       await notify({
-        title: 'No se pudo crear la organización',
+        title: t('store.createOrg.errTitle'),
         message: orgErr.code === '42501' || /row-level security/i.test(orgErr.message)
-          ? 'Solo la administración de la plataforma puede crear nuevas organizaciones. Pídesela a un superadministrador.'
+          ? t('store.createOrg.errRls')
           : orgErr.message,
       });
       return;
@@ -423,7 +425,7 @@ export function useFelinaStore() {
         user_id: session.userId, org_id: newOrg.id, role: 'admin',
       });
       if (memErr) {
-        await notify({ title: 'Org creada, pero…', message: 'No se pudo asignar tu rol de admin: ' + memErr.message });
+        await notify({ title: t('store.createOrg.partialTitle'), message: t('store.createOrg.partialBody', { message: memErr.message }) });
       }
     }
     await refresh();
@@ -453,9 +455,9 @@ export function useFelinaStore() {
   // Devuelve { ok, mode, name? } o { error } para que la UI muestre el
   // mensaje apropiado en cada caso.
   const handleAddMember = async ({ email, role }) => {
-    if (currentRole !== 'admin') return { error: 'No tienes permisos para añadir miembros.' };
+    if (currentRole !== 'admin') return { error: t('store.invite.errNoPerm') };
     const normEmail = normalizeEmail(email);
-    if (!normEmail || !isValidEmail(normEmail)) return { error: 'Email no válido.' };
+    if (!normEmail || !isValidEmail(normEmail)) return { error: t('store.invite.errBadEmail') };
 
     const { data, error } = await supabase.functions.invoke('invite-member', {
       body: { email: normEmail, role, orgId: session.orgId },
@@ -464,7 +466,7 @@ export function useFelinaStore() {
     // supabase-js devuelve `error` para fallos HTTP (no-2xx). El cuerpo de la
     // respuesta de error está dentro de error.context.body como string JSON.
     if (error) {
-      let message = 'No se pudo invitar.';
+      let message = t('store.invite.errGeneric');
       try {
         const body = error.context && typeof error.context.json === 'function'
           ? await error.context.json()
@@ -484,8 +486,8 @@ export function useFelinaStore() {
     // existing_user, el cambio en la lista ya es feedback suficiente.
     if (data?.mode === 'invited') {
       await notify({
-        title: 'Invitación enviada',
-        message: `Hemos enviado un email a ${normEmail} con el enlace de activación. Aparecerá como miembro cuando lo abra y defina su contraseña. Las primeras invitaciones pueden tardar unos minutos y, si no llega, conviene mirar la carpeta de spam.`,
+        title: t('store.invite.sentTitle'),
+        message: t('store.invite.sentBody', { email: normEmail }),
       });
     }
 
@@ -494,7 +496,7 @@ export function useFelinaStore() {
 
   const handleChangeMyPassword = async ({ current, next }) => {
     const me = users.find(u => u.id === session?.userId);
-    if (!me?.email) return { error: 'No hay sesión activa.' };
+    if (!me?.email) return { error: t('store.changeMyPwd.errNoSession') };
 
     // Supabase Auth no expone una API directa de "cambiar contraseña con
     // verificación de la actual". Lo emulamos: re-autenticamos con la
@@ -505,12 +507,12 @@ export function useFelinaStore() {
       password: current,
     });
     if (signInErr) {
-      return { error: 'La contraseña actual no es correcta.' };
+      return { error: t('store.changeMyPwd.errWrongCurrent') };
     }
 
     const { error: updateErr } = await supabase.auth.updateUser({ password: next });
     if (updateErr) {
-      return { error: 'No se pudo cambiar la contraseña: ' + updateErr.message };
+      return { error: t('store.changeMyPwd.errUpdate', { message: updateErr.message }) };
     }
 
     setModal(null);
@@ -525,19 +527,21 @@ export function useFelinaStore() {
   // cambios; cuando llegue el flujo real solo cambia el body.
   const handleResetPassword = async (targetUserId) => {
     const target = users.find(u => u.id === targetUserId);
-    if (!target) return { error: 'Usuario no encontrado.' };
-    if (target.id === session?.userId) return { error: 'Usa "Cambiar contraseña" para tu propia cuenta.' };
+    if (!target) return { error: t('store.resetOtherPwd.errNotFound') };
+    if (target.id === session?.userId) return { error: t('store.resetOtherPwd.errSelf') };
     return {
-      error: 'Resetear la contraseña de otra persona aún no está disponible desde la app. Pídele que use el botón "He olvidado mi contraseña" en la pantalla de login (próximamente), o contacta con la administración de la plataforma para hacerlo manualmente.',
+      error: t('store.resetOtherPwd.errUnavailable'),
     };
   };
 
   const handleRemoveMember = async (userId) => {
     const target = users.find(u => u.id === userId);
     const ok = await confirmAsync({
-      title: 'Expulsar miembro',
-      message: `Vas a expulsar a ${target?.name || 'este miembro'} de la organización. Perderá el acceso pero su histórico se conserva.`,
-      confirmLabel: 'Expulsar',
+      title: t('store.expel.title'),
+      message: target?.name
+        ? t('store.expel.bodyName', { name: target.name })
+        : t('store.expel.bodyAnon'),
+      confirmLabel: t('store.expel.confirm'),
       destructive: true,
     });
     if (!ok) return;
@@ -546,7 +550,7 @@ export function useFelinaStore() {
       .eq('user_id', userId)
       .eq('org_id', session.orgId);
     if (error) {
-      await notify({ title: 'No se pudo expulsar', message: error.message });
+      await notify({ title: t('store.err.expelFail'), message: error.message });
       return;
     }
     await refresh();
@@ -558,7 +562,7 @@ export function useFelinaStore() {
       .eq('user_id', userId)
       .eq('org_id', session.orgId);
     if (error) {
-      await notify({ title: 'No se pudo cambiar el rol', message: error.message });
+      await notify({ title: t('store.err.changeRoleFail'), message: error.message });
       return;
     }
     await refresh();
@@ -572,7 +576,7 @@ export function useFelinaStore() {
     if (data.color !== undefined) patch.color = data.color;
     const { error } = await supabase.from('organizations').update(patch).eq('id', session.orgId);
     if (error) {
-      await notify({ title: 'No se pudo guardar', message: error.message });
+      await notify({ title: t('store.err.saveFail'), message: error.message });
       return;
     }
     await refresh();
@@ -581,9 +585,9 @@ export function useFelinaStore() {
 
   const handleLeaveOrg = async () => {
     const ok = await confirmAsync({
-      title: 'Salir de la organización',
-      message: 'Dejarás de tener acceso a las colonias, gatos y turnos de esta organización. La administración tendrá que volver a invitarte si quieres entrar de nuevo.',
-      confirmLabel: 'Sí, salir',
+      title: t('store.leaveOrg.title'),
+      message: t('store.leaveOrg.body'),
+      confirmLabel: t('store.leaveOrg.confirm'),
       destructive: true,
     });
     if (!ok) return;
@@ -592,7 +596,7 @@ export function useFelinaStore() {
       .eq('user_id', session.userId)
       .eq('org_id', session.orgId);
     if (error) {
-      await notify({ title: 'No se pudo salir', message: error.message });
+      await notify({ title: t('store.err.leaveFail'), message: error.message });
       return;
     }
     await refresh();
@@ -613,10 +617,13 @@ export function useFelinaStore() {
       cats: cats.filter(c => c.orgId === session.orgId).length,
       mems: memberships.filter(m => m.orgId === session.orgId).length,
     };
+    const allSingular = stats.cols === 1 && stats.cats === 1 && stats.mems === 1;
     const ok = await confirmAsync({
-      title: `Eliminar "${currentOrg.name}"`,
-      message: `Se borrarán definitivamente ${stats.cols} colonia${stats.cols !== 1 ? 's' : ''}, ${stats.cats} gato${stats.cats !== 1 ? 's' : ''} con todo su historial veterinario, y ${stats.mems} miembro${stats.mems !== 1 ? 's' : ''}. Esta acción no se puede deshacer.`,
-      confirmLabel: 'Eliminar definitivamente',
+      title: t('store.deleteOrg.title', { name: currentOrg.name }),
+      message: allSingular
+        ? t('store.deleteOrg.bodyOne', stats)
+        : t('store.deleteOrg.bodyMany', stats),
+      confirmLabel: t('store.deleteOrg.confirm'),
       destructive: true,
     });
     if (!ok) return;
@@ -624,7 +631,7 @@ export function useFelinaStore() {
     // El cascade borra memberships y colonias asociadas.
     const { error } = await supabase.from('organizations').delete().eq('id', orgId);
     if (error) {
-      await notify({ title: 'No se pudo eliminar', message: error.message });
+      await notify({ title: t('store.err.deleteFail'), message: error.message });
       return;
     }
     await refresh();
@@ -649,7 +656,7 @@ export function useFelinaStore() {
       name, city, contact_email: contactEmail, color: '#2D4A3E', suspended: false,
     });
     if (error) {
-      await notify({ title: 'No se pudo crear la organización', message: error.message });
+      await notify({ title: t('store.createOrg.errTitle'), message: error.message });
       return;
     }
     await refresh();
@@ -665,16 +672,16 @@ export function useFelinaStore() {
       mems: memberships.filter(m => m.orgId === orgId).length,
     };
     const ok = await confirmAsync({
-      title: `Eliminar "${org.name}"`,
-      message: `Como superadministración, vas a borrar esta organización con ${stats.mems} miembro${stats.mems !== 1 ? 's' : ''}, ${stats.cols} colonia${stats.cols !== 1 ? 's' : ''} y ${stats.cats} gato${stats.cats !== 1 ? 's' : ''}. La acción es irreversible.`,
-      confirmLabel: 'Eliminar definitivamente',
+      title: t('store.platDeleteOrg.title', { name: org.name }),
+      message: t('store.platDeleteOrg.body', stats),
+      confirmLabel: t('store.platDeleteOrg.confirm'),
       destructive: true,
     });
     if (!ok) return;
     // El cascade de la BD limpia memberships y colonies asociadas.
     const { error } = await supabase.from('organizations').delete().eq('id', orgId);
     if (error) {
-      await notify({ title: 'No se pudo eliminar', message: error.message });
+      await notify({ title: t('store.err.deleteFail'), message: error.message });
       return;
     }
     if (session.orgId === orgId) {
@@ -691,9 +698,9 @@ export function useFelinaStore() {
     const newSuspended = !org.suspended;
     if (newSuspended) {
       const ok = await confirmAsync({
-        title: `Suspender "${org.name}"`,
-        message: 'Mientras esté suspendida, sus miembros no podrán acceder a sus datos. Podrás reactivarla en cualquier momento sin perder nada.',
-        confirmLabel: 'Suspender',
+        title: t('store.platSuspendOrg.title', { name: org.name }),
+        message: t('store.platSuspendOrg.body'),
+        confirmLabel: t('store.platSuspendOrg.confirm'),
         destructive: false,
       });
       if (!ok) return;
@@ -702,7 +709,7 @@ export function useFelinaStore() {
       .update({ suspended: newSuspended })
       .eq('id', orgId);
     if (error) {
-      await notify({ title: 'No se pudo cambiar el estado', message: error.message });
+      await notify({ title: t('store.err.changeStatusFail'), message: error.message });
       return;
     }
     await refresh();
@@ -717,7 +724,7 @@ export function useFelinaStore() {
     if (data.color !== undefined) patch.color = data.color;
     const { error } = await supabase.from('organizations').update(patch).eq('id', data.id);
     if (error) {
-      await notify({ title: 'No se pudo guardar', message: error.message });
+      await notify({ title: t('store.err.saveFail'), message: error.message });
       return;
     }
     await refresh();
@@ -728,14 +735,14 @@ export function useFelinaStore() {
     const user = users.find(u => u.id === userId);
     if (!user) return;
     if (user.superAdmin && users.filter(u => u.superAdmin).length === 1) {
-      await notify({ title: 'Es el único superadministrador', message: 'Antes de retirarle los permisos, concede superadmin a otra persona. Si no, nadie podría administrar la plataforma.' }); return;
+      await notify({ title: t('store.toggleSuper.onlyOneTitle'), message: t('store.toggleSuper.onlyOneBody') }); return;
     }
     const ok = await confirmAsync({
-      title: user.superAdmin ? `Retirar permisos a ${user.name}` : `Dar permisos a ${user.name}`,
-      message: user.superAdmin
-        ? 'Dejará de tener acceso a la administración global de la plataforma. Mantendrá sus pertenencias en cada organización.'
-        : 'Pasará a poder ver y gestionar todas las organizaciones de la plataforma. Concédelo solo a personas de máxima confianza.',
-      confirmLabel: user.superAdmin ? 'Retirar' : 'Conceder',
+      title: user.superAdmin
+        ? t('store.toggleSuper.removeTitle', { name: user.name })
+        : t('store.toggleSuper.giveTitle', { name: user.name }),
+      message: user.superAdmin ? t('store.toggleSuper.removeBody') : t('store.toggleSuper.giveBody'),
+      confirmLabel: user.superAdmin ? t('store.toggleSuper.removeConfirm') : t('store.toggleSuper.giveConfirm'),
       destructive: user.superAdmin,
     });
     if (!ok) return;
@@ -743,7 +750,7 @@ export function useFelinaStore() {
       .update({ super_admin: !user.superAdmin })
       .eq('id', userId);
     if (error) {
-      await notify({ title: 'No se pudo cambiar', message: error.message });
+      await notify({ title: t('store.err.changeFail'), message: error.message });
       return;
     }
     await refresh();
@@ -767,7 +774,7 @@ export function useFelinaStore() {
   // pueda moverlo a otra organización. Útil cuando migremos a backend.
   const saveColony = async (form) => {
     if (!can(currentRole, form.id ? 'edit_colony' : 'add_colony')) {
-      await notify({ title: 'Sin permiso', message: 'Tu rol actual no permite esta acción. Habla con la administración de tu organización si crees que debería.', tone: 'warning' });
+      await notify({ title: t('store.noPerm.title'), message: t('store.noPerm.body'), tone: 'warning' });
       return;
     }
 
@@ -790,12 +797,12 @@ export function useFelinaStore() {
       // también lo bloquearía a nivel de BD; la doble guarda da mensaje claro.
       const existing = colonies.find(c => c.id === form.id);
       if (!existing || existing.orgId !== session.orgId) {
-        await notify({ title: 'Operación no válida', message: 'Esta colonia no pertenece a la organización activa.' });
+        await notify({ title: t('store.invalidOp.title'), message: t('store.invalidOp.colonyOrg') });
         return;
       }
       const { error } = await supabase.from('colonies').update(payload).eq('id', form.id);
       if (error) {
-        await notify({ title: 'No se pudo guardar', message: error.message });
+        await notify({ title: t('store.err.saveFail'), message: error.message });
         return;
       }
     } else {
@@ -804,7 +811,7 @@ export function useFelinaStore() {
         org_id: session.orgId,
       });
       if (error) {
-        await notify({ title: 'No se pudo crear la colonia', message: error.message });
+        await notify({ title: t('store.createColony.errTitle'), message: error.message });
         return;
       }
     }
@@ -815,30 +822,30 @@ export function useFelinaStore() {
 
   const deleteColony = async () => {
     if (!selectedColony || !can(currentRole, 'delete_colony')) {
-      await notify({ title: 'Sin permiso', message: 'Solo administración o coordinación pueden eliminar colonias.' });
+      await notify({ title: t('store.noPerm.title'), message: t('store.noPerm.deleteColony') });
       return;
     }
     const existing = colonies.find(c => c.id === selectedColony);
     if (!existing || existing.orgId !== session.orgId) {
-      await notify({ title: 'Operación no válida', message: 'Esta colonia no pertenece a la organización activa.' });
+      await notify({ title: t('store.invalidOp.title'), message: t('store.invalidOp.colonyOrg') });
       return;
     }
     // El check de gatos vivos se mantiene; cuando migremos `cats` a Postgres
     // (fase 2) volverá a tener efecto. Ahora cats=[] siempre pasa el check.
     if (cats.some(c => c.colonyId === selectedColony)) {
-      await notify({ title: 'Esta colonia tiene gatos', message: 'Antes de eliminar la colonia, mueve sus gatos a otra o elimínalos desde su ficha.' });
+      await notify({ title: t('store.deleteColony.hasCatsTitle'), message: t('store.deleteColony.hasCatsBody') });
       return;
     }
     const ok = await confirmAsync({
-      title: `Eliminar colonia "${existing.name}"`,
-      message: 'La colonia desaparecerá del listado y del mapa. Esta acción no se puede deshacer.',
-      confirmLabel: 'Eliminar',
+      title: t('store.deleteColony.title', { name: existing.name }),
+      message: t('store.deleteColony.body'),
+      confirmLabel: t('store.deleteReminder.confirm'),
       destructive: true,
     });
     if (!ok) return;
     const { error } = await supabase.from('colonies').delete().eq('id', selectedColony);
     if (error) {
-      await notify({ title: 'No se pudo eliminar', message: error.message });
+      await notify({ title: t('store.err.deleteFail'), message: error.message });
       return;
     }
     await refresh();
@@ -848,7 +855,7 @@ export function useFelinaStore() {
 
   const saveCat = async (form) => {
     if (!can(currentRole, form.id ? 'edit_cat' : 'add_cat')) {
-      await notify({ title: 'Sin permiso', message: 'Tu rol actual no permite esta acción. Habla con la administración de tu organización si crees que debería.', tone: 'warning' });
+      await notify({ title: t('store.noPerm.title'), message: t('store.noPerm.body'), tone: 'warning' });
       return;
     }
 
@@ -874,13 +881,13 @@ export function useFelinaStore() {
     if (form.id) {
       const existing = cats.find(c => c.id === form.id);
       if (!existing || existing.orgId !== session.orgId) {
-        await notify({ title: 'Operación no válida', message: 'Este gato no pertenece a la organización activa.' });
+        await notify({ title: t('store.invalidOp.title'), message: t('store.invalidOp.catOrg') });
         return;
       }
       oldPhotoUrl = existing.photoUrl || null;
       const { error } = await supabase.from('cats').update(payload).eq('id', form.id);
       if (error) {
-        await notify({ title: 'No se pudo guardar', message: error.message });
+        await notify({ title: t('store.err.saveFail'), message: error.message });
         return;
       }
       savedCatId = form.id;
@@ -890,7 +897,7 @@ export function useFelinaStore() {
         .select('id')
         .single();
       if (error) {
-        await notify({ title: 'No se pudo crear el gato', message: error.message });
+        await notify({ title: t('store.createCat.errTitle'), message: error.message });
         return;
       }
       savedCatId = data.id;
@@ -909,10 +916,10 @@ export function useFelinaStore() {
           .update({ photo_url: newUrl })
           .eq('id', savedCatId);
         if (error) {
-          await notify({ title: 'Foto no guardada', message: 'La ficha del gato se guardó, pero la foto no: ' + error.message });
+          await notify({ title: t('store.savePhoto.errTitle'), message: t('store.savePhoto.errSaved', { message: error.message }) });
         }
       } catch (e) {
-        await notify({ title: 'Foto no guardada', message: 'La ficha se guardó pero la foto no: ' + e.message });
+        await notify({ title: t('store.savePhoto.errTitle'), message: t('store.savePhoto.errSaved', { message: e.message }) });
       }
     } else if (oldPhotoUrl && !form.photoUrl) {
       await supabase.from('cats').update({ photo_url: null }).eq('id', savedCatId);
@@ -925,28 +932,30 @@ export function useFelinaStore() {
 
   const deleteCat = async () => {
     if (!selectedCat || !can(currentRole, 'delete_cat')) {
-      await notify({ title: 'Sin permiso', message: 'Solo administración o coordinación pueden eliminar fichas de gato.' });
+      await notify({ title: t('store.noPerm.title'), message: t('store.noPerm.deleteCat') });
       return;
     }
     const existing = cats.find(c => c.id === selectedCat);
     if (!existing || existing.orgId !== session.orgId) {
-      await notify({ title: 'Operación no válida', message: 'Este gato no pertenece a la organización activa.' });
+      await notify({ title: t('store.invalidOp.title'), message: t('store.invalidOp.catOrg') });
       return;
     }
     const eventCount = events.filter(e => e.catId === selectedCat).length;
     const ok = await confirmAsync({
-      title: `Eliminar a ${existing.name}`,
-      message: eventCount > 0
-        ? `Se borrará la ficha y los ${eventCount} evento${eventCount !== 1 ? 's' : ''} veterinario${eventCount !== 1 ? 's' : ''} asociado${eventCount !== 1 ? 's' : ''}. Esta acción no se puede deshacer.`
-        : 'Se borrará la ficha completa. Esta acción no se puede deshacer.',
-      confirmLabel: 'Eliminar gato',
+      title: t('store.deleteCat.title', { name: existing.name }),
+      message: eventCount === 0
+        ? t('store.deleteCat.bodyNoEvents')
+        : eventCount === 1
+          ? t('store.deleteCat.bodyOneEvent', { n: eventCount })
+          : t('store.deleteCat.bodyManyEvents', { n: eventCount }),
+      confirmLabel: t('store.deleteCat.confirm'),
       destructive: true,
     });
     if (!ok) return;
     // El cascade en events.cat_id borra los eventos asociados automáticamente.
     const { error } = await supabase.from('cats').delete().eq('id', selectedCat);
     if (error) {
-      await notify({ title: 'No se pudo eliminar', message: error.message });
+      await notify({ title: t('store.err.deleteFail'), message: error.message });
       return;
     }
     // Limpiar también la foto del bucket si la tenía. No bloqueamos si falla.
@@ -958,17 +967,17 @@ export function useFelinaStore() {
 
   const changeCatStatus = async (status) => {
     if (!can(currentRole, 'change_status')) {
-      await notify({ title: 'Sin permiso', message: 'Tu rol actual no permite esta acción. Habla con la administración de tu organización si crees que debería.', tone: 'warning' });
+      await notify({ title: t('store.noPerm.title'), message: t('store.noPerm.body'), tone: 'warning' });
       return;
     }
     const existing = cats.find(c => c.id === selectedCat);
     if (!existing || existing.orgId !== session.orgId) {
-      await notify({ title: 'Operación no válida', message: 'Este gato no pertenece a la organización activa.' });
+      await notify({ title: t('store.invalidOp.title'), message: t('store.invalidOp.catOrg') });
       return;
     }
     const { error } = await supabase.from('cats').update({ cer_status: status }).eq('id', selectedCat);
     if (error) {
-      await notify({ title: 'No se pudo cambiar el estado', message: error.message });
+      await notify({ title: t('store.err.changeStatusFail'), message: error.message });
       return;
     }
     await refresh();
@@ -976,12 +985,12 @@ export function useFelinaStore() {
 
   const saveEvent = async (form) => {
     if (!can(currentRole, 'add_event')) {
-      await notify({ title: 'Sin permiso', message: 'Tu rol actual no permite esta acción. Habla con la administración de tu organización si crees que debería.', tone: 'warning' });
+      await notify({ title: t('store.noPerm.title'), message: t('store.noPerm.body'), tone: 'warning' });
       return;
     }
     const cat = cats.find(c => c.id === selectedCat);
     if (!cat || cat.orgId !== session.orgId) {
-      await notify({ title: 'Operación no válida', message: 'Este gato no pertenece a la organización activa.' });
+      await notify({ title: t('store.invalidOp.title'), message: t('store.invalidOp.catOrg') });
       return;
     }
     // form.date llega como ms (Date.now() en el form) o ISO string. Postgres
@@ -1001,7 +1010,7 @@ export function useFelinaStore() {
     };
     const { error } = await supabase.from('events').insert(payload);
     if (error) {
-      await notify({ title: 'No se pudo registrar el evento', message: error.message });
+      await notify({ title: t('store.event.errTitle'), message: error.message });
       return;
     }
     await refresh();
@@ -1014,7 +1023,7 @@ export function useFelinaStore() {
   // admin/coord borra.
   const saveCatReminder = async (form) => {
     if (!can(currentRole, 'add_event')) {
-      await notify({ title: 'Sin permiso', message: 'Tu rol actual no permite gestionar recordatorios.' });
+      await notify({ title: t('store.noPerm.title'), message: t('store.noPerm.reminder') });
       return;
     }
     const payload = {
@@ -1027,29 +1036,29 @@ export function useFelinaStore() {
     if (form.id) {
       const existing = reminders.find(r => r.id === form.id);
       if (!existing || existing.orgId !== session.orgId) {
-        await notify({ title: 'Operación no válida', message: 'Este recordatorio no pertenece a la organización activa.' });
+        await notify({ title: t('store.invalidOp.title'), message: t('store.invalidOp.reminderOrg') });
         return;
       }
       const { error } = await supabase.from('cat_reminders').update(payload).eq('id', form.id);
       if (error) {
-        await notify({ title: 'No se pudo guardar', message: error.message });
+        await notify({ title: t('store.err.saveFail'), message: error.message });
         return;
       }
     } else {
       if (!form.catId) {
-        await notify({ title: 'Operación no válida', message: 'Falta el gato asociado al recordatorio.' });
+        await notify({ title: t('store.invalidOp.title'), message: t('store.invalidOp.missingCat') });
         return;
       }
       const cat = cats.find(c => c.id === form.catId);
       if (!cat || cat.orgId !== session.orgId) {
-        await notify({ title: 'Operación no válida', message: 'Este gato no pertenece a la organización activa.' });
+        await notify({ title: t('store.invalidOp.title'), message: t('store.invalidOp.catOrg') });
         return;
       }
       const { error } = await supabase.from('cat_reminders').insert({
         ...payload, cat_id: form.catId, org_id: session.orgId,
       });
       if (error) {
-        await notify({ title: 'No se pudo crear el recordatorio', message: error.message });
+        await notify({ title: t('store.createReminder.errTitle'), message: error.message });
         return;
       }
     }
@@ -1060,19 +1069,19 @@ export function useFelinaStore() {
   const deleteCatReminder = async (reminderId) => {
     const allowed = isSuperAdmin || currentRole === 'admin' || currentRole === 'coordinator';
     if (!allowed) {
-      await notify({ title: 'Sin permiso', message: 'Solo administración o coordinación puede eliminar recordatorios.' });
+      await notify({ title: t('store.noPerm.title'), message: t('store.noPerm.deleteReminder') });
       return;
     }
     const ok = await confirmAsync({
-      title: 'Eliminar recordatorio',
-      message: 'Esto solo borra el recordatorio. Los eventos veterinarios ya registrados se mantienen.',
-      confirmLabel: 'Eliminar',
+      title: t('store.deleteReminder.title'),
+      message: t('store.deleteReminder.body'),
+      confirmLabel: t('store.deleteReminder.confirm'),
       destructive: true,
     });
     if (!ok) return;
     const { error } = await supabase.from('cat_reminders').delete().eq('id', reminderId);
     if (error) {
-      await notify({ title: 'No se pudo eliminar', message: error.message });
+      await notify({ title: t('store.err.deleteFail'), message: error.message });
       return;
     }
     await refresh();
@@ -1084,14 +1093,14 @@ export function useFelinaStore() {
   // — esa orquestación es responsabilidad de la UI, no del store.
   const completeCatReminder = async (reminderId) => {
     if (!can(currentRole, 'add_event')) {
-      await notify({ title: 'Sin permiso', message: 'Tu rol actual no permite esta acción.' });
+      await notify({ title: t('store.noPerm.title'), message: t('store.noPerm.bodyShort') });
       return;
     }
     const { error } = await supabase.from('cat_reminders')
       .update({ completed_at: new Date().toISOString(), completed_by: session.userId })
       .eq('id', reminderId);
     if (error) {
-      await notify({ title: 'No se pudo marcar', message: error.message });
+      await notify({ title: t('store.completeReminder.errTitle'), message: error.message });
       return;
     }
     await refresh();
@@ -1099,14 +1108,14 @@ export function useFelinaStore() {
 
   const uncompleteCatReminder = async (reminderId) => {
     if (!can(currentRole, 'add_event')) {
-      await notify({ title: 'Sin permiso', message: 'Tu rol actual no permite esta acción.' });
+      await notify({ title: t('store.noPerm.title'), message: t('store.noPerm.bodyShort') });
       return;
     }
     const { error } = await supabase.from('cat_reminders')
       .update({ completed_at: null, completed_by: null })
       .eq('id', reminderId);
     if (error) {
-      await notify({ title: 'No se pudo deshacer', message: error.message });
+      await notify({ title: t('store.uncompleteReminder.errTitle'), message: error.message });
       return;
     }
     await refresh();
@@ -1115,7 +1124,7 @@ export function useFelinaStore() {
   // ───── Datos (calendario: plantillas y turnos) ─────
   const saveShiftTemplate = async (form) => {
     if (!can(currentRole, 'manage_shifts')) {
-      await notify({ title: 'Sin permiso', message: 'Tu rol actual no permite esta acción. Habla con la administración de tu organización si crees que debería.', tone: 'warning' });
+      await notify({ title: t('store.noPerm.title'), message: t('store.noPerm.body'), tone: 'warning' });
       return;
     }
     const payload = {
@@ -1127,14 +1136,14 @@ export function useFelinaStore() {
     };
 
     if (form.id) {
-      const existing = shiftTemplates.find(t => t.id === form.id);
+      const existing = shiftTemplates.find(tpl => tpl.id === form.id);
       if (!existing || existing.orgId !== session.orgId) {
-        await notify({ title: 'Operación no válida', message: 'Esta plantilla no pertenece a la organización activa.' });
+        await notify({ title: t('store.invalidOp.title'), message: t('store.invalidOp.templateOrg') });
         return;
       }
       const { error } = await supabase.from('shift_templates').update(payload).eq('id', form.id);
       if (error) {
-        await notify({ title: 'No se pudo guardar', message: error.message });
+        await notify({ title: t('store.err.saveFail'), message: error.message });
         return;
       }
     } else {
@@ -1143,7 +1152,7 @@ export function useFelinaStore() {
         org_id: session.orgId,
       });
       if (error) {
-        await notify({ title: 'No se pudo crear la plantilla', message: error.message });
+        await notify({ title: t('store.createTemplate.errTitle'), message: error.message });
         return;
       }
     }
@@ -1154,18 +1163,18 @@ export function useFelinaStore() {
 
   const deleteShiftTemplate = async (templateId) => {
     if (!can(currentRole, 'manage_shifts')) {
-      await notify({ title: 'Sin permiso', message: 'Tu rol actual no permite esta acción. Habla con la administración de tu organización si crees que debería.', tone: 'warning' });
+      await notify({ title: t('store.noPerm.title'), message: t('store.noPerm.body'), tone: 'warning' });
       return;
     }
-    const existing = shiftTemplates.find(t => t.id === templateId);
+    const existing = shiftTemplates.find(tpl => tpl.id === templateId);
     if (!existing || existing.orgId !== session.orgId) {
-      await notify({ title: 'Operación no válida', message: 'Esta plantilla no pertenece a la organización activa.' });
+      await notify({ title: t('store.invalidOp.title'), message: t('store.invalidOp.templateOrg') });
       return;
     }
     const ok = await confirmAsync({
-      title: 'Eliminar plantilla de turno',
-      message: 'Los turnos ya asignados o completados se conservan como registro histórico, pero no se generarán nuevos a partir de esta plantilla.',
-      confirmLabel: 'Eliminar plantilla',
+      title: t('store.deleteTemplate.title'),
+      message: t('store.deleteTemplate.body'),
+      confirmLabel: t('store.deleteTemplate.confirm'),
       destructive: true,
     });
     if (!ok) return;
@@ -1173,7 +1182,7 @@ export function useFelinaStore() {
     // como histórico (sin templateId). Coherente con el mensaje de arriba.
     const { error } = await supabase.from('shift_templates').delete().eq('id', templateId);
     if (error) {
-      await notify({ title: 'No se pudo eliminar', message: error.message });
+      await notify({ title: t('store.err.deleteFail'), message: error.message });
       return;
     }
     await refresh();
@@ -1185,7 +1194,7 @@ export function useFelinaStore() {
   // creada (con id real) para devolverla al llamador.
   const upsertShift = async (virtualOrReal, patch) => {
     if (virtualOrReal.orgId !== session.orgId) {
-      await notify({ title: 'Operación no válida', message: 'Este turno no pertenece a la organización activa.' });
+      await notify({ title: t('store.invalidOp.title'), message: t('store.invalidOp.shiftOrg') });
       return null;
     }
 
@@ -1217,7 +1226,7 @@ export function useFelinaStore() {
       };
       const { data, error } = await supabase.from('shifts').insert(insertPayload).select().single();
       if (error) {
-        await notify({ title: 'No se pudo guardar el turno', message: error.message });
+        await notify({ title: t('store.saveShift.errTitle'), message: error.message });
         return null;
       }
       const saved = mapShift(data);
@@ -1235,7 +1244,7 @@ export function useFelinaStore() {
         .eq('id', virtualOrReal.id)
         .select().single();
       if (error) {
-        await notify({ title: 'No se pudo actualizar el turno', message: error.message });
+        await notify({ title: t('store.updateShift.errTitle'), message: error.message });
         return null;
       }
       const saved = mapShift(data);
@@ -1248,7 +1257,7 @@ export function useFelinaStore() {
 
   const claimShift = async (shift) => {
     if (!can(currentRole, 'claim_shift')) {
-      await notify({ title: 'Sin permiso', message: 'Tu rol actual no permite esta acción. Habla con la administración de tu organización si crees que debería.', tone: 'warning' });
+      await notify({ title: t('store.noPerm.title'), message: t('store.noPerm.body'), tone: 'warning' });
       return;
     }
     const saved = await upsertShift(shift, { assigneeId: session.userId, status: 'assigned' });
@@ -1259,7 +1268,7 @@ export function useFelinaStore() {
   const unclaimShift = async (shift) => {
     const mine = shift.assigneeId === session.userId;
     if (!mine && !can(currentRole, 'assign_shift')) {
-      await notify({ title: 'Sin permiso', message: 'Tu rol actual no permite esta acción. Habla con la administración de tu organización si crees que debería.', tone: 'warning' });
+      await notify({ title: t('store.noPerm.title'), message: t('store.noPerm.body'), tone: 'warning' });
       return;
     }
 
@@ -1272,7 +1281,7 @@ export function useFelinaStore() {
     if (isClean) {
       const { error } = await supabase.from('shifts').delete().eq('id', shift.id);
       if (error) {
-        await notify({ title: 'No se pudo desapuntar', message: error.message });
+        await notify({ title: t('store.unclaimShift.errTitle'), message: error.message });
         return;
       }
       // Reflejo local + actualización de selectedShift a virtual.
@@ -1294,7 +1303,7 @@ export function useFelinaStore() {
 
   const assignShiftTo = async (shift, userId) => {
     if (!can(currentRole, 'assign_shift')) {
-      await notify({ title: 'Sin permiso', message: 'Tu rol actual no permite esta acción. Habla con la administración de tu organización si crees que debería.', tone: 'warning' });
+      await notify({ title: t('store.noPerm.title'), message: t('store.noPerm.body'), tone: 'warning' });
       return;
     }
     const saved = await upsertShift(shift, { assigneeId: userId, status: 'assigned' });
@@ -1304,7 +1313,7 @@ export function useFelinaStore() {
 
   const completeShift = async (shift) => {
     if (!can(currentRole, 'complete_shift')) {
-      await notify({ title: 'Sin permiso', message: 'Tu rol actual no permite esta acción. Habla con la administración de tu organización si crees que debería.', tone: 'warning' });
+      await notify({ title: t('store.noPerm.title'), message: t('store.noPerm.body'), tone: 'warning' });
       return;
     }
     const saved = await upsertShift(shift, {
@@ -1319,7 +1328,7 @@ export function useFelinaStore() {
 
   const uncompleteShift = async (shift) => {
     if (!can(currentRole, 'complete_shift')) {
-      await notify({ title: 'Sin permiso', message: 'Tu rol actual no permite esta acción. Habla con la administración de tu organización si crees que debería.', tone: 'warning' });
+      await notify({ title: t('store.noPerm.title'), message: t('store.noPerm.body'), tone: 'warning' });
       return;
     }
     const saved = await upsertShift(shift, {
