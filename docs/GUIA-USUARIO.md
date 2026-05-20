@@ -36,6 +36,19 @@ vuestros datos.** Están guardados en un servidor europeo de forma segura.
 
 ## 2. Entrar en la aplicación
 
+### Idioma de la aplicación
+
+La aplicación está disponible en **catalán** y **castellano**. En la pantalla de
+login y dentro de la app, en la barra lateral (o en el menú inferior en móvil),
+verás un selector `CA | ES` para cambiar de idioma en cualquier momento.
+
+La primera vez que entras, la app intenta detectar el idioma del navegador: si
+tu sistema está en catalán, arranca en catalán; si no, en castellano. Tu
+elección queda guardada en el dispositivo, así que al volver a entrar la app
+recuerda tu preferencia.
+
+> Los emails de invitación y recuperación de contraseña se envían en catalán.
+
 ### Si te han invitado (primera vez)
 
 La administración de tu protectora te invita con tu email. Recibirás un correo
@@ -213,3 +226,10 @@ La app es nueva y se sigue puliendo. Si algo se ve raro o se atasca, comunícalo
 **¿Otras protectoras ven nuestros gatos / colonias?**
 No. Cada organización está aislada. Solo las personas que tu administración
 autorice ven vuestros datos.
+
+**¿Puedo cambiar el idioma de la aplicación?**
+Sí. En la pantalla de login y dentro de la app (en la barra lateral o el menú
+inferior en móvil) tienes un selector `CA | ES` para alternar entre catalán y
+castellano. La elección se guarda en tu dispositivo, así que la próxima vez que
+entres lo verás en el idioma que elegiste. Cada miembro del equipo lo puede
+tener en el idioma que prefiera.

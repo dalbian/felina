@@ -124,7 +124,7 @@ export const Dashboard = ({ cats, colonies, events, reminders = [], templates, s
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-medium truncate" style={{ color: '#1A1712' }}>{col?.name || '—'}</div>
                       <div className="text-xs font-mono" style={{ color: '#78706A' }}>
-                        {fmtShortDay(d)} · {SHIFT_SLOTS[s.slot]?.label || ''}
+                        {fmtShortDay(d)} · {s.slot ? t(`slot.${s.slot}.label`) : ''}
                       </div>
                     </div>
                     {open ? (
@@ -189,7 +189,7 @@ export const Dashboard = ({ cats, colonies, events, reminders = [], templates, s
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium truncate" style={{ color: '#1A1712' }}>
-                      {cat?.name || t('dash.catDeleted')} · {r.title || type.label}
+                      {cat?.name || t('dash.catDeleted')} · {r.title || t(`event.${r.type}.label`)}
                     </div>
                     <div className="text-xs font-mono" style={{ color: overdue ? '#B15A3A' : (isToday ? '#8A6B1F' : '#78706A') }}>
                       {dateLabel}
@@ -227,7 +227,7 @@ export const Dashboard = ({ cats, colonies, events, reminders = [], templates, s
                     <div className="flex items-baseline gap-2">
                       <span className="font-medium text-sm truncate" style={{ color: '#1A1712' }}>{cat?.name || t('dash.catDeleted')}</span>
                       <span className="text-xs" style={{ color: '#8A7A5C' }}>·</span>
-                      <span className="text-sm" style={{ color: '#4A433C' }}>{type?.label}</span>
+                      <span className="text-sm" style={{ color: '#4A433C' }}>{e.type ? t(`event.${e.type}.label`) : ''}</span>
                     </div>
                     {e.notes && <div className="text-xs mt-0.5 truncate" style={{ color: '#78706A' }}>{e.notes}</div>}
                   </div>

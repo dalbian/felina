@@ -17,6 +17,7 @@ retomarlo sin reaprenderlo desde cero**.
 9. [Servicios externos y costes](#9-servicios-externos-y-costes)
 10. [Cómo retomar el proyecto](#10-cómo-retomar-el-proyecto)
 11. [Decisiones de diseño y gotchas](#11-decisiones-de-diseño-y-gotchas)
+12. [Internacionalización (ca/es)](#12-internacionalización-caes)
 
 ---
 
@@ -62,9 +63,10 @@ src/
 │   ├── supabaseClient.js    Cliente Supabase único + initialAuthFlow.
 │   ├── auth.js              Validación de credenciales, flags.
 │   ├── permissions.js       Matriz de permisos por rol (espejo de las RLS).
-│   ├── dates.js             Formateo y aritmética de fechas.
+│   ├── dates.js             Formateo y aritmética de fechas (locale dinámico).
 │   ├── shifts.js            Materialización de turnos virtuales.
 │   ├── images.js            Resize + upload de fotos a Storage.
+│   ├── i18n.jsx             Sistema bilingüe ca/es (ver sección 12).
 │   ├── ids.js, storage.js   uid(), wrapper de localStorage (solo UI state).
 │   └── *.test.js            Tests con vitest.
 └── components/              Vistas. Consumen el store vía props desde App.jsx.
@@ -324,3 +326,120 @@ Cosas que costaron un rato entender y conviene no reaprender:
 - **`storage.foldername(name)[1]::uuid`** en las RLS de Storage: si el path no
   empieza por un uuid válido, el cast falla y la policy bloquea — comportamiento
   correcto (rechaza subidas con path mal formado).
+- **No nombrar variables locales `t`**: el hook de i18n (sección 12) expone la
+  función de traducción como `const { t } = useTranslation()`. Es común caer en
+  `const t = SHIFT_TASKS[...]` o `arr.find(t => t.id === id)`, lo que hace
+  *shadow* del hook y la pantalla se queda en blanco (o pinta el `.label` literal
+  de constants en castellano sin traducir). En el código actual se usa `taskCfg`
+  / `tpl` / `x` en estos casos. Si añades código, evita la letra `t` para nada
+  que no sea la traducción.
+
+## 12. Internacionalización (ca/es)
+
+Sistema bilingüe **catalán / castellano** sin dependencias externas (no usa
+`react-intl`, `i18next` ni similares). Todo vive en **`src/lib/i18n.jsx`**.
+
+### Piezas
+
+| Elemento | Qué hace |
+|---|---|
+| `I18nProvider` | Context de React que envuelve toda la app en `main.jsx`. Guarda `lang`, persiste en `localStorage` y sincroniza el locale de fechas. |
+| `useTranslation()` | Hook que devuelve `{ lang, setLang, t }`. Si se llama fuera del provider, fallback resiliente a castellano (no rompe el render). |
+| `t(key, vars)` | Lookup + interpolación de `{placeholders}`. Si la clave falta en el idioma activo, cae al diccionario `es`; si tampoco está, devuelve la clave literal (visible pero no rompe). |
+| `LanguageSwitcher` | Control segmentado `CA | ES` reutilizable. Aparece en login y en la sidebar/bottom nav. |
+| `dates.js → setDateLocale(lang)` | Llamado por el provider al cambiar idioma; afecta a `fmtDate`, `fmtMonth`, `fmtRelative`, etc. (formateo de meses/días + "ahir/ayer", "fa N dies/hace N días"). |
+
+### Detección y persistencia
+
+1. Si hay `localStorage['felina:lang']` → se usa.
+2. Si no, se mira `navigator.language` — empieza por `ca` → catalán; cualquier
+   otro → castellano.
+3. El selector graba la elección y refresca toda la app (re-render por context).
+
+### Convención de claves
+
+Namespaces por funcionalidad para evitar colisiones y facilitar grep:
+
+```
+common.*       cancel, save, edit, delete, back, optional, email, loading…
+nav.*          sidebar / bottom nav
+layout.*       barras superiores, selector de org, banner de superadmin
+login.*        pantalla de login + bloque demo
+forgot.*       recuperación de contraseña
+setPwd.*       SetPasswordScreen (activar cuenta / nueva contraseña)
+changePwd.*    cambiar mi contraseña
+resetPwd.*     admin restablece contraseña a otra persona
+rgpd.*         aviso legal del primer login
+banner.*       banner "Versión inicial"
+dash.*         panel/dashboard (incluye plurales upcomingOne/upcomingMany)
+col.*          colonias (lista, detalle, formulario)
+cats.*         lista de gatos
+catDetail.*    detalle de gato + recordatorios
+catForm.*      formulario de gato
+eventForm.*    formulario de evento veterinario
+reminderForm.* formulario de recordatorio
+cal.*          calendario (mes/semana/mis turnos/plantillas)
+platform.*     vista super_admin
+settings.*     ajustes (org, miembros, roles, sesión, zona peligrosa, demo)
+memberRow.*    fila de miembro en ajustes
+invite.*       modal de invitar miembro
+orgForm.*      crear/editar organización
+modal.title.*  títulos de los 17 modales globales
+app.noOrg.*    pantalla "usuario sin organización"
+app.suspended.* pantalla "organización suspendida"
+app.notify.*   notify desde App.jsx (Sin permiso, Restablecer contraseña)
+store.*        notify y confirmAsync desde useFelinaStore.js (~70 claves)
+role.X.{label,short,description}        traducciones por rol
+cer.X.{label,short}                     estados CER
+event.X.label                           tipos de evento veterinario
+task.X.{label,short}                    tareas de turno
+slot.X.{label,short}                    franjas (mañana/tarde)
+day.N.{label,short}                     días de la semana (0=domingo)
+sex.{H,M,D}                             sexo del gato
+confirm.accept                          default del ConfirmDialog
+```
+
+### Interpolación
+
+`{placeholder}` se sustituye en orden. Para incluir énfasis o `<strong>` dentro
+de una traducción, se reparte la cadena con `split('{var}')`:
+
+```jsx
+const [before, after = ''] = t('app.suspended.body').split('{org}');
+return <>{before}<strong>{currentOrg.name}</strong>{after}</>;
+```
+
+Patrón usado en pantallas "organización suspendida", `SetPasswordScreen` y
+`ResetPasswordForm`.
+
+### Plurales
+
+No hay regla automática (sería overkill para 2 idiomas con plural simple). Se
+gestionan con claves `*One` / `*Many` y un `if` en el componente:
+
+```jsx
+{members.length === 1
+  ? t('settings.members.countOne', { n: members.length })
+  : t('settings.members.countMany', { n: members.length })}
+```
+
+### Añadir una traducción nueva
+
+1. Decide el namespace (`col.*`, `cats.*`, etc.) y abre `src/lib/i18n.jsx`.
+2. Añade la clave al bloque `es:` con la cadena castellana.
+3. Añade la **misma** clave al bloque `ca:` con la cadena catalana.
+4. Úsala en el componente: `const { t } = useTranslation()` + `t('mi.clave')`.
+
+Si añades **un idioma nuevo** (p.ej. gallego): añade `'gl'` al array `LANGS`,
+crea el bloque `gl:` con todas las claves, ajusta `detectInitialLang()` para
+detectarlo, y actualiza el control segmentado en `LanguageSwitcher`.
+
+### Dead code en `constants.js`
+
+Los campos `.label`, `.short` y `.description` de `ROLES`, `CER_STATUS`,
+`EVENT_TYPES`, `SHIFT_TASKS`, `SHIFT_SLOTS` y `SEX_OPTIONS` **ya no se leen**
+desde ningún componente; las traducciones se resuelven por `t('cer.X.short')`,
+`t('role.X.label')`, etc. Lo que sí se sigue usando son los campos no textuales
+(`.color`, `.bg`, `.dot`, `.icon`). Se han mantenido los `.label/.short/.description`
+en castellano como referencia legible al recorrer el código; cuando estorben se
+pueden retirar de una pasada sin afectar a la UI.

@@ -11,6 +11,7 @@ import { fmtDate, parseYmd, todayYmd } from '../lib/dates.js';
 import { CER_STATUS, SEX_OPTIONS, EVENT_TYPES } from '../constants.js';
 import { CatAvatar, StatusBadge, FilterPill, EmptyState, Field } from './ui.jsx';
 import { inputStyle, labelStyle } from '../styles.jsx';
+import { useTranslation } from '../lib/i18n.jsx';
 
 export const CatCard = ({ cat, onSelect, colonyName }) => (
   <button onClick={onSelect}
@@ -29,6 +30,7 @@ export const CatCard = ({ cat, onSelect, colonyName }) => (
 );
 
 export const CatsView = ({ cats, colonies, onSelect, onAdd, filter, setFilter }) => {
+  const { t } = useTranslation();
   const [search, setSearch] = useState('');
   const [colonyFilter, setColonyFilter] = useState('all');
   const coloniesById = Object.fromEntries(colonies.map(c => [c.id, c]));
@@ -49,13 +51,13 @@ export const CatsView = ({ cats, colonies, onSelect, onAdd, filter, setFilter })
     <div className="space-y-6">
       <div className="flex items-end justify-between gap-4 flex-wrap">
         <div>
-          <div className="text-xs uppercase tracking-[0.18em] mb-2" style={{ color: '#8A7A5C' }}>Censo</div>
-          <h1 className="font-serif text-4xl md:text-5xl" style={{ color: '#1A1712' }}>Gatos</h1>
+          <div className="text-xs uppercase tracking-[0.18em] mb-2" style={{ color: '#8A7A5C' }}>{t('cats.kicker')}</div>
+          <h1 className="font-serif text-4xl md:text-5xl" style={{ color: '#1A1712' }}>{t('cats.title')}</h1>
         </div>
         <button onClick={onAdd}
                 className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium"
                 style={{ backgroundColor: '#1F3A2F', color: '#F8F3E8' }}>
-          <Plus className="w-4 h-4" /> Nuevo gato
+          <Plus className="w-4 h-4" /> {t('cats.newCat')}
         </button>
       </div>
 
@@ -63,7 +65,7 @@ export const CatsView = ({ cats, colonies, onSelect, onAdd, filter, setFilter })
         <div className="relative flex-1 min-w-[240px]">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#8A7A5C' }} />
           <input type="text" value={search} onChange={e => setSearch(e.target.value)}
-                 placeholder="Buscar por nombre o color…"
+                 placeholder={t('cats.searchPh')}
                  className="w-full pl-11 pr-4 py-3 rounded-xl text-sm outline-none"
                  style={{ backgroundColor: '#FDFAF3', boxShadow: '0 0 0 1px #EADFC9', color: '#1A1712' }} />
         </div>
@@ -73,7 +75,7 @@ export const CatsView = ({ cats, colonies, onSelect, onAdd, filter, setFilter })
             <select value={colonyFilter} onChange={e => setColonyFilter(e.target.value)}
                     className="w-full pl-11 pr-4 py-3 rounded-xl text-sm outline-none"
                     style={{ backgroundColor: '#FDFAF3', boxShadow: '0 0 0 1px #EADFC9', color: '#1A1712' }}>
-              <option value="all">Todas las colonias</option>
+              <option value="all">{t('cal.allColonies')}</option>
               {colonies.map(col => (
                 <option key={col.id} value={col.id}>{col.name}</option>
               ))}
@@ -83,24 +85,24 @@ export const CatsView = ({ cats, colonies, onSelect, onAdd, filter, setFilter })
       </div>
 
       <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
-        <FilterPill active={filter === 'all'} onClick={() => setFilter('all')} count={byColony.length}>Todos</FilterPill>
+        <FilterPill active={filter === 'all'} onClick={() => setFilter('all')} count={byColony.length}>{t('cats.filterAll')}</FilterPill>
         {Object.entries(CER_STATUS).map(([key, val]) => {
           const n = byColony.filter(c => c.cerStatus === key).length;
           if (n === 0) return null;
           return (
             <FilterPill key={key} active={filter === key} onClick={() => setFilter(key)} count={n} dotColor={val.dot}>
-              {val.short}
+              {t(`cer.${key}.short`)}
             </FilterPill>
           );
         })}
       </div>
 
       {filtered.length === 0 ? (
-        <EmptyState icon={PawPrint} title="Sin resultados"
+        <EmptyState icon={PawPrint} title={t('cats.emptyResults')}
                     description={
                       colonyFilter !== 'all'
-                        ? `No hay gatos en "${coloniesById[colonyFilter]?.name || ''}" que coincidan con los filtros.`
-                        : 'No hay gatos que coincidan con esta búsqueda o filtro.'
+                        ? t('cats.emptyResultsInColony', { name: coloniesById[colonyFilter]?.name || '' })
+                        : t('cats.emptyResultsGeneric')
                     } />
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
@@ -120,10 +122,12 @@ export const CatDetail = ({
   canEdit = true, canDelete = true, canAddEvent = true, canChangeStatus = true,
   canManageReminders = true, canDeleteReminders = true,
 }) => {
+  const { t } = useTranslation();
   const [statusMenu, setStatusMenu] = useState(false);
   const [showCompletedReminders, setShowCompletedReminders] = useState(false);
   const catEvents = events.filter(e => e.catId === cat.id).sort((a,b) => b.date - a.date);
   const status = CER_STATUS[cat.cerStatus] || CER_STATUS.pendiente;
+  const statusLabel = t(`cer.${cat.cerStatus}.label`);
 
   // Recordatorios del gato. Los pendientes (completed_at = null) van
   // arriba, ordenados por fecha. Los completados se cuelgan al final, ocultos
@@ -141,7 +145,7 @@ export const CatDetail = ({
   return (
     <div className="space-y-6">
       <button onClick={onBack} className="inline-flex items-center gap-1.5 text-sm font-medium hover:underline" style={{ color: '#4A433C' }}>
-        <ChevronLeft className="w-4 h-4" /> Volver
+        <ChevronLeft className="w-4 h-4" /> {t('common.back')}
       </button>
 
       <div className="grid md:grid-cols-[280px,1fr] gap-6">
@@ -161,7 +165,7 @@ export const CatDetail = ({
               {canEdit && (
                 <button onClick={onEdit} className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium"
                         style={{ backgroundColor: '#F2EADB', color: '#2D4A3E' }}>
-                  <Edit3 className="w-4 h-4" /> Editar ficha
+                  <Edit3 className="w-4 h-4" /> {t('catDetail.editCardBtn')}
                 </button>
               )}
               {canDelete && (
@@ -174,7 +178,7 @@ export const CatDetail = ({
         </div>
 
         <div>
-          <div className="text-xs uppercase tracking-[0.18em] mb-2" style={{ color: '#8A7A5C' }}>Ficha individual</div>
+          <div className="text-xs uppercase tracking-[0.18em] mb-2" style={{ color: '#8A7A5C' }}>{t('catDetail.kicker')}</div>
           <div className="flex items-baseline gap-3 flex-wrap mb-3">
             <h1 className="font-serif text-5xl" style={{ color: '#1A1712' }}>{cat.name}</h1>
             <span className="text-lg font-mono" style={{ color: '#B8A888' }}>{cat.sex}</span>
@@ -186,7 +190,7 @@ export const CatDetail = ({
                     className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium disabled:cursor-default"
                     style={{ backgroundColor: status.bg, color: status.color }}>
               <span className="w-2 h-2 rounded-full" style={{ backgroundColor: status.dot }} />
-              {status.label}
+              {statusLabel}
               {canChangeStatus && <ChevronRight className="w-3.5 h-3.5 rotate-90" />}
             </button>
             {statusMenu && canChangeStatus && (
@@ -198,7 +202,7 @@ export const CatDetail = ({
                     <button key={key} onClick={() => { onChangeStatus(key); setStatusMenu(false); }}
                             className="w-full text-left px-3 py-2 text-sm hover:bg-[#FDFAF3] inline-flex items-center gap-2">
                       <span className="w-2 h-2 rounded-full" style={{ backgroundColor: val.dot }} />
-                      <span style={{ color: '#1A1712' }}>{val.label}</span>
+                      <span style={{ color: '#1A1712' }}>{t(`cer.${key}.label`)}</span>
                       {cat.cerStatus === key && <Check className="w-3.5 h-3.5 ml-auto" style={{ color: '#6B8E4E' }} />}
                     </button>
                   ))}
@@ -208,16 +212,16 @@ export const CatDetail = ({
           </div>
 
           <dl className="grid grid-cols-2 gap-x-6 gap-y-4 mt-6">
-            <Field label="Colonia" value={colony?.name || '—'} />
-            <Field label="Edad estimada" value={cat.age || '—'} />
-            <Field label="Color / pelaje" value={cat.color || '—'} />
-            <Field label="Microchip" value={cat.microchip ? <span className="font-mono text-xs">{cat.microchip}</span> : '—'} />
-            <Field label="Señas identificativas" value={cat.signs || '—'} wide />
+            <Field label={t('catDetail.field.colony')} value={colony?.name || '—'} />
+            <Field label={t('catDetail.field.age')} value={cat.age || '—'} />
+            <Field label={t('catDetail.field.color')} value={cat.color || '—'} />
+            <Field label={t('catDetail.field.microchip')} value={cat.microchip ? <span className="font-mono text-xs">{cat.microchip}</span> : '—'} />
+            <Field label={t('catDetail.field.signs')} value={cat.signs || '—'} wide />
           </dl>
 
           {cat.notes && (
             <div className="mt-6 pt-5 border-t" style={{ borderColor: '#F0E8D6' }}>
-              <div className="text-xs uppercase tracking-widest mb-2" style={{ color: '#8A7A5C' }}>Notas</div>
+              <div className="text-xs uppercase tracking-widest mb-2" style={{ color: '#8A7A5C' }}>{t('catDetail.notesLabel')}</div>
               <p className="text-sm leading-relaxed" style={{ color: '#4A433C' }}>{cat.notes}</p>
             </div>
           )}
@@ -228,44 +232,45 @@ export const CatDetail = ({
       <div>
         <div className="flex items-end justify-between mb-4">
           <h2 className="font-serif text-2xl inline-flex items-center gap-2" style={{ color: '#1A1712' }}>
-            <Bell className="w-5 h-5" style={{ color: '#B15A3A' }} /> Recordatorios
+            <Bell className="w-5 h-5" style={{ color: '#B15A3A' }} /> {t('catDetail.reminders')}
           </h2>
           {canManageReminders && (
             <button onClick={onAddReminder}
                     className="inline-flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg"
                     style={{ backgroundColor: '#F2EADB', color: '#2D4A3E' }}>
-              <Plus className="w-4 h-4" /> Añadir recordatorio
+              <Plus className="w-4 h-4" /> {t('catDetail.addReminder')}
             </button>
           )}
         </div>
         {pendingReminders.length === 0 && completedReminders.length === 0 ? (
           <div className="rounded-xl p-4 text-sm text-center"
                style={{ backgroundColor: '#FDFAF3', color: '#78706A', boxShadow: '0 0 0 1px #EADFC9' }}>
-            No hay recordatorios para este gato. Añade uno para que no se te pase la próxima vacuna o desparasitación.
+            {t('catDetail.emptyReminders')}
           </div>
         ) : (
           <div className="space-y-2">
             {pendingReminders.map(r => {
-              const type = EVENT_TYPES[r.type] || { label: 'Otro', icon: Bell, color: '#6B635A' };
-              const Icon = type.icon;
+              const evType = EVENT_TYPES[r.type] || { icon: Bell, color: '#6B635A' };
+              const typeLabel = EVENT_TYPES[r.type] ? t(`event.${r.type}.label`) : t('catDetail.otherType');
+              const Icon = evType.icon;
               const today = todayYmd();
               const overdue = r.dueDate < today;
               const dueTone = overdue
-                ? { bg: '#F5DDCE', accent: '#B15A3A', label: 'Vencido' }
+                ? { bg: '#F5DDCE', accent: '#B15A3A', label: t('dash.reminders.overdue') }
                 : r.dueDate === today
-                  ? { bg: '#FDF4DE', accent: '#8A6B1F', label: 'Hoy' }
+                  ? { bg: '#FDF4DE', accent: '#8A6B1F', label: t('dash.reminders.today') }
                   : { bg: '#FDFAF3', accent: '#4A6332', label: null };
               return (
                 <div key={r.id} className="rounded-xl p-3 flex items-start gap-3"
                      style={{ backgroundColor: dueTone.bg, boxShadow: `0 0 0 1px ${overdue ? '#F5C6AE' : '#EADFC9'}` }}>
                   <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
                        style={{ backgroundColor: '#FDFAF3' }}>
-                    <Icon className="w-4 h-4" style={{ color: type.color }} />
+                    <Icon className="w-4 h-4" style={{ color: evType.color }} />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-baseline gap-2 flex-wrap">
                       <span className="font-medium text-sm" style={{ color: '#1A1712' }}>
-                        {r.title || type.label}
+                        {r.title || typeLabel}
                       </span>
                       {dueTone.label && (
                         <span className="text-[10px] uppercase tracking-wider font-medium"
@@ -275,7 +280,7 @@ export const CatDetail = ({
                       )}
                     </div>
                     <div className="text-xs mt-0.5" style={{ color: '#78706A' }}>
-                      {!r.title && type.label !== r.title && <span className="mr-1">{type.label} ·</span>}
+                      {!r.title && typeLabel !== r.title && <span className="mr-1">{typeLabel} ·</span>}
                       {fmtDate(parseYmd(r.dueDate))}
                     </div>
                     {r.notes && (
@@ -285,7 +290,7 @@ export const CatDetail = ({
                   <div className="flex items-center gap-1 flex-shrink-0">
                     {canManageReminders && (
                       <button onClick={() => onCompleteReminder(r.id)}
-                              title="Marcar como hecho"
+                              title={t('catDetail.rem.markDone')}
                               className="p-1.5 rounded-lg hover:bg-white"
                               style={{ color: '#4A6332' }}>
                         <CheckCircle2 className="w-4 h-4" />
@@ -293,7 +298,7 @@ export const CatDetail = ({
                     )}
                     {canManageReminders && (
                       <button onClick={() => onEditReminder(r)}
-                              title="Editar"
+                              title={t('common.edit')}
                               className="p-1.5 rounded-lg hover:bg-white"
                               style={{ color: '#4A433C' }}>
                         <Edit3 className="w-3.5 h-3.5" />
@@ -301,7 +306,7 @@ export const CatDetail = ({
                     )}
                     {canDeleteReminders && (
                       <button onClick={() => onDeleteReminder(r.id)}
-                              title="Eliminar"
+                              title={t('common.delete')}
                               className="p-1.5 rounded-lg hover:bg-white"
                               style={{ color: '#B15A3A' }}>
                         <Trash2 className="w-3.5 h-3.5" />
@@ -319,32 +324,37 @@ export const CatDetail = ({
                         style={{ color: '#8A7A5C' }}>
                   <ChevronRight className="w-3 h-3 transition-transform"
                                 style={{ transform: showCompletedReminders ? 'rotate(90deg)' : 'none' }} />
-                  {showCompletedReminders ? 'Ocultar' : 'Ver'} completados ({completedReminders.length})
+                  {showCompletedReminders
+                    ? t('catDetail.rem.hideCompleted', { n: completedReminders.length })
+                    : t('catDetail.rem.showCompleted', { n: completedReminders.length })}
                 </button>
                 {showCompletedReminders && (
                   <div className="space-y-2 mt-2">
                     {completedReminders.map(r => {
-                      const type = EVENT_TYPES[r.type] || { label: 'Otro', icon: Bell, color: '#6B635A' };
-                      const Icon = type.icon;
+                      const evType = EVENT_TYPES[r.type] || { icon: Bell, color: '#6B635A' };
+                      const typeLabel = EVENT_TYPES[r.type] ? t(`event.${r.type}.label`) : t('catDetail.otherType');
+                      const Icon = evType.icon;
                       const completedByName = memberById[r.completedBy]?.name || null;
                       return (
                         <div key={r.id} className="rounded-xl p-3 flex items-start gap-3 opacity-75"
                              style={{ backgroundColor: '#DDE6CC', boxShadow: '0 0 0 1px #C3CFB1' }}>
                           <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
                                style={{ backgroundColor: '#FDFAF3' }}>
-                            <Icon className="w-4 h-4" style={{ color: type.color }} />
+                            <Icon className="w-4 h-4" style={{ color: evType.color }} />
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="text-sm font-medium line-through" style={{ color: '#4A6332' }}>
-                              {r.title || type.label}
+                              {r.title || typeLabel}
                             </div>
                             <div className="text-xs mt-0.5" style={{ color: '#4A6332' }}>
-                              Hecho {fmtDate(r.completedAt)}{completedByName ? ` por ${completedByName}` : ''}
+                              {completedByName
+                                ? t('catDetail.rem.completedBy', { date: fmtDate(r.completedAt), name: completedByName })
+                                : t('catDetail.rem.completedNoBy', { date: fmtDate(r.completedAt) })}
                             </div>
                           </div>
                           {canManageReminders && (
                             <button onClick={() => onUncompleteReminder(r.id)}
-                                    title="Deshacer"
+                                    title={t('catDetail.rem.undo')}
                                     className="p-1.5 rounded-lg hover:bg-white flex-shrink-0"
                                     style={{ color: '#4A6332' }}>
                               <RotateCcw className="w-3.5 h-3.5" />
@@ -363,23 +373,24 @@ export const CatDetail = ({
 
       <div>
         <div className="flex items-end justify-between mb-4">
-          <h2 className="font-serif text-2xl" style={{ color: '#1A1712' }}>Historial veterinario</h2>
+          <h2 className="font-serif text-2xl" style={{ color: '#1A1712' }}>{t('catDetail.history')}</h2>
           {canAddEvent && (
             <button onClick={onAddEvent}
                     className="inline-flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg"
                     style={{ backgroundColor: '#F2EADB', color: '#2D4A3E' }}>
-              <Plus className="w-4 h-4" /> Añadir evento
+              <Plus className="w-4 h-4" /> {t('catDetail.addEvent')}
             </button>
           )}
         </div>
         {catEvents.length === 0 ? (
-          <EmptyState icon={Stethoscope} title="Sin eventos registrados" description="Registra esterilizaciones, vacunaciones, consultas y tratamientos para tener un historial completo."
-                      action={canAddEvent ? <button onClick={onAddEvent} className="px-4 py-2 rounded-xl text-sm font-medium" style={{ backgroundColor: '#1F3A2F', color: '#F8F3E8' }}>Primer evento</button> : null} />
+          <EmptyState icon={Stethoscope} title={t('catDetail.emptyEvents')} description={t('catDetail.emptyEventsDesc')}
+                      action={canAddEvent ? <button onClick={onAddEvent} className="px-4 py-2 rounded-xl text-sm font-medium" style={{ backgroundColor: '#1F3A2F', color: '#F8F3E8' }}>{t('catDetail.firstEvent')}</button> : null} />
         ) : (
           <ol className="relative" style={{ borderLeft: '2px solid #E8DFCE', marginLeft: 16 }}>
             {catEvents.map(ev => {
               const type = EVENT_TYPES[ev.type];
               const Icon = type?.icon || Stethoscope;
+              const evLabel = type ? t(`event.${ev.type}.label`) : t('catDetail.eventFallback');
               return (
                 <li key={ev.id} className="relative pl-8 pb-6 last:pb-0">
                   <div className="absolute -left-[18px] w-8 h-8 rounded-full flex items-center justify-center"
@@ -388,7 +399,7 @@ export const CatDetail = ({
                   </div>
                   <div className="rounded-xl p-4" style={{ backgroundColor: '#FDFAF3', boxShadow: '0 0 0 1px #EADFC9' }}>
                     <div className="flex items-baseline justify-between flex-wrap gap-2 mb-1">
-                      <h4 className="font-serif text-lg" style={{ color: '#1A1712' }}>{type?.label || 'Evento'}</h4>
+                      <h4 className="font-serif text-lg" style={{ color: '#1A1712' }}>{evLabel}</h4>
                       <span className="text-xs font-mono" style={{ color: '#8A7A5C' }}>{fmtDate(ev.date)}</span>
                     </div>
                     {ev.vet && ev.vet !== '-' && <div className="text-xs mb-1.5" style={{ color: '#78706A' }}>{ev.vet}</div>}
@@ -406,6 +417,7 @@ export const CatDetail = ({
 };
 
 export const CatForm = ({ cat, colonies, onSave, onCancel, onError }) => {
+  const { t } = useTranslation();
   // Modelo de la foto en el form:
   //   - photoUrl: URL pública guardada en BD (existente o null si no hay).
   //   - photoFile: File pendiente de subir (solo en memoria, null si no hay).
@@ -436,7 +448,7 @@ export const CatForm = ({ cat, colonies, onSave, onCancel, onError }) => {
     // Validación básica: tamaño máximo antes de comprimir, evita procesar
     // archivos absurdos. 10 MB ya es generoso para fotos de móvil.
     if (f.size > 10 * 1024 * 1024) {
-      const msg = { title: 'Foto demasiado grande', message: 'La imagen supera 10 MB. Prueba con otra más ligera.' };
+      const msg = { title: t('catForm.photoTooBig.title'), message: t('catForm.photoTooBig.msg') };
       if (onError) onError(msg); else alert(msg.message);
       return;
     }
@@ -465,14 +477,14 @@ export const CatForm = ({ cat, colonies, onSave, onCancel, onError }) => {
             )}
           </div>
           <button type="button" onClick={() => fileRef.current?.click()}
-                  title={displayedPhoto ? 'Cambiar foto' : 'Añadir foto'}
+                  title={displayedPhoto ? t('catForm.changePhoto') : t('catForm.addPhoto')}
                   className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full flex items-center justify-center"
                   style={{ backgroundColor: '#1F3A2F', color: '#F8F3E8' }}>
             <Camera className="w-4 h-4" />
           </button>
           {displayedPhoto && (
             <button type="button" onClick={removePhoto}
-                    title="Quitar foto"
+                    title={t('catForm.removePhoto')}
                     className="absolute -top-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center"
                     style={{ backgroundColor: '#B15A3A', color: '#F8F3E8' }}>
               <XIcon className="w-3 h-3" />
@@ -482,31 +494,31 @@ export const CatForm = ({ cat, colonies, onSave, onCancel, onError }) => {
         </div>
         <div className="flex-1 space-y-3">
           <div>
-            <label className="block text-xs font-medium mb-1" style={labelStyle}>Nombre *</label>
+            <label className="block text-xs font-medium mb-1" style={labelStyle}>{t('catForm.nameLabel')}</label>
             <input type="text" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
                    className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle}
-                   placeholder="Figa, Pelut, Nit…" />
+                   placeholder={t('catForm.namePh')} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium mb-1" style={labelStyle}>Sexo</label>
+              <label className="block text-xs font-medium mb-1" style={labelStyle}>{t('catForm.sexLabel')}</label>
               <select value={form.sex} onChange={e => setForm({ ...form, sex: e.target.value })}
                       className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle}>
-                {Object.entries(SEX_OPTIONS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                {Object.keys(SEX_OPTIONS).map((k) => <option key={k} value={k}>{t(`sex.${k}`)}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium mb-1" style={labelStyle}>Edad aprox.</label>
+              <label className="block text-xs font-medium mb-1" style={labelStyle}>{t('catForm.ageLabel')}</label>
               <input type="text" value={form.age} onChange={e => setForm({ ...form, age: e.target.value })}
                      className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle}
-                     placeholder="2 años" />
+                     placeholder={t('catForm.agePh')} />
             </div>
           </div>
         </div>
       </div>
 
       <div>
-        <label className="block text-xs font-medium mb-1" style={labelStyle}>Colonia *</label>
+        <label className="block text-xs font-medium mb-1" style={labelStyle}>{t('catForm.colonyLabel')}</label>
         <select value={form.colonyId} onChange={e => setForm({ ...form, colonyId: e.target.value })}
                 className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle}>
           {colonies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -514,60 +526,61 @@ export const CatForm = ({ cat, colonies, onSave, onCancel, onError }) => {
       </div>
 
       <div>
-        <label className="block text-xs font-medium mb-1" style={labelStyle}>Estado CER</label>
+        <label className="block text-xs font-medium mb-1" style={labelStyle}>{t('catForm.cerLabel')}</label>
         <select value={form.cerStatus} onChange={e => setForm({ ...form, cerStatus: e.target.value })}
                 className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle}>
-          {Object.entries(CER_STATUS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+          {Object.keys(CER_STATUS).map((k) => <option key={k} value={k}>{t(`cer.${k}.label`)}</option>)}
         </select>
       </div>
 
       <div>
-        <label className="block text-xs font-medium mb-1" style={labelStyle}>Color / pelaje</label>
+        <label className="block text-xs font-medium mb-1" style={labelStyle}>{t('catForm.colorLabel')}</label>
         <input type="text" value={form.color} onChange={e => setForm({ ...form, color: e.target.value })}
                className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle}
-               placeholder="Atigrado marrón, negro pelo largo…" />
+               placeholder={t('catForm.colorPh')} />
       </div>
 
       <div>
-        <label className="block text-xs font-medium mb-1" style={labelStyle}>Señas identificativas</label>
+        <label className="block text-xs font-medium mb-1" style={labelStyle}>{t('catForm.signsLabel')}</label>
         <input type="text" value={form.signs} onChange={e => setForm({ ...form, signs: e.target.value })}
                className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle}
-               placeholder="Oreja recortada, cicatriz, heterocromía…" />
+               placeholder={t('catForm.signsPh')} />
       </div>
 
       <div>
-        <label className="block text-xs font-medium mb-1" style={labelStyle}>Microchip (si tiene)</label>
+        <label className="block text-xs font-medium mb-1" style={labelStyle}>{t('catForm.microchipLabel')}</label>
         <input type="text" value={form.microchip} onChange={e => setForm({ ...form, microchip: e.target.value })}
                className="w-full px-3 py-2 rounded-lg text-sm outline-none font-mono" style={inputStyle}
                placeholder="981000000000000" />
       </div>
 
       <div>
-        <label className="block text-xs font-medium mb-1" style={labelStyle}>Notas</label>
+        <label className="block text-xs font-medium mb-1" style={labelStyle}>{t('catForm.notesLabel')}</label>
         <textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })}
                   rows={3} className="w-full px-3 py-2 rounded-lg text-sm outline-none resize-none" style={inputStyle}
-                  placeholder="Carácter, observaciones, alimentación…" />
+                  placeholder={t('catForm.notesPh')} />
       </div>
 
       <div className="flex gap-2 pt-2">
         <button onClick={onCancel} className="flex-1 py-2.5 rounded-xl text-sm font-medium"
-                style={{ backgroundColor: '#F2EADB', color: '#4A433C' }}>Cancelar</button>
+                style={{ backgroundColor: '#F2EADB', color: '#4A433C' }}>{t('common.cancel')}</button>
         <button onClick={() => valid && onSave(form)} disabled={!valid}
                 className="flex-1 py-2.5 rounded-xl text-sm font-medium disabled:opacity-50"
-                style={{ backgroundColor: '#1F3A2F', color: '#F8F3E8' }}>Guardar</button>
+                style={{ backgroundColor: '#1F3A2F', color: '#F8F3E8' }}>{t('common.save')}</button>
       </div>
     </div>
   );
 };
 
 export const EventForm = ({ onSave, onCancel }) => {
+  const { t } = useTranslation();
   const today = new Date().toISOString().slice(0, 10);
   const [form, setForm] = useState({ type: 'vacunacion', date: today, vet: '', cost: '', notes: '' });
 
   return (
     <div className="space-y-4">
       <div>
-        <label className="block text-xs font-medium mb-2" style={labelStyle}>Tipo de evento</label>
+        <label className="block text-xs font-medium mb-2" style={labelStyle}>{t('eventForm.typeLabel')}</label>
         <div className="grid grid-cols-2 gap-2">
           {Object.entries(EVENT_TYPES).map(([k, v]) => {
             const Icon = v.icon;
@@ -580,7 +593,7 @@ export const EventForm = ({ onSave, onCancel }) => {
                         color: active ? '#FDFAF3' : '#4A433C',
                         boxShadow: active ? 'none' : '0 0 0 1px #EADFC9'
                       }}>
-                <Icon className="w-4 h-4" /> {v.label}
+                <Icon className="w-4 h-4" /> {t(`event.${k}.label`)}
               </button>
             );
           })}
@@ -588,38 +601,38 @@ export const EventForm = ({ onSave, onCancel }) => {
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-xs font-medium mb-1" style={labelStyle}>Fecha</label>
+          <label className="block text-xs font-medium mb-1" style={labelStyle}>{t('eventForm.dateLabel')}</label>
           <input type="date" value={form.date} onChange={e => setForm({ ...form, date: e.target.value })}
                  className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
         </div>
         <div>
-          <label className="block text-xs font-medium mb-1" style={labelStyle}>Coste (€)</label>
+          <label className="block text-xs font-medium mb-1" style={labelStyle}>{t('eventForm.costLabel')}</label>
           <input type="number" step="0.01" value={form.cost} onChange={e => setForm({ ...form, cost: e.target.value })}
                  className="w-full px-3 py-2 rounded-lg text-sm outline-none font-mono" style={inputStyle} placeholder="0.00" />
         </div>
       </div>
       <div>
-        <label className="block text-xs font-medium mb-1" style={labelStyle}>Veterinario / centro</label>
+        <label className="block text-xs font-medium mb-1" style={labelStyle}>{t('eventForm.vetLabel')}</label>
         <input type="text" value={form.vet} onChange={e => setForm({ ...form, vet: e.target.value })}
                className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle}
-               placeholder="Clínica Veterinària…" />
+               placeholder={t('eventForm.vetPh')} />
       </div>
       <div>
-        <label className="block text-xs font-medium mb-1" style={labelStyle}>Observaciones</label>
+        <label className="block text-xs font-medium mb-1" style={labelStyle}>{t('eventForm.notesLabel')}</label>
         <textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })}
                   rows={3} className="w-full px-3 py-2 rounded-lg text-sm outline-none resize-none" style={inputStyle}
-                  placeholder="Detalles del procedimiento…" />
+                  placeholder={t('eventForm.notesPh')} />
       </div>
       <div className="flex gap-2 pt-2">
         <button onClick={onCancel} className="flex-1 py-2.5 rounded-xl text-sm font-medium"
-                style={{ backgroundColor: '#F2EADB', color: '#4A433C' }}>Cancelar</button>
+                style={{ backgroundColor: '#F2EADB', color: '#4A433C' }}>{t('common.cancel')}</button>
         <button onClick={() => onSave({
           ...form,
           date: new Date(form.date).getTime(),
           cost: parseFloat(form.cost) || 0
         })}
                 className="flex-1 py-2.5 rounded-xl text-sm font-medium"
-                style={{ backgroundColor: '#1F3A2F', color: '#F8F3E8' }}>Guardar</button>
+                style={{ backgroundColor: '#1F3A2F', color: '#F8F3E8' }}>{t('common.save')}</button>
       </div>
     </div>
   );
@@ -630,6 +643,7 @@ export const EventForm = ({ onSave, onCancel }) => {
 // los recordatorios son "lo que toca de tipo X", se completan registrando un
 // event del mismo tipo cuando aplica.
 export const ReminderForm = ({ reminder, onSave, onCancel }) => {
+  const { t } = useTranslation();
   const today = new Date().toISOString().slice(0, 10);
   const [form, setForm] = useState(reminder
     ? { id: reminder.id, type: reminder.type, dueDate: reminder.dueDate, title: reminder.title || '', notes: reminder.notes || '' }
@@ -647,7 +661,7 @@ export const ReminderForm = ({ reminder, onSave, onCancel }) => {
   return (
     <div className="space-y-4">
       <div>
-        <label className="block text-xs font-medium mb-2" style={labelStyle}>Tipo</label>
+        <label className="block text-xs font-medium mb-2" style={labelStyle}>{t('reminderForm.typeLabel')}</label>
         <div className="grid grid-cols-2 gap-2">
           {Object.entries(EVENT_TYPES).map(([k, v]) => {
             const Icon = v.icon;
@@ -660,7 +674,7 @@ export const ReminderForm = ({ reminder, onSave, onCancel }) => {
                         color: active ? '#FDFAF3' : '#4A433C',
                         boxShadow: active ? 'none' : '0 0 0 1px #EADFC9'
                       }}>
-                <Icon className="w-4 h-4" /> {v.label}
+                <Icon className="w-4 h-4" /> {t(`event.${k}.label`)}
               </button>
             );
           })}
@@ -668,36 +682,36 @@ export const ReminderForm = ({ reminder, onSave, onCancel }) => {
       </div>
 
       <div>
-        <label className="block text-xs font-medium mb-1" style={labelStyle}>Fecha prevista *</label>
+        <label className="block text-xs font-medium mb-1" style={labelStyle}>{t('reminderForm.dueDateLabel')}</label>
         <input type="date" value={form.dueDate} onChange={e => setForm({ ...form, dueDate: e.target.value })}
                className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
       </div>
 
       <div>
         <label className="block text-xs font-medium mb-1" style={labelStyle}>
-          Título <span style={{ color: '#8A7A5C' }}>(opcional)</span>
+          {t('reminderForm.titleLabel')} <span style={{ color: '#8A7A5C' }}>{t('common.optional')}</span>
         </label>
         <input type="text" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })}
                className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle}
-               placeholder="Ej.: Vacuna trivalente anual" />
+               placeholder={t('reminderForm.titlePh')} />
       </div>
 
       <div>
         <label className="block text-xs font-medium mb-1" style={labelStyle}>
-          Notas <span style={{ color: '#8A7A5C' }}>(opcional)</span>
+          {t('reminderForm.notesLabel')} <span style={{ color: '#8A7A5C' }}>{t('common.optional')}</span>
         </label>
         <textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })}
                   rows={3} className="w-full px-3 py-2 rounded-lg text-sm outline-none resize-none" style={inputStyle}
-                  placeholder="Indicaciones, dosis, anotaciones…" />
+                  placeholder={t('reminderForm.notesPh')} />
       </div>
 
       <div className="flex gap-2 pt-2">
         <button type="button" onClick={onCancel} className="flex-1 py-2.5 rounded-xl text-sm font-medium"
-                style={{ backgroundColor: '#F2EADB', color: '#4A433C' }}>Cancelar</button>
+                style={{ backgroundColor: '#F2EADB', color: '#4A433C' }}>{t('common.cancel')}</button>
         <button type="button" onClick={submit} disabled={busy || !form.dueDate}
                 className="flex-1 py-2.5 rounded-xl text-sm font-medium disabled:opacity-50"
                 style={{ backgroundColor: '#1F3A2F', color: '#F8F3E8' }}>
-          {busy ? 'Guardando…' : 'Guardar recordatorio'}
+          {busy ? t('reminderForm.saving') : t('reminderForm.save')}
         </button>
       </div>
     </div>

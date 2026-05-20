@@ -6,6 +6,8 @@
 import { AlertTriangle, ChevronRight, Crown } from 'lucide-react';
 
 import { can } from './lib/permissions.js';
+import { useTranslation } from './lib/i18n.jsx';
+import { ROLES } from './constants.js';
 import { GlobalStyle } from './styles.jsx';
 import { OrgAvatar, ConfirmDialog } from './components/ui.jsx';
 import { useFelinaStore } from './hooks/useFelinaStore.js';
@@ -111,6 +113,7 @@ import { GlobalModals } from './components/modals.jsx';
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function App() {
+  const { t } = useTranslation();
   const {
     // UI state
     loading, session, rgpdAcknowledged,
@@ -150,7 +153,7 @@ export default function App() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#F8F3E8' }}>
-        <div className="font-serif italic text-xl" style={{ color: '#8A7A5C' }}>Cargando…</div>
+        <div className="font-serif italic text-xl" style={{ color: '#8A7A5C' }}>{t('common.loading')}</div>
       </div>
     );
   }
@@ -208,13 +211,15 @@ export default function App() {
               <AlertTriangle className="w-7 h-7" style={{ color: '#8A6B1F' }} />
             </div>
             <h1 className="font-serif text-2xl mb-2" style={{ color: '#1A1712' }}>
-              Hola{currentUser.name ? `, ${currentUser.name.split(' ')[0]}` : ''}
+              {currentUser.name
+                ? t('app.noOrg.titleName', { name: currentUser.name.split(' ')[0] })
+                : t('app.noOrg.title')}
             </h1>
             <p className="text-sm mb-2" style={{ color: '#6B635A' }}>
-              Tu cuenta existe, pero todavía no perteneces a ninguna organización.
+              {t('app.noOrg.line1')}
             </p>
             <p className="text-sm mb-6" style={{ color: '#6B635A' }}>
-              Pídele a la administración de tu protectora que te asigne acceso usando este email:
+              {t('app.noOrg.line2')}
             </p>
             <div className="px-4 py-2.5 rounded-lg mb-6 font-mono text-sm break-all"
                  style={{ backgroundColor: '#F8F3E8', color: '#1A1712', boxShadow: '0 0 0 1px #EADFC9' }}>
@@ -223,7 +228,7 @@ export default function App() {
             <button onClick={handleLogout}
                     className="w-full py-2.5 rounded-xl text-sm font-medium"
                     style={{ backgroundColor: '#F2EADB', color: '#4A433C' }}>
-              Cerrar sesión
+              {t('app.noOrg.logout')}
             </button>
           </div>
         </div>
@@ -246,13 +251,16 @@ export default function App() {
                  style={{ backgroundColor: '#F5DDCE' }}>
               <AlertTriangle className="w-7 h-7" style={{ color: '#B15A3A' }} />
             </div>
-            <h1 className="font-serif text-2xl mb-2" style={{ color: '#1A1712' }}>Organización suspendida</h1>
+            <h1 className="font-serif text-2xl mb-2" style={{ color: '#1A1712' }}>{t('app.suspended.title')}</h1>
             <p className="text-sm mb-6" style={{ color: '#6B635A' }}>
-              <strong>{currentOrg.name}</strong> está suspendida temporalmente. Contacta con la administración de la plataforma para reactivarla.
+              {(() => {
+                const [before, after = ''] = t('app.suspended.body').split('{org}');
+                return <>{before}<strong>{currentOrg.name}</strong>{after}</>;
+              })()}
             </p>
             {otherOrgs.length > 0 && (
               <div className="mb-4">
-                <div className="text-xs uppercase tracking-widest mb-2" style={{ color: '#8A7A5C' }}>Otras organizaciones</div>
+                <div className="text-xs uppercase tracking-widest mb-2" style={{ color: '#8A7A5C' }}>{t('app.suspended.others')}</div>
                 <div className="space-y-2">
                   {otherOrgs.map(({ org, role }) => (
                     <button key={org.id} onClick={() => handleSwitchOrg(org.id)}
@@ -261,7 +269,7 @@ export default function App() {
                       <OrgAvatar org={org} size={32} />
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-medium" style={{ color: '#1A1712' }}>{org.name}</div>
-                        <div className="text-[10px] uppercase tracking-wider" style={{ color: ROLES[role]?.color }}>{ROLES[role]?.short}</div>
+                        <div className="text-[10px] uppercase tracking-wider" style={{ color: ROLES[role]?.color }}>{t(`role.${role}.short`)}</div>
                       </div>
                       <ChevronRight className="w-4 h-4" style={{ color: '#B8A888' }} />
                     </button>
@@ -272,7 +280,7 @@ export default function App() {
             <button onClick={handleLogout}
                     className="w-full py-2.5 rounded-xl text-sm font-medium"
                     style={{ backgroundColor: '#F2EADB', color: '#4A433C' }}>
-              Cerrar sesión
+              {t('app.suspended.logout')}
             </button>
           </div>
         </div>
@@ -307,20 +315,20 @@ export default function App() {
                  style={{ backgroundColor: '#FDF4DE', borderBottom: '1px solid #E8D4A0', color: '#8A6B1F' }}>
               <span className="flex items-center gap-1.5 min-w-0">
                 <Crown className="w-3.5 h-3.5 flex-shrink-0" />
-                <span className="hidden sm:inline">Estás viendo&nbsp;</span>
+                <span className="hidden sm:inline">{t('layout.adminBanner.viewing')}&nbsp;</span>
                 <strong className="truncate">{currentOrg.name}</strong>
-                <span className="hidden md:inline">&nbsp;como superadministrador</span>
+                <span className="hidden md:inline">&nbsp;{t('layout.adminBanner.as')}</span>
                 {orgSuspended && (
                   <span className="ml-1 px-2 py-0.5 rounded flex-shrink-0"
                         style={{ backgroundColor: '#F5DDCE', color: '#B15A3A' }}>
-                    Suspendida
+                    {t('layout.adminBanner.suspended')}
                   </span>
                 )}
               </span>
               <button onClick={handleExitToPlatform}
                       className="font-medium hover:underline whitespace-nowrap flex-shrink-0">
-                <span className="sm:hidden">← Volver</span>
-                <span className="hidden sm:inline">← Volver a Plataforma</span>
+                <span className="sm:hidden">{t('layout.adminBanner.back')}</span>
+                <span className="hidden sm:inline">{t('layout.adminBanner.backLong')}</span>
               </button>
             </div>
           )}
@@ -336,8 +344,8 @@ export default function App() {
                             onEditOrg={(org) => { setSelectedColony(null); setModal({ type: 'platformEditOrg', org }); }}
                             onToggleSuperAdmin={handleToggleSuperAdmin}
                             onResetUserPassword={(user) => notify({
-                              title: 'Restablecer contraseña',
-                              message: `${user.name} debe pulsar "He olvidado mi contraseña" en la pantalla de login para recibir un email de recuperación. Si necesitas hacerlo manualmente, contacta con la administración de la plataforma.`,
+                              title: t('app.notify.resetPwdTitle'),
+                              message: t('app.notify.resetPwdBody', { name: user.name }),
                             })}
                             onLogout={handleLogout} />
             )}
@@ -350,7 +358,7 @@ export default function App() {
             {view === 'colonies' && currentOrg && (
               <ColoniesView colonies={orgColonies} cats={orgCats}
                             onSelect={(id) => onNav('colony', id)}
-                            onAdd={() => can(currentRole, 'add_colony') ? setModal('addColony') : notify({ title: 'Sin permiso', message: 'Tu rol actual no permite añadir colonias.' })} />
+                            onAdd={() => can(currentRole, 'add_colony') ? setModal('addColony') : notify({ title: t('app.notify.noPermTitle'), message: t('app.notify.noPermColony') })} />
             )}
             {view === 'map' && currentOrg && (
               <MapView colonies={orgColonies} cats={orgCats} orgName={currentOrg.name}
@@ -362,8 +370,8 @@ export default function App() {
               <ColonyDetail colony={currentColony} cats={orgCats}
                             onBack={() => setView('colonies')}
                             onSelectCat={(id) => onNav('cat', id)}
-                            onAddCat={() => can(currentRole, 'add_cat') ? setModal('addCat') : notify({ title: 'Sin permiso', message: 'Tu rol actual no permite esta acción.' })}
-                            onEdit={() => can(currentRole, 'edit_colony') ? setModal('editColony') : notify({ title: 'Sin permiso', message: 'Tu rol actual no permite esta acción.' })}
+                            onAddCat={() => can(currentRole, 'add_cat') ? setModal('addCat') : notify({ title: t('app.notify.noPermTitle'), message: t('app.notify.noPermGeneric') })}
+                            onEdit={() => can(currentRole, 'edit_colony') ? setModal('editColony') : notify({ title: t('app.notify.noPermTitle'), message: t('app.notify.noPermGeneric') })}
                             onDelete={deleteColony}
                             canEdit={can(currentRole, 'edit_colony')}
                             canDelete={can(currentRole, 'delete_colony')}
@@ -372,18 +380,18 @@ export default function App() {
             {view === 'cats' && currentOrg && (
               <CatsView cats={orgCats} colonies={orgColonies}
                         onSelect={(id) => onNav('cat', id)}
-                        onAdd={() => can(currentRole, 'add_cat') ? setModal('addCat') : notify({ title: 'Sin permiso', message: 'Tu rol actual no permite añadir fichas de gato.' })}
+                        onAdd={() => can(currentRole, 'add_cat') ? setModal('addCat') : notify({ title: t('app.notify.noPermTitle'), message: t('app.notify.noPermCat') })}
                         filter={filter} setFilter={setFilter} />
             )}
             {view === 'cat' && currentCat && (
               <CatDetail cat={currentCat} colony={currentCatColony} events={events}
                          reminders={orgReminders} members={orgMembers}
                          onBack={() => setView(selectedColony && currentCat.colonyId === selectedColony ? 'colony' : 'cats')}
-                         onEdit={() => can(currentRole, 'edit_cat') ? setModal('editCat') : notify({ title: 'Sin permiso', message: 'Tu rol actual no permite esta acción.' })}
-                         onAddEvent={() => can(currentRole, 'add_event') ? setModal('addEvent') : notify({ title: 'Sin permiso', message: 'Tu rol actual no permite esta acción.' })}
+                         onEdit={() => can(currentRole, 'edit_cat') ? setModal('editCat') : notify({ title: t('app.notify.noPermTitle'), message: t('app.notify.noPermGeneric') })}
+                         onAddEvent={() => can(currentRole, 'add_event') ? setModal('addEvent') : notify({ title: t('app.notify.noPermTitle'), message: t('app.notify.noPermGeneric') })}
                          onDelete={deleteCat}
                          onChangeStatus={changeCatStatus}
-                         onAddReminder={() => can(currentRole, 'add_event') ? setModal('addReminder') : notify({ title: 'Sin permiso', message: 'Tu rol actual no permite gestionar recordatorios.' })}
+                         onAddReminder={() => can(currentRole, 'add_event') ? setModal('addReminder') : notify({ title: t('app.notify.noPermTitle'), message: t('app.notify.noPermReminder') })}
                          onEditReminder={(reminder) => setModal({ type: 'editReminder', reminder })}
                          onDeleteReminder={deleteCatReminder}
                          onCompleteReminder={completeCatReminder}
@@ -403,8 +411,8 @@ export default function App() {
                             onSelectShift={(s) => { setSelectedShift(s); setModal('viewShift'); }}
                             onAddTemplate={() => can(currentRole, 'manage_shifts')
                               ? (setSelectedTemplate(null), setModal('addTemplate'))
-                              : notify({ title: 'Sin permiso', message: 'Solo administración o coordinación puede gestionar plantillas de turnos.' })}
-                            onEditTemplate={(t) => { setSelectedTemplate(t); setModal('editTemplate'); }} />
+                              : notify({ title: t('app.notify.noPermTitle'), message: t('app.notify.noPermShifts') })}
+                            onEditTemplate={(tpl) => { setSelectedTemplate(tpl); setModal('editTemplate'); }} />
             )}
             {view === 'settings' && currentOrg && (
               <SettingsView currentOrg={currentOrg} currentUser={currentUser} currentRole={currentRole}
@@ -414,8 +422,8 @@ export default function App() {
                             onRemoveMember={handleRemoveMember}
                             onChangeRole={handleChangeRole}
                             onResetMemberPassword={(member) => notify({
-                              title: 'Restablecer contraseña',
-                              message: `${member.name} debe pulsar "He olvidado mi contraseña" en la pantalla de login para recibir un email de recuperación. Si necesitas hacerlo manualmente, contacta con la administración de la plataforma.`,
+                              title: t('app.notify.resetPwdTitle'),
+                              message: t('app.notify.resetPwdBody', { name: member.name }),
                             })}
                             onChangeMyPassword={() => setModal('changeMyPassword')}
                             onLogout={handleLogout}

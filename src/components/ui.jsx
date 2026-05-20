@@ -4,15 +4,18 @@
 
 import { Crown, X, AlertTriangle } from 'lucide-react';
 import { CER_STATUS, ROLES, SHIFT_TASKS } from '../constants.js';
+import { useTranslation } from '../lib/i18n.jsx';
 
 export const StatusBadge = ({ status, size = 'md' }) => {
+  const { t } = useTranslation();
   const s = CER_STATUS[status] || CER_STATUS.pendiente;
+  const key = CER_STATUS[status] ? status : 'pendiente';
   const sizes = { sm: 'text-[10px] px-2 py-0.5', md: 'text-xs px-2.5 py-1', lg: 'text-sm px-3 py-1.5' };
   return (
     <span className={`inline-flex items-center gap-1.5 rounded-full font-medium ${sizes[size]}`}
           style={{ backgroundColor: s.bg, color: s.color }}>
       <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: s.dot }} />
-      {s.short}
+      {t(`cer.${key}.short`)}
     </span>
   );
 };
@@ -56,6 +59,7 @@ export const OrgAvatar = ({ org, size = 36 }) => {
 };
 
 export const RoleBadge = ({ role, size = 'md' }) => {
+  const { t } = useTranslation();
   const r = ROLES[role];
   if (!r) return null;
   const sizes = { sm: 'text-[10px] px-2 py-0.5', md: 'text-xs px-2.5 py-1' };
@@ -63,7 +67,7 @@ export const RoleBadge = ({ role, size = 'md' }) => {
     <span className={`inline-flex items-center gap-1.5 rounded-full font-medium ${sizes[size]}`}
           style={{ backgroundColor: r.bg, color: r.color }}>
       {role === 'admin' && <Crown className="w-3 h-3" />}
-      {r.short}
+      {t(`role.${role}.short`)}
     </span>
   );
 };
@@ -123,14 +127,16 @@ export const Modal = ({ open, onClose, title, children, maxWidth = 'max-w-lg' })
 };
 
 export const TaskPill = ({ task, size = 'md' }) => {
-  const t = SHIFT_TASKS[task] || SHIFT_TASKS.otros;
-  const Icon = t.icon;
+  const { t } = useTranslation();
+  const taskCfg = SHIFT_TASKS[task] || SHIFT_TASKS.otros;
+  const taskKey = SHIFT_TASKS[task] ? task : 'otros';
+  const Icon = taskCfg.icon;
   const sizes = { sm: 'text-[10px] px-1.5 py-0.5 gap-1', md: 'text-xs px-2 py-1 gap-1.5' };
   const iconSize = size === 'sm' ? 'w-3 h-3' : 'w-3.5 h-3.5';
   return (
     <span className={`inline-flex items-center rounded-full font-medium ${sizes[size]}`}
-          style={{ backgroundColor: t.bg, color: t.color }}>
-      <Icon className={iconSize} /> {t.short}
+          style={{ backgroundColor: taskCfg.bg, color: taskCfg.color }}>
+      <Icon className={iconSize} /> {t(`task.${taskKey}.short`)}
     </span>
   );
 };
@@ -146,14 +152,17 @@ export const TaskPill = ({ task, size = 'md' }) => {
 export const ConfirmDialog = ({
   title,
   message,
-  confirmLabel = 'Aceptar',
-  cancelLabel = 'Cancelar',
+  confirmLabel,
+  cancelLabel,
   destructive = false,
   tone = 'warning',
   onConfirm,
   onCancel,
 }) => {
+  const { t } = useTranslation();
   const isNotify = !onCancel;
+  const finalConfirmLabel = confirmLabel ?? t('confirm.accept');
+  const finalCancelLabel = cancelLabel ?? t('common.cancel');
   const dismiss = isNotify ? onConfirm : onCancel;
   const iconBg = destructive
     ? '#F5DDCE'
@@ -182,7 +191,7 @@ export const ConfirmDialog = ({
             <button onClick={onCancel}
                     className="flex-1 py-2.5 rounded-xl text-sm font-medium"
                     style={{ backgroundColor: '#F2EADB', color: '#4A433C' }}>
-              {cancelLabel}
+              {finalCancelLabel}
             </button>
           )}
           <button onClick={onConfirm}
@@ -191,7 +200,7 @@ export const ConfirmDialog = ({
                     backgroundColor: destructive ? '#B15A3A' : '#1F3A2F',
                     color: '#F8F3E8',
                   }}>
-            {confirmLabel}
+            {finalConfirmLabel}
           </button>
         </div>
       </div>

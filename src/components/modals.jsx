@@ -9,6 +9,7 @@ import { OrgForm } from './settings.jsx';
 import { ChangePasswordForm, ResetPasswordForm } from './auth.jsx';
 import { ShiftTemplateForm, ShiftAssignForm, ShiftDetailView } from './calendar.jsx';
 import { can } from '../lib/permissions.js';
+import { useTranslation } from '../lib/i18n.jsx';
 
 // Todo el estado y los handlers vienen del store a través de props. El componente
 // podría consumir el store por Context directamente, pero props explícitos
@@ -38,9 +39,11 @@ export const GlobalModals = ({
   // handlers de turnos
   saveShiftTemplate, deleteShiftTemplate,
   claimShift, unclaimShift, completeShift, uncompleteShift, assignShiftTo,
-}) => (
+}) => {
+  const { t } = useTranslation();
+  return (
   <>
-    <Modal open={modal === 'addColony' || modal?.type === 'addColony'} onClose={() => setModal(null)} title="Nueva colonia">
+    <Modal open={modal === 'addColony' || modal?.type === 'addColony'} onClose={() => setModal(null)} title={t('modal.title.addColony')}>
       <ColonyForm
         colony={modal?.type === 'addColony' && modal.prefill
           ? { name: '', address: '', cuidadores: '', notes: '', lat: modal.prefill.lat, lng: modal.prefill.lng }
@@ -48,30 +51,30 @@ export const GlobalModals = ({
         fromMap={modal?.type === 'addColony' && !!modal.prefill}
         onSave={saveColony} onCancel={() => setModal(null)} />
     </Modal>
-    <Modal open={modal === 'editColony'} onClose={() => setModal(null)} title="Editar colonia">
+    <Modal open={modal === 'editColony'} onClose={() => setModal(null)} title={t('modal.title.editColony')}>
       {currentColony && <ColonyForm colony={currentColony} onSave={saveColony} onCancel={() => setModal(null)} />}
     </Modal>
 
-    <Modal open={modal === 'addCat'} onClose={() => setModal(null)} title="Nuevo gato">
+    <Modal open={modal === 'addCat'} onClose={() => setModal(null)} title={t('modal.title.addCat')}>
       <CatForm colonies={orgColonies}
                onSave={(f) => saveCat({ ...f, colonyId: f.colonyId || selectedColony || orgColonies[0]?.id })}
                onCancel={() => setModal(null)} onError={notify} />
     </Modal>
-    <Modal open={modal === 'editCat'} onClose={() => setModal(null)} title="Editar gato">
+    <Modal open={modal === 'editCat'} onClose={() => setModal(null)} title={t('modal.title.editCat')}>
       {currentCat && <CatForm cat={currentCat} colonies={orgColonies} onSave={saveCat} onCancel={() => setModal(null)} onError={notify} />}
     </Modal>
-    <Modal open={modal === 'addEvent'} onClose={() => setModal(null)} title="Nuevo evento veterinario">
+    <Modal open={modal === 'addEvent'} onClose={() => setModal(null)} title={t('modal.title.addEvent')}>
       <EventForm onSave={saveEvent} onCancel={() => setModal(null)} />
     </Modal>
 
-    <Modal open={modal === 'addReminder'} onClose={() => setModal(null)} title="Nuevo recordatorio">
+    <Modal open={modal === 'addReminder'} onClose={() => setModal(null)} title={t('modal.title.addReminder')}>
       {currentCat && (
         <ReminderForm
           onSave={(form) => saveCatReminder({ ...form, catId: currentCat.id })}
           onCancel={() => setModal(null)} />
       )}
     </Modal>
-    <Modal open={modal?.type === 'editReminder'} onClose={() => setModal(null)} title="Editar recordatorio">
+    <Modal open={modal?.type === 'editReminder'} onClose={() => setModal(null)} title={t('modal.title.editReminder')}>
       {modal?.type === 'editReminder' && modal.reminder && (
         <ReminderForm
           reminder={modal.reminder}
@@ -80,23 +83,23 @@ export const GlobalModals = ({
       )}
     </Modal>
 
-    <Modal open={modal === 'createOrg'} onClose={() => setModal(null)} title="Nueva organización">
+    <Modal open={modal === 'createOrg'} onClose={() => setModal(null)} title={t('modal.title.createOrg')}>
       <OrgForm onSave={handleCreateNewOrg} onCancel={() => setModal(null)} />
     </Modal>
-    <Modal open={modal === 'editOrg'} onClose={() => setModal(null)} title="Editar organización">
+    <Modal open={modal === 'editOrg'} onClose={() => setModal(null)} title={t('modal.title.editOrg')}>
       <OrgForm org={currentOrg} onSave={handleEditOrg} onCancel={() => setModal(null)} />
     </Modal>
-    <Modal open={modal === 'platformCreateOrg'} onClose={() => setModal(null)} title="Crear organización desde plataforma">
+    <Modal open={modal === 'platformCreateOrg'} onClose={() => setModal(null)} title={t('modal.title.platformCreateOrg')}>
       <OrgForm onSave={handlePlatformCreateOrg} onCancel={() => setModal(null)} />
     </Modal>
-    <Modal open={modal?.type === 'platformEditOrg'} onClose={() => setModal(null)} title="Editar organización">
+    <Modal open={modal?.type === 'platformEditOrg'} onClose={() => setModal(null)} title={t('modal.title.editOrg')}>
       {modal?.org && <OrgForm org={modal.org} onSave={(data) => handlePlatformEditOrg({ ...modal.org, ...data })} onCancel={() => setModal(null)} />}
     </Modal>
 
-    <Modal open={modal === 'changeMyPassword'} onClose={() => setModal(null)} title="Cambiar contraseña">
+    <Modal open={modal === 'changeMyPassword'} onClose={() => setModal(null)} title={t('modal.title.changeMyPassword')}>
       <ChangePasswordForm onSave={handleChangeMyPassword} onCancel={() => setModal(null)} />
     </Modal>
-    <Modal open={modal?.type === 'resetPassword'} onClose={() => setModal(null)} title="Restablecer contraseña">
+    <Modal open={modal?.type === 'resetPassword'} onClose={() => setModal(null)} title={t('modal.title.resetPassword')}>
       {modal?.type === 'resetPassword' && (
         <ResetPasswordForm
           targetName={modal.userName}
@@ -105,12 +108,12 @@ export const GlobalModals = ({
       )}
     </Modal>
 
-    <Modal open={modal === 'addTemplate'} onClose={() => setModal(null)} title="Nueva plantilla de turno">
+    <Modal open={modal === 'addTemplate'} onClose={() => setModal(null)} title={t('modal.title.addTemplate')}>
       <ShiftTemplateForm colonies={orgColonies}
                          onSave={saveShiftTemplate}
                          onCancel={() => setModal(null)} />
     </Modal>
-    <Modal open={modal === 'editTemplate'} onClose={() => { setModal(null); setSelectedTemplate(null); }} title="Editar plantilla de turno">
+    <Modal open={modal === 'editTemplate'} onClose={() => { setModal(null); setSelectedTemplate(null); }} title={t('modal.title.editTemplate')}>
       {selectedTemplate && (
         <ShiftTemplateForm template={selectedTemplate} colonies={orgColonies}
                            onSave={saveShiftTemplate}
@@ -119,7 +122,7 @@ export const GlobalModals = ({
                            canDelete={can(currentRole, 'manage_shifts')} />
       )}
     </Modal>
-    <Modal open={modal === 'viewShift'} onClose={() => { setModal(null); setSelectedShift(null); }} title="Detalle del turno">
+    <Modal open={modal === 'viewShift'} onClose={() => { setModal(null); setSelectedShift(null); }} title={t('modal.title.viewShift')}>
       {selectedShift && (
         <ShiftDetailView shift={selectedShift}
                          colony={orgColonies.find(c => c.id === selectedShift.colonyId)}
@@ -138,13 +141,13 @@ export const GlobalModals = ({
                          onUncomplete={() => uncompleteShift(selectedShift)}
                          onAssign={() => setModal('assignShift')}
                          onEditTemplate={() => {
-                           const tpl = orgTemplates.find(t => t.id === selectedShift.templateId);
+                           const tpl = orgTemplates.find(x => x.id === selectedShift.templateId);
                            if (tpl) { setSelectedTemplate(tpl); setModal('editTemplate'); }
                          }}
                          onClose={() => { setModal(null); setSelectedShift(null); }} />
       )}
     </Modal>
-    <Modal open={modal === 'assignShift'} onClose={() => setModal('viewShift')} title="Asignar turno">
+    <Modal open={modal === 'assignShift'} onClose={() => setModal('viewShift')} title={t('modal.title.assignShift')}>
       {selectedShift && (
         <ShiftAssignForm shift={selectedShift}
                          colony={orgColonies.find(c => c.id === selectedShift.colonyId)}
@@ -154,4 +157,5 @@ export const GlobalModals = ({
       )}
     </Modal>
   </>
-);
+  );
+};

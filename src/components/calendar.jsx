@@ -11,11 +11,12 @@ import {
 } from 'lucide-react';
 import {
   ymd, parseYmd, todayYmd, addDays, startOfWeek, startOfMonth,
-  fmtDate, fmtDayLong, fmtMonth, fmtWeekday,
+  fmtDate, fmtDayLong, fmtMonth, fmtWeekday, getDateLocale,
 } from '../lib/dates.js';
-import { computeShifts, isShiftPast as isShiftPastRaw } from '../lib/shifts.js';
+import { computeShifts, isShiftPast as isShiftPastRaw, slotFromTime } from '../lib/shifts.js';
 import { can } from '../lib/permissions.js';
 import { SHIFT_TASKS, SHIFT_SLOTS, DAYS_OF_WEEK, ROLES } from '../constants.js';
+import { useTranslation } from '../lib/i18n.jsx';
 import { TaskPill, EmptyState, UserAvatar, Field, RoleBadge } from './ui.jsx';
 import { inputStyle, labelStyle } from '../styles.jsx';
 
@@ -23,9 +24,12 @@ import { inputStyle, labelStyle } from '../styles.jsx';
 // dentro de los componentes (delega en lib/shifts.js inyectándole hoy).
 const isShiftPast = (shift) => isShiftPastRaw(shift, todayYmd());
 
-// Chip compacto de turno para la vista mensual / semanal (mini, 1 línea)
+// Chip compacto de turno para la vista mensual / semanal (mini, 1 línea).
+// OJO: la variable local de la tarea se llama `task` (no `t`) para no tapar
+// la función `t` de traducción del hook useTranslation.
 export const ShiftChip = ({ shift, assignee, onClick, compact = false }) => {
-  const t = SHIFT_TASKS[shift.task] || SHIFT_TASKS.otros;
+  const { t } = useTranslation();
+  const task = SHIFT_TASKS[shift.task] || SHIFT_TASKS.otros;
   const done = shift.status === 'done';
   const open = shift.status === 'open';
   const past = isShiftPast(shift);
@@ -33,17 +37,17 @@ export const ShiftChip = ({ shift, assignee, onClick, compact = false }) => {
     <button onClick={onClick}
             className="w-full flex items-center gap-1 rounded px-1.5 py-0.5 text-left transition-colors"
             style={{
-              backgroundColor: done ? '#F2EADB' : (open ? '#FDFAF3' : t.bg),
-              color: done ? '#78706A' : t.color,
+              backgroundColor: done ? '#F2EADB' : (open ? '#FDFAF3' : task.bg),
+              color: done ? '#78706A' : task.color,
               boxShadow: open ? `0 0 0 1px ${past ? '#E5B8A8' : '#EADFC9'}` : 'none',
               opacity: done ? 0.75 : 1,
             }}>
       <span className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-            style={{ backgroundColor: done ? '#B8A888' : (open ? (past ? '#B15A3A' : '#B8A888') : t.color) }} />
-      <span className="text-[10px] flex-shrink-0 font-medium" style={{ color: done ? '#8A7A5C' : t.color }}>{SHIFT_SLOTS[shift.slot]?.short || ''}</span>
+            style={{ backgroundColor: done ? '#B8A888' : (open ? (past ? '#B15A3A' : '#B8A888') : task.color) }} />
+      <span className="text-[10px] flex-shrink-0 font-medium" style={{ color: done ? '#8A7A5C' : task.color }}>{shift.slot ? t(`slot.${shift.slot}.short`) : ''}</span>
       {!compact && (
         <span className="text-[10px] truncate flex-1">
-          {open ? (past ? 'Sin cubrir' : 'Libre') : (assignee?.name?.split(' ')[0] || '—')}
+          {open ? (past ? t('cal.uncovered') : t('cal.chipFree')) : (assignee?.name?.split(' ')[0] || '—')}
         </span>
       )}
       {done && <Check className="w-2.5 h-2.5 flex-shrink-0" />}
@@ -53,8 +57,9 @@ export const ShiftChip = ({ shift, assignee, onClick, compact = false }) => {
 
 // Fila de turno (vista de lista, más información)
 export const ShiftRow = ({ shift, colony, assignee, onClick, showDate = true }) => {
-  const t = SHIFT_TASKS[shift.task] || SHIFT_TASKS.otros;
-  const Icon = t.icon;
+  const { t } = useTranslation();
+  const task = SHIFT_TASKS[shift.task] || SHIFT_TASKS.otros;
+  const Icon = task.icon;
   const open = shift.status === 'open';
   const done = shift.status === 'done';
   const past = isShiftPast(shift);
@@ -66,24 +71,24 @@ export const ShiftRow = ({ shift, colony, assignee, onClick, showDate = true }) 
             className="w-full flex items-center gap-3 p-3 rounded-xl text-left transition-colors hover:bg-[#F2EADB]"
             style={{ backgroundColor: '#FDFAF3', boxShadow: `0 0 0 1px ${uncovered ? '#E5B8A8' : '#EADFC9'}` }}>
       <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
-           style={{ backgroundColor: done ? '#F2EADB' : t.bg }}>
-        <Icon className="w-5 h-5" style={{ color: done ? '#8A7A5C' : t.color }} />
+           style={{ backgroundColor: done ? '#F2EADB' : task.bg }}>
+        <Icon className="w-5 h-5" style={{ color: done ? '#8A7A5C' : task.color }} />
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 mb-0.5">
           <span className="text-sm font-medium truncate" style={{ color: '#1A1712' }}>{colony?.name || '—'}</span>
-          <span className="text-[10px] uppercase tracking-wider" style={{ color: t.color }}>{t.short}</span>
+          <span className="text-[10px] uppercase tracking-wider" style={{ color: task.color }}>{shift.task ? t(`task.${shift.task}.short`) : ''}</span>
         </div>
         <div className="text-xs flex items-center gap-2 flex-wrap" style={{ color: '#78706A' }}>
-          {showDate && <span className="font-mono">{d.toLocaleDateString('es-ES', { weekday: 'short', day: '2-digit', month: 'short' })}</span>}
-          <span>· {SHIFT_SLOTS[shift.slot]?.label || ''}</span>
+          {showDate && <span className="font-mono">{d.toLocaleDateString(getDateLocale(), { weekday: 'short', day: '2-digit', month: 'short' })}</span>}
+          <span>· {shift.slot ? t(`slot.${shift.slot}.label`) : ''}</span>
           {done ? (
             <span className="inline-flex items-center gap-1" style={{ color: '#6B8E4E' }}>
-              <CheckCircle2 className="w-3 h-3" /> Hecho
+              <CheckCircle2 className="w-3 h-3" /> {t('cal.row.done')}
             </span>
           ) : open ? (
             <span className="inline-flex items-center gap-1" style={{ color: uncovered ? '#B15A3A' : '#8A7A5C' }}>
-              {uncovered ? <><AlertTriangle className="w-3 h-3" /> Sin cubrir</> : <>· Libre</>}
+              {uncovered ? <><AlertTriangle className="w-3 h-3" /> {t('cal.uncovered')}</> : <>· {t('cal.chipFree')}</>}
             </span>
           ) : (
             <span className="inline-flex items-center gap-1">· <UserCheck className="w-3 h-3" /> {assignee?.name?.split(' ')[0] || '—'}</span>
@@ -100,6 +105,7 @@ export const ShiftRow = ({ shift, colony, assignee, onClick, showDate = true }) 
 
 // Formulario: plantilla de turno recurrente
 export const ShiftTemplateForm = ({ template, colonies, onSave, onCancel, onDelete, canDelete }) => {
+  const { t } = useTranslation();
   const [form, setForm] = useState(template ? { ...template, slot: template.slot || slotFromTime(template.time) } : {
     colonyId: colonies[0]?.id || '',
     task: 'alimentacion',
@@ -115,16 +121,16 @@ export const ShiftTemplateForm = ({ template, colonies, onSave, onCancel, onDele
   };
 
   const presets = [
-    { label: 'Todos los días', days: [1,2,3,4,5,6,0] },
-    { label: 'L-V',             days: [1,2,3,4,5] },
-    { label: 'Fin de semana',   days: [6,0] },
-    { label: 'L-X-V',           days: [1,3,5] },
+    { labelKey: 'cal.tpl.preset.all',      days: [1,2,3,4,5,6,0] },
+    { labelKey: 'cal.tpl.preset.weekdays', days: [1,2,3,4,5] },
+    { labelKey: 'cal.tpl.preset.weekend',  days: [6,0] },
+    { labelKey: 'cal.tpl.preset.mwf',      days: [1,3,5] },
   ];
 
   return (
     <div className="space-y-4">
       <div>
-        <label className="block text-xs font-medium mb-1" style={labelStyle}>Colonia</label>
+        <label className="block text-xs font-medium mb-1" style={labelStyle}>{t('cal.tpl.colony')}</label>
         <select value={form.colonyId} onChange={e => setForm({ ...form, colonyId: e.target.value })}
                 className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle}>
           {colonies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
@@ -132,7 +138,7 @@ export const ShiftTemplateForm = ({ template, colonies, onSave, onCancel, onDele
       </div>
 
       <div>
-        <label className="block text-xs font-medium mb-2" style={labelStyle}>Tarea</label>
+        <label className="block text-xs font-medium mb-2" style={labelStyle}>{t('cal.tpl.task')}</label>
         <div className="grid grid-cols-2 gap-2">
           {Object.entries(SHIFT_TASKS).map(([k, v]) => {
             const Icon = v.icon;
@@ -145,7 +151,7 @@ export const ShiftTemplateForm = ({ template, colonies, onSave, onCancel, onDele
                         color: active ? '#FDFAF3' : '#4A433C',
                         boxShadow: active ? 'none' : '0 0 0 1px #EADFC9',
                       }}>
-                <Icon className="w-4 h-4" /> {v.label}
+                <Icon className="w-4 h-4" /> {t(`task.${k}.label`)}
               </button>
             );
           })}
@@ -154,13 +160,13 @@ export const ShiftTemplateForm = ({ template, colonies, onSave, onCancel, onDele
 
       <div>
         <div className="flex items-center justify-between mb-2">
-          <label className="text-xs font-medium" style={labelStyle}>Días de la semana</label>
+          <label className="text-xs font-medium" style={labelStyle}>{t('cal.tpl.daysOfWeek')}</label>
           <div className="flex gap-1">
             {presets.map(p => (
-              <button key={p.label} onClick={() => setForm({ ...form, daysOfWeek: p.days })}
+              <button key={p.labelKey} onClick={() => setForm({ ...form, daysOfWeek: p.days })}
                       className="text-[10px] px-2 py-0.5 rounded-full"
                       style={{ backgroundColor: '#F2EADB', color: '#6B635A' }}>
-                {p.label}
+                {t(p.labelKey)}
               </button>
             ))}
           </div>
@@ -171,13 +177,13 @@ export const ShiftTemplateForm = ({ template, colonies, onSave, onCancel, onDele
             return (
               <button key={d.n} onClick={() => toggleDay(d.n)}
                       className="flex-1 py-2 rounded-lg text-sm font-medium transition-colors"
-                      title={d.label}
+                      title={t(`day.${d.n}.label`)}
                       style={{
                         backgroundColor: active ? '#1F3A2F' : '#FFFFFF',
                         color: active ? '#F8F3E8' : '#4A433C',
                         boxShadow: active ? 'none' : '0 0 0 1px #EADFC9',
                       }}>
-                {d.short}
+                {t(`day.${d.n}.short`)}
               </button>
             );
           })}
@@ -185,7 +191,7 @@ export const ShiftTemplateForm = ({ template, colonies, onSave, onCancel, onDele
       </div>
 
       <div>
-        <label className="block text-xs font-medium mb-2" style={labelStyle}>Franja del día</label>
+        <label className="block text-xs font-medium mb-2" style={labelStyle}>{t('cal.tpl.slot')}</label>
         <div className="grid grid-cols-2 gap-2">
           {Object.entries(SHIFT_SLOTS).map(([k, v]) => {
             const Icon = v.icon;
@@ -198,7 +204,7 @@ export const ShiftTemplateForm = ({ template, colonies, onSave, onCancel, onDele
                         color: active ? '#FDFAF3' : '#4A433C',
                         boxShadow: active ? 'none' : '0 0 0 1px #EADFC9',
                       }}>
-                <Icon className="w-4 h-4" /> {v.label}
+                <Icon className="w-4 h-4" /> {t(`slot.${k}.label`)}
               </button>
             );
           })}
@@ -206,16 +212,16 @@ export const ShiftTemplateForm = ({ template, colonies, onSave, onCancel, onDele
       </div>
 
       <div>
-        <label className="block text-xs font-medium mb-1" style={labelStyle}>Observaciones</label>
+        <label className="block text-xs font-medium mb-1" style={labelStyle}>{t('cal.tpl.notes')}</label>
         <textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })}
                   rows={2} className="w-full px-3 py-2 rounded-lg text-sm outline-none resize-none" style={inputStyle}
-                  placeholder="Instrucciones para los voluntarios…" />
+                  placeholder={t('cal.tpl.notesPlaceholder')} />
       </div>
 
       <label className="flex items-center gap-2 cursor-pointer">
         <input type="checkbox" checked={form.active} onChange={e => setForm({ ...form, active: e.target.checked })}
                className="w-4 h-4 rounded" />
-        <span className="text-sm" style={{ color: '#4A433C' }}>Plantilla activa (genera turnos)</span>
+        <span className="text-sm" style={{ color: '#4A433C' }}>{t('cal.tpl.activeLabel')}</span>
       </label>
 
       <div className="flex gap-2 pt-2">
@@ -223,16 +229,16 @@ export const ShiftTemplateForm = ({ template, colonies, onSave, onCancel, onDele
           <button onClick={onDelete}
                   className="px-4 py-2.5 rounded-xl text-sm font-medium inline-flex items-center gap-1.5"
                   style={{ backgroundColor: '#F5DDCE', color: '#B15A3A' }}>
-            <Trash2 className="w-4 h-4" /> Eliminar
+            <Trash2 className="w-4 h-4" /> {t('cal.tpl.delete')}
           </button>
         )}
         <button onClick={onCancel} className="flex-1 py-2.5 rounded-xl text-sm font-medium"
-                style={{ backgroundColor: '#F2EADB', color: '#4A433C' }}>Cancelar</button>
+                style={{ backgroundColor: '#F2EADB', color: '#4A433C' }}>{t('common.cancel')}</button>
         <button onClick={() => onSave(form)}
                 disabled={!form.colonyId || form.daysOfWeek.length === 0}
                 className="flex-1 py-2.5 rounded-xl text-sm font-medium disabled:opacity-50"
                 style={{ backgroundColor: '#1F3A2F', color: '#F8F3E8' }}>
-          {template ? 'Guardar cambios' : 'Crear plantilla'}
+          {template ? t('cal.tpl.save') : t('cal.tpl.create')}
         </button>
       </div>
     </div>
@@ -241,27 +247,28 @@ export const ShiftTemplateForm = ({ template, colonies, onSave, onCancel, onDele
 
 // Formulario: asignar turno a un miembro
 export const ShiftAssignForm = ({ shift, members, colony, onSave, onCancel }) => {
+  const { t } = useTranslation();
   const [assigneeId, setAssigneeId] = useState(shift.assigneeId || members[0]?.userId || '');
   const assignable = members.filter(m => m.role !== 'vet'); // vet no cubre turnos
   const d = parseYmd(shift.date);
   // Fallback igual que en otros usos del archivo: si por algún motivo task no
   // coincide con una key conocida, evitamos crashear el render.
-  const t = SHIFT_TASKS[shift.task] || SHIFT_TASKS.otros;
-  const Icon = t.icon;
+  const task = SHIFT_TASKS[shift.task] || SHIFT_TASKS.otros;
+  const Icon = task.icon;
 
   return (
     <div className="space-y-4">
       <div className="p-3 rounded-xl" style={{ backgroundColor: '#F2EADB' }}>
         <div className="flex items-center gap-2 mb-1">
-          <Icon className="w-4 h-4" style={{ color: t.color }} />
-          <span className="text-sm font-medium" style={{ color: '#1A1712' }}>{t.label}</span>
+          <Icon className="w-4 h-4" style={{ color: task.color }} />
+          <span className="text-sm font-medium" style={{ color: '#1A1712' }}>{shift.task ? t(`task.${shift.task}.label`) : ''}</span>
         </div>
         <div className="text-xs" style={{ color: '#6B635A' }}>
-          {colony?.name} · {d.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' })} · {SHIFT_SLOTS[shift.slot]?.label || ''}
+          {colony?.name} · {d.toLocaleDateString(getDateLocale(), { weekday: 'long', day: 'numeric', month: 'long' })} · {shift.slot ? t(`slot.${shift.slot}.label`) : ''}
         </div>
       </div>
       <div>
-        <label className="block text-xs font-medium mb-2" style={labelStyle}>Asignar a</label>
+        <label className="block text-xs font-medium mb-2" style={labelStyle}>{t('cal.assign.to')}</label>
         <div className="space-y-1.5 max-h-72 overflow-y-auto">
           {assignable.map(m => {
             const active = assigneeId === m.userId;
@@ -276,7 +283,7 @@ export const ShiftAssignForm = ({ shift, members, colony, onSave, onCancel }) =>
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium truncate" style={{ color: '#1A1712' }}>{m.name}</div>
                   <div className="text-[10px] uppercase tracking-wider" style={{ color: ROLES[m.role]?.color }}>
-                    {ROLES[m.role]?.short}
+                    {m.role ? t(`role.${m.role}.short`) : ''}
                   </div>
                 </div>
                 {active && <Check className="w-4 h-4" style={{ color: '#4A6332' }} />}
@@ -287,11 +294,11 @@ export const ShiftAssignForm = ({ shift, members, colony, onSave, onCancel }) =>
       </div>
       <div className="flex gap-2 pt-2">
         <button onClick={onCancel} className="flex-1 py-2.5 rounded-xl text-sm font-medium"
-                style={{ backgroundColor: '#F2EADB', color: '#4A433C' }}>Cancelar</button>
+                style={{ backgroundColor: '#F2EADB', color: '#4A433C' }}>{t('common.cancel')}</button>
         <button onClick={() => onSave(assigneeId)}
                 disabled={!assigneeId}
                 className="flex-1 py-2.5 rounded-xl text-sm font-medium disabled:opacity-50"
-                style={{ backgroundColor: '#1F3A2F', color: '#F8F3E8' }}>Asignar</button>
+                style={{ backgroundColor: '#1F3A2F', color: '#F8F3E8' }}>{t('cal.assign.btn')}</button>
       </div>
     </div>
   );
@@ -300,8 +307,9 @@ export const ShiftAssignForm = ({ shift, members, colony, onSave, onCancel }) =>
 // Modal de detalle de un turno: muestra info + acciones contextuales según estado y rol
 export const ShiftDetailView = ({ shift, colony, assignee, completedBy, currentUser, currentRole,
                           onClaim, onUnclaim, onComplete, onUncomplete, onAssign, onEditTemplate, onClose }) => {
-  const t = SHIFT_TASKS[shift.task] || SHIFT_TASKS.otros;
-  const Icon = t.icon;
+  const { t } = useTranslation();
+  const task = SHIFT_TASKS[shift.task] || SHIFT_TASKS.otros;
+  const Icon = task.icon;
   const open = shift.status === 'open';
   const done = shift.status === 'done';
   const assigned = shift.status === 'assigned';
@@ -318,25 +326,25 @@ export const ShiftDetailView = ({ shift, colony, assignee, completedBy, currentU
     <div className="space-y-4">
       <div className="flex items-center gap-3">
         <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0"
-             style={{ backgroundColor: t.bg }}>
-          <Icon className="w-6 h-6" style={{ color: t.color }} />
+             style={{ backgroundColor: task.bg }}>
+          <Icon className="w-6 h-6" style={{ color: task.color }} />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="font-serif text-lg" style={{ color: '#1A1712' }}>{t.label}</div>
+          <div className="font-serif text-lg" style={{ color: '#1A1712' }}>{shift.task ? t(`task.${shift.task}.label`) : ''}</div>
           <div className="text-xs" style={{ color: '#78706A' }}>{colony?.name}</div>
         </div>
       </div>
 
       <div className="grid grid-cols-2 gap-2 text-sm">
         <div className="p-3 rounded-xl" style={{ backgroundColor: '#F2EADB' }}>
-          <div className="text-[10px] uppercase tracking-widest mb-1" style={{ color: '#8A7A5C' }}>Fecha</div>
+          <div className="text-[10px] uppercase tracking-widest mb-1" style={{ color: '#8A7A5C' }}>{t('cal.detail.date')}</div>
           <div className="font-mono" style={{ color: '#1A1712' }}>
-            {d.toLocaleDateString('es-ES', { weekday: 'short', day: '2-digit', month: 'short' })}
+            {d.toLocaleDateString(getDateLocale(), { weekday: 'short', day: '2-digit', month: 'short' })}
           </div>
         </div>
         <div className="p-3 rounded-xl" style={{ backgroundColor: '#F2EADB' }}>
-          <div className="text-[10px] uppercase tracking-widest mb-1" style={{ color: '#8A7A5C' }}>Franja</div>
-          <div style={{ color: '#1A1712' }}>{SHIFT_SLOTS[shift.slot]?.label || '—'}</div>
+          <div className="text-[10px] uppercase tracking-widest mb-1" style={{ color: '#8A7A5C' }}>{t('cal.detail.slot')}</div>
+          <div style={{ color: '#1A1712' }}>{shift.slot ? t(`slot.${shift.slot}.label`) : '—'}</div>
         </div>
       </div>
 
@@ -344,10 +352,10 @@ export const ShiftDetailView = ({ shift, colony, assignee, completedBy, currentU
         <div className="p-3 rounded-xl" style={{ backgroundColor: '#DDE6CC' }}>
           <div className="flex items-center gap-2 mb-1">
             <CheckCircle2 className="w-4 h-4" style={{ color: '#4A6332' }} />
-            <span className="text-sm font-medium" style={{ color: '#4A6332' }}>Completado</span>
+            <span className="text-sm font-medium" style={{ color: '#4A6332' }}>{t('cal.detail.completed')}</span>
           </div>
           <div className="text-xs" style={{ color: '#4A6332' }}>
-            Por <strong>{completedBy?.name || '—'}</strong> · {fmtDate(shift.completedAt)}
+            {t('cal.detail.by')} <strong>{completedBy?.name || '—'}</strong> · {fmtDate(shift.completedAt)}
           </div>
           {shift.notes && <div className="text-xs mt-2 pt-2 border-t" style={{ color: '#4A6332', borderColor: '#C3CFB1' }}>{shift.notes}</div>}
         </div>
@@ -357,7 +365,7 @@ export const ShiftDetailView = ({ shift, colony, assignee, completedBy, currentU
           <div className="flex items-center gap-2">
             {past ? <AlertTriangle className="w-4 h-4" style={{ color: '#B15A3A' }} /> : <Clock className="w-4 h-4" style={{ color: '#8A7A5C' }} />}
             <span className="text-sm font-medium" style={{ color: past ? '#B15A3A' : '#6B635A' }}>
-              {past ? 'Sin cubrir' : 'Turno libre'}
+              {past ? t('cal.uncovered') : t('cal.detail.openTitle')}
             </span>
           </div>
         </div>
@@ -365,7 +373,7 @@ export const ShiftDetailView = ({ shift, colony, assignee, completedBy, currentU
         <div className="flex items-center gap-3 p-3 rounded-xl" style={{ backgroundColor: '#F2EADB' }}>
           <UserAvatar name={assignee?.name} color={assignee?.color} size={40} />
           <div className="flex-1 min-w-0">
-            <div className="text-[10px] uppercase tracking-widest" style={{ color: '#8A7A5C' }}>Asignado a</div>
+            <div className="text-[10px] uppercase tracking-widest" style={{ color: '#8A7A5C' }}>{t('cal.detail.assignedTo')}</div>
             <div className="text-sm font-medium" style={{ color: '#1A1712' }}>{assignee?.name || '—'}</div>
           </div>
         </div>
@@ -373,7 +381,7 @@ export const ShiftDetailView = ({ shift, colony, assignee, completedBy, currentU
 
       {shift._template?.notes && !done && (
         <div className="p-3 rounded-xl text-xs" style={{ backgroundColor: '#FDFAF3', boxShadow: '0 0 0 1px #EADFC9', color: '#4A433C' }}>
-          <div className="text-[10px] uppercase tracking-widest mb-1" style={{ color: '#8A7A5C' }}>Instrucciones</div>
+          <div className="text-[10px] uppercase tracking-widest mb-1" style={{ color: '#8A7A5C' }}>{t('cal.detail.instructions')}</div>
           {shift._template.notes}
         </div>
       )}
@@ -383,49 +391,49 @@ export const ShiftDetailView = ({ shift, colony, assignee, completedBy, currentU
           <button onClick={onClaim}
                   className="w-full py-2.5 rounded-xl text-sm font-medium inline-flex items-center justify-center gap-2"
                   style={{ backgroundColor: '#1F3A2F', color: '#F8F3E8' }}>
-            <UserCheck className="w-4 h-4" /> Apuntarme a este turno
+            <UserCheck className="w-4 h-4" /> {t('cal.detail.claim')}
           </button>
         )}
         {canAssign && open && (
           <button onClick={onAssign}
                   className="w-full py-2.5 rounded-xl text-sm font-medium inline-flex items-center justify-center gap-2"
                   style={{ backgroundColor: '#F2EADB', color: '#4A433C' }}>
-            <UserPlus className="w-4 h-4" /> Asignar a otra persona
+            <UserPlus className="w-4 h-4" /> {t('cal.detail.assignOther')}
           </button>
         )}
         {canAssign && assigned && (
           <button onClick={onAssign}
                   className="w-full py-2.5 rounded-xl text-sm font-medium inline-flex items-center justify-center gap-2"
                   style={{ backgroundColor: '#F2EADB', color: '#4A433C' }}>
-            <UserCheck className="w-4 h-4" /> Reasignar
+            <UserCheck className="w-4 h-4" /> {t('cal.detail.reassign')}
           </button>
         )}
         {canComplete && !done && (
           <button onClick={onComplete}
                   className="w-full py-2.5 rounded-xl text-sm font-medium inline-flex items-center justify-center gap-2"
                   style={{ backgroundColor: '#6B8E4E', color: '#F8F3E8' }}>
-            <Check className="w-4 h-4" /> Marcar como hecho
+            <Check className="w-4 h-4" /> {t('cal.detail.markDone')}
           </button>
         )}
         {canUnclaim && (
           <button onClick={onUnclaim}
                   className="w-full py-2.5 rounded-xl text-sm font-medium inline-flex items-center justify-center gap-2"
                   style={{ backgroundColor: '#F5DDCE', color: '#B15A3A' }}>
-            <UserMinus className="w-4 h-4" /> {mine ? 'Dejar el turno libre' : 'Desasignar'}
+            <UserMinus className="w-4 h-4" /> {mine ? t('cal.detail.leaveFree') : t('cal.detail.unassign')}
           </button>
         )}
         {done && can(currentRole, 'complete_shift') && (
           <button onClick={onUncomplete}
                   className="w-full py-2 rounded-xl text-xs font-medium"
                   style={{ backgroundColor: '#F2EADB', color: '#6B635A' }}>
-            Deshacer completado
+            {t('cal.detail.undoComplete')}
           </button>
         )}
         {shift._template && can(currentRole, 'manage_shifts') && (
           <button onClick={onEditTemplate}
                   className="w-full py-2 rounded-xl text-xs font-medium inline-flex items-center justify-center gap-1.5"
                   style={{ color: '#8A7A5C' }}>
-            <Repeat className="w-3.5 h-3.5" /> Editar plantilla recurrente
+            <Repeat className="w-3.5 h-3.5" /> {t('cal.detail.editTemplate')}
           </button>
         )}
       </div>
@@ -437,22 +445,26 @@ export const ShiftDetailView = ({ shift, colony, assignee, completedBy, currentU
 // CALENDARIO: VISTAS (mes, semana, mis turnos, plantillas)
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const CalendarFilters = ({ colonies, colonyFilter, setColonyFilter, taskFilter, setTaskFilter }) => (
-  <div className="flex flex-wrap gap-2 mb-4">
-    <select value={colonyFilter} onChange={e => setColonyFilter(e.target.value)}
-            className="px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle}>
-      <option value="all">Todas las colonias</option>
-      {colonies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-    </select>
-    <select value={taskFilter} onChange={e => setTaskFilter(e.target.value)}
-            className="px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle}>
-      <option value="all">Todas las tareas</option>
-      {Object.entries(SHIFT_TASKS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
-    </select>
-  </div>
-);
+export const CalendarFilters = ({ colonies, colonyFilter, setColonyFilter, taskFilter, setTaskFilter }) => {
+  const { t } = useTranslation();
+  return (
+    <div className="flex flex-wrap gap-2 mb-4">
+      <select value={colonyFilter} onChange={e => setColonyFilter(e.target.value)}
+              className="pl-3 pr-9 py-2 rounded-lg text-sm outline-none" style={inputStyle}>
+        <option value="all">{t('cal.allColonies')}</option>
+        {colonies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+      </select>
+      <select value={taskFilter} onChange={e => setTaskFilter(e.target.value)}
+              className="pl-3 pr-9 py-2 rounded-lg text-sm outline-none" style={inputStyle}>
+        <option value="all">{t('cal.allTasks')}</option>
+        {Object.entries(SHIFT_TASKS).map(([k]) => <option key={k} value={k}>{t(`task.${k}.label`)}</option>)}
+      </select>
+    </div>
+  );
+};
 
 export const MonthView = ({ cursor, setCursor, shifts, members, onSelectShift, onSelectDay }) => {
+  const { t } = useTranslation();
   const first = startOfMonth(cursor);
   const monthStart = startOfWeek(first);
   // 6 filas × 7 columnas = 42 días (cubre cualquier mes)
@@ -482,13 +494,13 @@ export const MonthView = ({ cursor, setCursor, shifts, members, onSelectShift, o
         </div>
         <button onClick={() => setCursor(new Date())}
                 className="text-xs px-2.5 py-1 rounded-lg"
-                style={{ backgroundColor: '#F2EADB', color: '#4A433C' }}>Hoy</button>
+                style={{ backgroundColor: '#F2EADB', color: '#4A433C' }}>{t('cal.today')}</button>
       </div>
 
       <div className="grid grid-cols-7 gap-1 mb-1">
         {DAYS_OF_WEEK.map(d => (
           <div key={d.n} className="text-[10px] uppercase tracking-widest text-center py-1" style={{ color: '#8A7A5C' }}>
-            {d.label.slice(0,3)}
+            {t(`day.${d.n}.label`).slice(0,3)}
           </div>
         ))}
       </div>
@@ -521,7 +533,7 @@ export const MonthView = ({ cursor, setCursor, shifts, members, onSelectShift, o
                 {uncovered > 0 && (
                   <span className="w-4 h-4 rounded-full flex items-center justify-center font-mono text-[9px]"
                         style={{ backgroundColor: '#B15A3A', color: '#F8F3E8' }}
-                        title={`${uncovered} sin cubrir`}>
+                        title={t('cal.uncoveredTooltip', { n: uncovered })}>
                     {uncovered}
                   </span>
                 )}
@@ -534,7 +546,7 @@ export const MonthView = ({ cursor, setCursor, shifts, members, onSelectShift, o
                              compact />
                 ))}
                 {moreCount > 0 && (
-                  <div className="text-[10px] px-1.5" style={{ color: '#8A7A5C' }}>+ {moreCount} más</div>
+                  <div className="text-[10px] px-1.5" style={{ color: '#8A7A5C' }}>{t('cal.moreCount', { n: moreCount })}</div>
                 )}
               </div>
               {/* Móvil: puntos de colores por tarea */}
@@ -568,30 +580,34 @@ export const MonthView = ({ cursor, setCursor, shifts, members, onSelectShift, o
   );
 };
 
-export const LegendRow = () => (
-  <div className="flex flex-wrap items-center gap-3 mt-4 pt-3 border-t text-[10px]"
-       style={{ borderColor: '#EADFC9', color: '#78706A' }}>
-    <span className="uppercase tracking-widest">Leyenda</span>
-    {Object.entries(SHIFT_TASKS).map(([k, v]) => (
-      <span key={k} className="inline-flex items-center gap-1">
-        <span className="w-2 h-2 rounded-full" style={{ backgroundColor: v.color }} />
-        {v.label}
+export const LegendRow = () => {
+  const { t } = useTranslation();
+  return (
+    <div className="flex flex-wrap items-center gap-3 mt-4 pt-3 border-t text-[10px]"
+         style={{ borderColor: '#EADFC9', color: '#78706A' }}>
+      <span className="uppercase tracking-widest">{t('cal.legend')}</span>
+      {Object.entries(SHIFT_TASKS).map(([k, v]) => (
+        <span key={k} className="inline-flex items-center gap-1">
+          <span className="w-2 h-2 rounded-full" style={{ backgroundColor: v.color }} />
+          {t(`task.${k}.label`)}
+        </span>
+      ))}
+      <span className="inline-flex items-center gap-1 ml-auto">
+        <span className="w-2 h-2 rounded-full" style={{ backgroundColor: '#B15A3A' }} /> {t('cal.uncovered')}
       </span>
-    ))}
-    <span className="inline-flex items-center gap-1 ml-auto">
-      <span className="w-2 h-2 rounded-full" style={{ backgroundColor: '#B15A3A' }} /> Sin cubrir
-    </span>
-  </div>
-);
+    </div>
+  );
+};
 
 export const WeekView = ({ cursor, setCursor, shifts, members, colonies, onSelectShift }) => {
+  const { t } = useTranslation();
   const start = startOfWeek(cursor);
   const days = Array.from({ length: 7 }, (_, i) => addDays(start, i));
   const today = todayYmd();
   const memberById = Object.fromEntries(members.map(m => [m.userId, m]));
   const colonyById = Object.fromEntries(colonies.map(c => [c.id, c]));
 
-  const rangeLabel = `${start.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })} – ${days[6].toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+  const rangeLabel = `${start.toLocaleDateString(getDateLocale(), { day: 'numeric', month: 'short' })} – ${days[6].toLocaleDateString(getDateLocale(), { day: 'numeric', month: 'short', year: 'numeric' })}`;
 
   return (
     <div>
@@ -601,7 +617,7 @@ export const WeekView = ({ cursor, setCursor, shifts, members, colonies, onSelec
                   className="p-1.5 rounded-lg hover:bg-[#F2EADB]">
             <ChevronLeft className="w-4 h-4" style={{ color: '#4A433C' }} />
           </button>
-          <div className="font-serif text-lg" style={{ color: '#1A1712' }}>Semana del {rangeLabel}</div>
+          <div className="font-serif text-lg" style={{ color: '#1A1712' }}>{t('cal.weekOf', { range: rangeLabel })}</div>
           <button onClick={() => setCursor(addDays(start, 7))}
                   className="p-1.5 rounded-lg hover:bg-[#F2EADB]">
             <ChevronRight className="w-4 h-4" style={{ color: '#4A433C' }} />
@@ -609,7 +625,7 @@ export const WeekView = ({ cursor, setCursor, shifts, members, colonies, onSelec
         </div>
         <button onClick={() => setCursor(new Date())}
                 className="text-xs px-2.5 py-1 rounded-lg"
-                style={{ backgroundColor: '#F2EADB', color: '#4A433C' }}>Esta semana</button>
+                style={{ backgroundColor: '#F2EADB', color: '#4A433C' }}>{t('cal.thisWeek')}</button>
       </div>
 
       <div className="hidden md:grid grid-cols-7 gap-2">
@@ -643,11 +659,11 @@ export const WeekView = ({ cursor, setCursor, shifts, members, colonies, onSelec
                             opacity: s.status === 'done' ? 0.75 : 1,
                           }}>
                     <div className="text-[10px] font-medium" style={{ color: SHIFT_TASKS[s.task].color }}>
-                      {SHIFT_SLOTS[s.slot]?.short || ''} · {colonyById[s.colonyId]?.name?.slice(0, 14)}
+                      {s.slot ? t(`slot.${s.slot}.short`) : ''} · {colonyById[s.colonyId]?.name?.slice(0, 14)}
                     </div>
                     <div className="text-[10px] mt-0.5 flex items-center gap-1" style={{ color: '#4A433C' }}>
                       {s.status === 'done' && <Check className="w-2.5 h-2.5" style={{ color: '#6B8E4E' }} />}
-                      {s.status === 'open' ? (isShiftPast(s) ? 'Sin cubrir' : 'Libre') : (memberById[s.assigneeId]?.name?.split(' ')[0] || '—')}
+                      {s.status === 'open' ? (isShiftPast(s) ? t('cal.uncovered') : t('cal.chipFree')) : (memberById[s.assigneeId]?.name?.split(' ')[0] || '—')}
                     </div>
                   </button>
                 ))}
@@ -669,10 +685,10 @@ export const WeekView = ({ cursor, setCursor, shifts, members, colonies, onSelec
                 <div className="font-serif text-sm capitalize" style={{ color: isToday ? '#1F3A2F' : '#1A1712' }}>
                   {fmtDayLong(d)}
                 </div>
-                {isToday && <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ backgroundColor: '#DDE6CC', color: '#4A6332' }}>hoy</span>}
+                {isToday && <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ backgroundColor: '#DDE6CC', color: '#4A6332' }}>{t('cal.todayBadge')}</span>}
               </div>
               {dayShifts.length === 0 ? (
-                <div className="text-xs py-2" style={{ color: '#B8A888' }}>Sin turnos programados</div>
+                <div className="text-xs py-2" style={{ color: '#B8A888' }}>{t('cal.noShiftsScheduled')}</div>
               ) : (
                 <div className="space-y-1.5">
                   {dayShifts.map(s => (
@@ -693,6 +709,7 @@ export const WeekView = ({ cursor, setCursor, shifts, members, colonies, onSelec
 };
 
 export const MyShiftsView = ({ shifts, members, colonies, currentUser, currentRole, onSelectShift }) => {
+  const { t } = useTranslation();
   const memberById = Object.fromEntries(members.map(m => [m.userId, m]));
   const colonyById = Object.fromEntries(colonies.map(c => [c.id, c]));
 
@@ -705,10 +722,10 @@ export const MyShiftsView = ({ shifts, members, colonies, currentUser, currentRo
   return (
     <div className="space-y-6">
       <section>
-        <h3 className="font-serif text-lg mb-3" style={{ color: '#1A1712' }}>Mis próximos turnos</h3>
+        <h3 className="font-serif text-lg mb-3" style={{ color: '#1A1712' }}>{t('cal.mine.upcoming')}</h3>
         {mine.length === 0 ? (
-          <EmptyState icon={CalendarClock} title="No tienes turnos asignados"
-                      description={canClaim ? 'Apúntate a un turno libre más abajo.' : 'Espera a que un coordinador te asigne uno.'} />
+          <EmptyState icon={CalendarClock} title={t('cal.mine.empty')}
+                      description={canClaim ? t('cal.mine.emptyClaim') : t('cal.mine.emptyWait')} />
         ) : (
           <div className="space-y-1.5">
             {mine.map(s => (
@@ -722,7 +739,7 @@ export const MyShiftsView = ({ shifts, members, colonies, currentUser, currentRo
 
       {canClaim && open.length > 0 && (
         <section>
-          <h3 className="font-serif text-lg mb-3" style={{ color: '#1A1712' }}>Turnos libres</h3>
+          <h3 className="font-serif text-lg mb-3" style={{ color: '#1A1712' }}>{t('cal.mine.openShifts')}</h3>
           <div className="space-y-1.5">
             {open.map(s => (
               <ShiftRow key={s.id} shift={s} colony={colonyById[s.colonyId]}
@@ -735,7 +752,7 @@ export const MyShiftsView = ({ shifts, members, colonies, currentUser, currentRo
 
       {recent.length > 0 && (
         <section>
-          <h3 className="font-serif text-lg mb-3" style={{ color: '#1A1712' }}>Últimos completados</h3>
+          <h3 className="font-serif text-lg mb-3" style={{ color: '#1A1712' }}>{t('cal.mine.recentDone')}</h3>
           <div className="space-y-1.5">
             {recent.map(s => (
               <ShiftRow key={s.id} shift={s} colony={colonyById[s.colonyId]}
@@ -750,8 +767,11 @@ export const MyShiftsView = ({ shifts, members, colonies, currentUser, currentRo
 };
 
 export const TemplatesView = ({ templates, colonies, currentRole, onAdd, onEdit }) => {
+  const { t } = useTranslation();
   const byColony = {};
-  for (const t of templates) (byColony[t.colonyId] ||= []).push(t);
+  // OJO: usamos `tpl` para el loop, no `t` — colisiona con la función de
+  // traducción del hook.
+  for (const tpl of templates) (byColony[tpl.colonyId] ||= []).push(tpl);
   const canManage = can(currentRole, 'manage_shifts');
 
   return (
@@ -761,17 +781,17 @@ export const TemplatesView = ({ templates, colonies, currentRole, onAdd, onEdit 
           <button onClick={onAdd}
                   className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium"
                   style={{ backgroundColor: '#1F3A2F', color: '#F8F3E8' }}>
-            <Plus className="w-4 h-4" /> Nueva plantilla
+            <Plus className="w-4 h-4" /> {t('cal.newTemplate')}
           </button>
         </div>
       )}
       {templates.length === 0 ? (
-        <EmptyState icon={Repeat} title="Sin plantillas de turnos"
-                    description="Crea una plantilla para definir turnos recurrentes en una colonia."
+        <EmptyState icon={Repeat} title={t('cal.tpl.empty')}
+                    description={t('cal.tpl.emptyDesc')}
                     action={canManage ? <button onClick={onAdd}
                       className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium"
                       style={{ backgroundColor: '#1F3A2F', color: '#F8F3E8' }}>
-                      <Plus className="w-4 h-4" /> Crear primera plantilla
+                      <Plus className="w-4 h-4" /> {t('cal.tpl.createFirst')}
                     </button> : null} />
       ) : (
         <div className="space-y-5">
@@ -781,23 +801,25 @@ export const TemplatesView = ({ templates, colonies, currentRole, onAdd, onEdit 
                 <MapPin className="w-4 h-4" style={{ color: '#8A7A5C' }} />
                 <h3 className="font-serif text-base" style={{ color: '#1A1712' }}>{c.name}</h3>
                 <span className="text-[10px] uppercase tracking-wider" style={{ color: '#8A7A5C' }}>
-                  {byColony[c.id].length} {byColony[c.id].length === 1 ? 'plantilla' : 'plantillas'}
+                  {byColony[c.id].length} {t(byColony[c.id].length === 1 ? 'cal.tpl.countOne' : 'cal.tpl.countMany')}
                 </span>
               </div>
               <div className="space-y-1.5">
-                {byColony[c.id].map(t => {
-                  const task = SHIFT_TASKS[t.task];
+                {byColony[c.id].map(tpl => {
+                  const task = SHIFT_TASKS[tpl.task];
                   const Icon = task.icon;
-                  const daysStr = t.daysOfWeek.length === 7 ? 'Todos los días'
-                                : t.daysOfWeek.map(n => DAYS_OF_WEEK.find(d => d.n === n)?.short).join(' · ');
+                  const daysStr = tpl.daysOfWeek.length === 7
+                    ? t('cal.tpl.allDaysShort')
+                    : tpl.daysOfWeek.map(n => t(`day.${n}.short`)).join(' · ');
+                  const tplSlot = tpl.slot || slotFromTime(tpl.time);
                   return (
-                    <button key={t.id} onClick={() => canManage && onEdit(t)}
+                    <button key={tpl.id} onClick={() => canManage && onEdit(tpl)}
                             disabled={!canManage}
                             className="w-full flex items-center gap-3 p-3 rounded-xl text-left transition-colors"
                             style={{
                               backgroundColor: '#FDFAF3',
                               boxShadow: '0 0 0 1px #EADFC9',
-                              opacity: t.active ? 1 : 0.55,
+                              opacity: tpl.active ? 1 : 0.55,
                               cursor: canManage ? 'pointer' : 'default',
                             }}>
                       <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0"
@@ -806,11 +828,11 @@ export const TemplatesView = ({ templates, colonies, currentRole, onAdd, onEdit 
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-0.5">
-                          <span className="text-sm font-medium" style={{ color: '#1A1712' }}>{task.label}</span>
-                          {!t.active && <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ backgroundColor: '#F2EADB', color: '#8A7A5C' }}>inactiva</span>}
+                          <span className="text-sm font-medium" style={{ color: '#1A1712' }}>{t(`task.${tpl.task}.label`)}</span>
+                          {!tpl.active && <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ backgroundColor: '#F2EADB', color: '#8A7A5C' }}>{t('cal.tpl.inactive')}</span>}
                         </div>
                         <div className="text-xs flex items-center gap-2 flex-wrap" style={{ color: '#78706A' }}>
-                          <span className="font-medium">{SHIFT_SLOTS[t.slot || slotFromTime(t.time)]?.label || ''}</span>
+                          <span className="font-medium">{tplSlot ? t(`slot.${tplSlot}.label`) : ''}</span>
                           <span>· {daysStr}</span>
                         </div>
                       </div>
@@ -828,13 +850,14 @@ export const TemplatesView = ({ templates, colonies, currentRole, onAdd, onEdit 
 };
 
 export const DayListModal = ({ date, shifts, colonies, members, onSelectShift, onClose }) => {
+  const { t } = useTranslation();
   const colonyById = Object.fromEntries(colonies.map(c => [c.id, c]));
   const memberById = Object.fromEntries(members.map(m => [m.userId, m]));
   return (
     <div className="space-y-2">
       <div className="text-xs mb-3 capitalize" style={{ color: '#78706A' }}>{fmtDayLong(date)}</div>
       {shifts.length === 0 ? (
-        <div className="text-sm py-6 text-center" style={{ color: '#B8A888' }}>Sin turnos programados este día.</div>
+        <div className="text-sm py-6 text-center" style={{ color: '#B8A888' }}>{t('cal.dayNoShifts')}</div>
       ) : (
         shifts.map(s => (
           <ShiftRow key={s.id} shift={s} colony={colonyById[s.colonyId]}
@@ -849,6 +872,7 @@ export const DayListModal = ({ date, shifts, colonies, members, onSelectShift, o
 // Contenedor principal del calendario
 export const CalendarView = ({ templates, shifts, colonies, members, users, currentUser, currentRole,
                        onSelectShift, onAddTemplate, onEditTemplate, initialTab = 'month' }) => {
+  const { t } = useTranslation();
   const [tab, setTab] = useState(initialTab);
   const [cursor, setCursor] = useState(new Date());
   const [colonyFilter, setColonyFilter] = useState('all');
@@ -884,10 +908,10 @@ export const CalendarView = ({ templates, shifts, colonies, members, users, curr
   const allKnown = Object.values(Object.fromEntries([...userKeyed, ...memberKeyed]));
 
   const tabs = [
-    { key: 'month',     label: 'Mes',        icon: CalendarDays },
-    { key: 'week',      label: 'Semana',     icon: Calendar },
-    { key: 'mine',      label: 'Mis turnos', icon: UserCheck },
-    { key: 'templates', label: 'Plantillas', icon: Repeat },
+    { key: 'month',     labelKey: 'cal.tab.month',     icon: CalendarDays },
+    { key: 'week',      labelKey: 'cal.tab.week',      icon: Calendar },
+    { key: 'mine',      labelKey: 'cal.tab.mine',      icon: UserCheck },
+    { key: 'templates', labelKey: 'cal.tab.templates', icon: Repeat },
   ];
 
   const canManage = can(currentRole, 'manage_shifts');
@@ -897,27 +921,27 @@ export const CalendarView = ({ templates, shifts, colonies, members, users, curr
     <div>
       <div className="flex items-start justify-between flex-wrap gap-3 mb-4">
         <div>
-          <h1 className="font-serif text-3xl mb-1" style={{ color: '#1A1712' }}>Calendario</h1>
-          <p className="text-sm" style={{ color: '#78706A' }}>Turnos de voluntariado y cuidado de las colonias.</p>
+          <h1 className="font-serif text-3xl mb-1" style={{ color: '#1A1712' }}>{t('cal.title')}</h1>
+          <p className="text-sm" style={{ color: '#78706A' }}>{t('cal.subtitle')}</p>
         </div>
         {canManage && tab !== 'templates' && (
           <button onClick={onAddTemplate}
                   className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium"
                   style={{ backgroundColor: '#1F3A2F', color: '#F8F3E8' }}>
-            <Plus className="w-4 h-4" /> Nueva plantilla
+            <Plus className="w-4 h-4" /> {t('cal.newTemplate')}
           </button>
         )}
       </div>
 
       <div className="flex gap-1 mb-4 overflow-x-auto pb-1">
-        {tabs.map(({ key, label, icon: Icon }) => (
+        {tabs.map(({ key, labelKey, icon: Icon }) => (
           <button key={key} onClick={() => setTab(key)}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium whitespace-nowrap transition-colors"
                   style={{
                     backgroundColor: tab === key ? '#1F3A2F' : '#F2EADB',
                     color: tab === key ? '#F8F3E8' : '#4A433C',
                   }}>
-            <Icon className="w-4 h-4" /> {label}
+            <Icon className="w-4 h-4" /> {t(labelKey)}
           </button>
         ))}
       </div>
