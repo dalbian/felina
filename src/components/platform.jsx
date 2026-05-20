@@ -8,11 +8,13 @@ import {
 } from 'lucide-react';
 import { fmtRelative } from '../lib/dates.js';
 import { ROLES } from '../constants.js';
+import { useTranslation } from '../lib/i18n.jsx';
 import { OrgAvatar, UserAvatar, EmptyState } from './ui.jsx';
 import { inputStyle } from '../styles.jsx';
 
 export const PlatformView = ({ organizations, users, memberships, colonies, cats, events,
                         onCreateOrg, onDeleteOrg, onSuspendOrg, onEnterOrg, onEditOrg, onToggleSuperAdmin, onResetUserPassword, currentUserId, onLogout }) => {
+  const { t } = useTranslation();
   const [tab, setTab] = useState('orgs');
   const [orgSearch, setOrgSearch] = useState('');
   const [userSearch, setUserSearch] = useState('');
@@ -59,28 +61,27 @@ export const PlatformView = ({ organizations, users, memberships, colonies, cats
         <div className="relative flex items-start justify-between flex-wrap gap-4">
           <div>
             <div className="flex items-center gap-1.5 text-xs uppercase tracking-[0.18em] mb-2 opacity-80">
-              <Crown className="w-3 h-3" /> Superadministración
+              <Crown className="w-3 h-3" /> {t('platform.kicker')}
             </div>
-            <h1 className="font-serif text-4xl md:text-5xl mb-2">Plataforma</h1>
+            <h1 className="font-serif text-4xl md:text-5xl mb-2">{t('platform.title')}</h1>
             <p className="text-sm opacity-80 max-w-xl">
-              Gestión global de todas las organizaciones dadas de alta en la plataforma.
-              Desde aquí puedes crear, suspender, eliminar o auditar cualquier organización.
+              {t('platform.subtitle')}
             </p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <button onClick={onCreateOrg}
                     className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium"
                     style={{ backgroundColor: '#FDF4DE', color: '#8A6B1F' }}>
-              <Plus className="w-4 h-4" /> Nueva organización
+              <Plus className="w-4 h-4" /> {t('platform.newOrg')}
             </button>
             {/* Logout accesible en móvil cuando no hay sidebar. En escritorio
                 también aparece; el Sidebar sigue teniendo su propio logout. */}
             {onLogout && (
               <button onClick={onLogout}
-                      title="Cerrar sesión"
+                      title={t('layout.logout')}
                       className="inline-flex items-center gap-1.5 px-3 py-2.5 rounded-xl text-sm font-medium md:hidden"
                       style={{ backgroundColor: 'rgba(253,244,222,0.15)', color: '#FDF4DE', boxShadow: '0 0 0 1px rgba(253,244,222,0.35)' }}>
-                <LogOut className="w-4 h-4" /> Salir
+                <LogOut className="w-4 h-4" /> {t('platform.logout')}
               </button>
             )}
           </div>
@@ -88,10 +89,10 @@ export const PlatformView = ({ organizations, users, memberships, colonies, cats
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
-        {stat({ value: activeOrgs.length, label: 'Organizaciones', sub: suspendedOrgs.length > 0 ? `${suspendedOrgs.length} suspendidas` : 'todas activas' })}
-        {stat({ value: users.length, label: 'Usuarios', sub: `${users.filter(u => u.superAdmin).length} super admin` })}
-        {stat({ value: colonies.length, label: 'Colonias', color: '#2D4A3E' })}
-        {stat({ value: cats.length, label: 'Gatos totales', color: '#6B8E4E' })}
+        {stat({ value: activeOrgs.length, label: t('platform.stat.orgs'), sub: suspendedOrgs.length > 0 ? t('platform.stat.orgsSuspended', { n: suspendedOrgs.length }) : t('platform.stat.orgsAllActive') })}
+        {stat({ value: users.length, label: t('platform.stat.users'), sub: t('platform.stat.usersSuper', { n: users.filter(u => u.superAdmin).length }) })}
+        {stat({ value: colonies.length, label: t('platform.stat.colonies'), color: '#2D4A3E' })}
+        {stat({ value: cats.length, label: t('platform.stat.totalCats'), color: '#6B8E4E' })}
       </div>
 
       <div className="flex gap-2 border-b" style={{ borderColor: '#EADFC9' }}>
@@ -101,7 +102,7 @@ export const PlatformView = ({ organizations, users, memberships, colonies, cats
                   color: tab === 'orgs' ? '#1A1712' : '#8A7A5C',
                   borderBottom: tab === 'orgs' ? '2px solid #8A6B1F' : '2px solid transparent'
                 }}>
-          Organizaciones ({organizations.length})
+          {t('platform.tab.orgs', { n: organizations.length })}
         </button>
         <button onClick={() => setTab('users')}
                 className="px-4 py-2.5 text-sm font-medium -mb-px"
@@ -109,15 +110,15 @@ export const PlatformView = ({ organizations, users, memberships, colonies, cats
                   color: tab === 'users' ? '#1A1712' : '#8A7A5C',
                   borderBottom: tab === 'users' ? '2px solid #8A6B1F' : '2px solid transparent'
                 }}>
-          Usuarios ({users.length})
+          {t('platform.tab.users', { n: users.length })}
         </button>
       </div>
 
       {tab === 'orgs' && (
         <div className="space-y-3">
           {organizations.length === 0 ? (
-            <EmptyState icon={Building2} title="Sin organizaciones" description="Crea la primera organización para empezar."
-                        action={<button onClick={onCreateOrg} className="px-4 py-2 rounded-xl text-sm font-medium" style={{ backgroundColor: '#8A6B1F', color: '#FDF4DE' }}>Nueva organización</button>} />
+            <EmptyState icon={Building2} title={t('platform.orgs.empty')} description={t('platform.orgs.emptyDesc')}
+                        action={<button onClick={onCreateOrg} className="px-4 py-2 rounded-xl text-sm font-medium" style={{ backgroundColor: '#8A6B1F', color: '#FDF4DE' }}>{t('platform.newOrg')}</button>} />
           ) : (
             <>
               {/* Buscador de organizaciones */}
@@ -125,27 +126,27 @@ export const PlatformView = ({ organizations, users, memberships, colonies, cats
                 <div className="relative flex-1 min-w-[240px]">
                   <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: '#8A7A5C' }} />
                   <input type="text" value={orgSearch} onChange={e => setOrgSearch(e.target.value)}
-                         placeholder="Buscar por nombre, ciudad o email…"
+                         placeholder={t('platform.orgs.searchPh')}
                          className="w-full pl-9 pr-9 py-2 rounded-xl text-sm outline-none"
                          style={inputStyle} />
                   {orgSearch && (
                     <button onClick={() => setOrgSearch('')}
                             className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-[#F0E8D6]"
-                            title="Limpiar">
+                            title={t('platform.orgs.clearTitle')}>
                       <X className="w-3.5 h-3.5" style={{ color: '#8A7A5C' }} />
                     </button>
                   )}
                 </div>
                 <div className="text-xs" style={{ color: '#78706A' }}>
                   {filteredOrgs.length === organizations.length
-                    ? `${organizations.length} organización${organizations.length !== 1 ? 'es' : ''}`
-                    : `${filteredOrgs.length} de ${organizations.length}`}
+                    ? t(organizations.length === 1 ? 'platform.orgs.countOne' : 'platform.orgs.countMany', { n: organizations.length })
+                    : t('platform.orgs.countOf', { n: filteredOrgs.length, total: organizations.length })}
                 </div>
               </div>
 
               {filteredOrgs.length === 0 ? (
                 <div className="rounded-2xl p-8 text-center text-sm" style={{ backgroundColor: '#FDFAF3', color: '#78706A', boxShadow: '0 0 0 1px #EADFC9' }}>
-                  Ninguna organización coincide con "<strong>{orgSearch}</strong>".
+                  {t('platform.orgs.noResults', { q: orgSearch })}
                 </div>
               ) : filteredOrgs.map(org => {
                 const orgMems = memberships.filter(m => m.orgId === org.id);
@@ -173,22 +174,22 @@ export const PlatformView = ({ organizations, users, memberships, colonies, cats
             <div className="relative flex-1 min-w-[220px]">
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: '#8A7A5C' }} />
               <input type="text" value={userSearch} onChange={e => setUserSearch(e.target.value)}
-                     placeholder="Buscar por nombre o email…"
+                     placeholder={t('platform.users.searchPh')}
                      className="w-full pl-9 pr-9 py-2 rounded-xl text-sm outline-none"
                      style={inputStyle} />
               {userSearch && (
                 <button onClick={() => setUserSearch('')}
                         className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-[#F0E8D6]"
-                        title="Limpiar">
+                        title={t('platform.orgs.clearTitle')}>
                   <X className="w-3.5 h-3.5" style={{ color: '#8A7A5C' }} />
                 </button>
               )}
             </div>
             <select value={userOrgFilter} onChange={e => setUserOrgFilter(e.target.value)}
                     className="px-3 py-2 rounded-xl text-sm outline-none min-w-[180px]" style={inputStyle}>
-              <option value="all">Todas las organizaciones</option>
-              <option value="superadmin">Solo superadministradores</option>
-              <optgroup label="Filtrar por organización">
+              <option value="all">{t('platform.users.allOrgs')}</option>
+              <option value="superadmin">{t('platform.users.onlySuper')}</option>
+              <optgroup label={t('platform.users.filterByOrg')}>
                 {organizations.map(o => (
                   <option key={o.id} value={o.id}>{o.name}</option>
                 ))}
@@ -196,14 +197,14 @@ export const PlatformView = ({ organizations, users, memberships, colonies, cats
             </select>
             <div className="text-xs" style={{ color: '#78706A' }}>
               {filteredUsers.length === users.length
-                ? `${users.length} usuario${users.length !== 1 ? 's' : ''}`
-                : `${filteredUsers.length} de ${users.length}`}
+                ? t(users.length === 1 ? 'platform.users.countOne' : 'platform.users.countMany', { n: users.length })
+                : t('platform.orgs.countOf', { n: filteredUsers.length, total: users.length })}
             </div>
           </div>
 
           {filteredUsers.length === 0 ? (
             <div className="rounded-2xl p-8 text-center text-sm" style={{ backgroundColor: '#FDFAF3', color: '#78706A', boxShadow: '0 0 0 1px #EADFC9' }}>
-              Ningún usuario coincide con los filtros actuales.
+              {t('platform.users.noResults')}
             </div>
           ) : (
             <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: '#FDFAF3', boxShadow: '0 0 0 1px #EADFC9' }}>
@@ -226,7 +227,9 @@ export const PlatformView = ({ organizations, users, memberships, colonies, cats
                       <div className="font-medium text-sm truncate" style={{ color: '#1A1712' }}>{u.name}</div>
                       {u.email && <div className="text-xs truncate" style={{ color: '#78706A' }}>{u.email}</div>}
                       <div className="text-[10px] uppercase tracking-wider mt-1" style={{ color: '#8A7A5C' }}>
-                        {u.superAdmin ? 'Super administrador' : `${uMems.length} organización${uMems.length !== 1 ? 'es' : ''}`}
+                        {u.superAdmin
+                          ? t('platform.userRow.superAdmin')
+                          : t(uMems.length === 1 ? 'platform.userRow.orgsOne' : 'platform.userRow.orgsMany', { n: uMems.length })}
                       </div>
                     </div>
                     {/* En móvil los botones bajan a segunda fila. En escritorio se mantienen a la derecha. */}
@@ -235,7 +238,7 @@ export const PlatformView = ({ organizations, users, memberships, colonies, cats
                         <button onClick={() => onResetUserPassword(u)}
                                 className="text-xs px-3 py-1.5 rounded-lg font-medium whitespace-nowrap"
                                 style={{ backgroundColor: '#F2EADB', color: '#4A433C' }}>
-                          Resetear contraseña
+                          {t('platform.userRow.resetPwd')}
                         </button>
                       )}
                       <button onClick={() => onToggleSuperAdmin(u.id)}
@@ -245,7 +248,7 @@ export const PlatformView = ({ organizations, users, memberships, colonies, cats
                                 color: u.superAdmin ? '#8A6B1F' : '#4A433C',
                                 boxShadow: u.superAdmin ? '0 0 0 1px #E8D4A0' : 'none'
                               }}>
-                        {u.superAdmin ? 'Quitar superadmin' : 'Hacer superadmin'}
+                        {u.superAdmin ? t('platform.userRow.removeSuper') : t('platform.userRow.makeSuper')}
                       </button>
                     </div>
                   </div>
@@ -260,6 +263,7 @@ export const PlatformView = ({ organizations, users, memberships, colonies, cats
 };
 
 export const PlatformOrgRow = ({ org, memberCount, adminCount, colonyCount, catCount, onEnter, onEdit, onSuspend, onDelete }) => {
+  const { t } = useTranslation();
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
@@ -276,24 +280,26 @@ export const PlatformOrgRow = ({ org, memberCount, adminCount, colonyCount, catC
             <h3 className="font-serif text-xl" style={{ color: '#1A1712' }}>{org.name}</h3>
             {org.suspended && (
               <span className="text-[10px] uppercase tracking-widest px-2 py-0.5 rounded"
-                    style={{ backgroundColor: '#F5DDCE', color: '#B15A3A' }}>Suspendida</span>
+                    style={{ backgroundColor: '#F5DDCE', color: '#B15A3A' }}>{t('platform.orgRow.suspended')}</span>
             )}
           </div>
-          <p className="text-xs mt-0.5" style={{ color: '#78706A' }}>{org.city || 'Sin ciudad'}
+          <p className="text-xs mt-0.5" style={{ color: '#78706A' }}>{org.city || t('platform.orgRow.noCity')}
             {org.contactEmail && <span className="font-mono ml-2">· {org.contactEmail}</span>}
           </p>
           <div className="flex gap-4 mt-3 flex-wrap">
-            <Stat label="Miembros" value={memberCount} sub={adminCount === 0 ? '⚠ sin admin' : `${adminCount} admin`} warn={adminCount === 0} />
-            <Stat label="Colonias" value={colonyCount} />
-            <Stat label="Gatos" value={catCount} />
-            <Stat label="Creada" value={fmtRelative(org.createdAt)} small />
+            <Stat label={t('platform.orgRow.members')} value={memberCount}
+                  sub={adminCount === 0 ? t('platform.orgRow.noAdmin') : t('platform.orgRow.adminCount', { n: adminCount })}
+                  warn={adminCount === 0} />
+            <Stat label={t('platform.orgRow.colonies')} value={colonyCount} />
+            <Stat label={t('platform.orgRow.cats')} value={catCount} />
+            <Stat label={t('platform.orgRow.created')} value={fmtRelative(org.createdAt)} small />
           </div>
         </div>
         <div className="flex gap-2 items-start">
           <button onClick={onEnter}
                   className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium"
                   style={{ backgroundColor: '#1F3A2F', color: '#F5EDD8' }}>
-            Entrar <ChevronRight className="w-3.5 h-3.5" />
+            {t('platform.orgRow.enter')} <ChevronRight className="w-3.5 h-3.5" />
           </button>
           <div className="relative">
             <button onClick={() => setMenuOpen(v => !v)}
@@ -308,17 +314,19 @@ export const PlatformOrgRow = ({ org, memberCount, adminCount, colonyCount, catC
                      style={{ backgroundColor: '#FFFFFF', boxShadow: '0 8px 24px rgba(42,37,32,0.14), 0 0 0 1px #EADFC9' }}>
                   <button onClick={() => { onEdit(); setMenuOpen(false); }}
                           className="w-full text-left px-3 py-2 text-sm hover:bg-[#FDFAF3] flex items-center gap-2" style={{ color: '#1A1712' }}>
-                    <Edit3 className="w-3.5 h-3.5" /> Editar información
+                    <Edit3 className="w-3.5 h-3.5" /> {t('platform.orgRow.editInfo')}
                   </button>
                   <button onClick={() => { onSuspend(); setMenuOpen(false); }}
                           className="w-full text-left px-3 py-2 text-sm hover:bg-[#FDFAF3] flex items-center gap-2" style={{ color: '#1A1712' }}>
-                    {org.suspended ? <><Check className="w-3.5 h-3.5" /> Reactivar</> : <><AlertTriangle className="w-3.5 h-3.5" /> Suspender</>}
+                    {org.suspended
+                      ? <><Check className="w-3.5 h-3.5" /> {t('platform.orgRow.reactivate')}</>
+                      : <><AlertTriangle className="w-3.5 h-3.5" /> {t('platform.orgRow.suspend')}</>}
                   </button>
                   <div className="border-t my-1" style={{ borderColor: '#F0E8D6' }} />
                   <button onClick={() => { onDelete(); setMenuOpen(false); }}
                           className="w-full text-left px-3 py-2 text-sm hover:bg-[#FDFAF3] flex items-center gap-2"
                           style={{ color: '#B15A3A' }}>
-                    <Trash2 className="w-3.5 h-3.5" /> Eliminar permanentemente
+                    <Trash2 className="w-3.5 h-3.5" /> {t('platform.orgRow.delete')}
                   </button>
                 </div>
               </>
