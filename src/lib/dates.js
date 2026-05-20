@@ -11,6 +11,9 @@ export const setDateLocale = (lang) => {
   _isCa = lang === 'ca';
   _locale = _isCa ? 'ca-ES' : 'es-ES';
 };
+// Para componentes que necesitan llamar a toLocaleDateString con opciones
+// puntuales (rangos, formatos no cubiertos por los helpers fmt*).
+export const getDateLocale = () => _locale;
 
 // Date | timestamp → 'YYYY-MM-DD' (sin hora, local).
 export const ymd = (d) => {
