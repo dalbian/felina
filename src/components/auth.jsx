@@ -28,39 +28,43 @@ export const PrototypeBanner = () => {
 // Tras la migración a backend real, lo que se le explica al usuario cambia:
 // los datos ya viven en servidor europeo (Supabase, Frankfurt/Dublin) y se
 // comparten con quien la organización autorice.
-export const RgpdGate = ({ userName, onAccept }) => (
-  <div className="fixed inset-0 z-[70] flex items-end md:items-center justify-center p-0 md:p-4"
-       style={{ backgroundColor: 'rgba(26,23,18,0.55)' }}>
-    <div className="w-full max-w-md max-h-[92vh] overflow-y-auto rounded-t-3xl md:rounded-3xl p-6"
-         style={{ backgroundColor: '#FDFAF3' }}>
-      <div className="w-12 h-12 rounded-full flex items-center justify-center mb-4"
-           style={{ backgroundColor: '#FDF4DE' }}>
-        <Shield className="w-6 h-6" style={{ color: '#8A6B1F' }} />
+export const RgpdGate = ({ userName, onAccept }) => {
+  const { t } = useTranslation();
+  const firstName = userName ? userName.split(' ')[0] : null;
+  return (
+    <div className="fixed inset-0 z-[70] flex items-end md:items-center justify-center p-0 md:p-4"
+         style={{ backgroundColor: 'rgba(26,23,18,0.55)' }}>
+      <div className="w-full max-w-md max-h-[92vh] overflow-y-auto rounded-t-3xl md:rounded-3xl p-6"
+           style={{ backgroundColor: '#FDFAF3' }}>
+        <div className="w-12 h-12 rounded-full flex items-center justify-center mb-4"
+             style={{ backgroundColor: '#FDF4DE' }}>
+          <Shield className="w-6 h-6" style={{ color: '#8A6B1F' }} />
+        </div>
+        <h2 className="font-serif text-2xl mb-2" style={{ color: '#1A1712' }}>
+          {firstName ? t('rgpd.welcomeName', { name: firstName }) : t('rgpd.welcome')}
+        </h2>
+        <p className="text-sm mb-4" style={{ color: '#6B635A' }}>
+          {t('rgpd.intro')}
+        </p>
+        <ul className="space-y-3 mb-5 text-sm" style={{ color: '#4A433C' }}>
+          <li className="flex gap-2">
+            <Shield className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: '#4A6332' }} />
+            <span><strong>{t('rgpd.dataTitle')}</strong> {t('rgpd.dataBody')}</span>
+          </li>
+          <li className="flex gap-2">
+            <Heart className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: '#C67B5C' }} />
+            <span><strong>{t('rgpd.betaTitle')}</strong> {t('rgpd.betaBody')}</span>
+          </li>
+        </ul>
+        <button onClick={onAccept}
+                className="w-full py-2.5 rounded-xl text-sm font-medium"
+                style={{ backgroundColor: '#1F3A2F', color: '#F8F3E8' }}>
+          {t('rgpd.accept')}
+        </button>
       </div>
-      <h2 className="font-serif text-2xl mb-2" style={{ color: '#1A1712' }}>
-        Bienvenido/a{userName ? `, ${userName.split(' ')[0]}` : ''}
-      </h2>
-      <p className="text-sm mb-4" style={{ color: '#6B635A' }}>
-        Antes de empezar, dos cosas que conviene tener claras:
-      </p>
-      <ul className="space-y-3 mb-5 text-sm" style={{ color: '#4A433C' }}>
-        <li className="flex gap-2">
-          <Shield className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: '#4A6332' }} />
-          <span><strong>Tus datos están a salvo.</strong> Se guardan en un servidor europeo (Frankfurt/Dublín) en cumplimiento del RGPD. Solo las personas que tu organización autorice pueden verlos.</span>
-        </li>
-        <li className="flex gap-2">
-          <Heart className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: '#C67B5C' }} />
-          <span><strong>Es una versión inicial.</strong> Si algo se ve raro o se atasca, avísanos — el feedback es lo que la hará mejor.</span>
-        </li>
-      </ul>
-      <button onClick={onAccept}
-              className="w-full py-2.5 rounded-xl text-sm font-medium"
-              style={{ backgroundColor: '#1F3A2F', color: '#F8F3E8' }}>
-        Entendido, empezar a usar Felina
-      </button>
     </div>
-  </div>
-);
+  );
+};
 
 export const LoginScreen = ({ onLogin, onForgotPassword }) => {
   const { t } = useTranslation();
@@ -144,21 +148,21 @@ export const LoginScreen = ({ onLogin, onForgotPassword }) => {
             <button type="button" onClick={() => setHintOpen(v => !v)}
                     className="w-full flex items-center justify-between text-left">
               <span className="text-xs font-medium" style={{ color: '#8A6B1F' }}>
-                ¿Probando el prototipo? Ver credenciales de demostración
+                {t('login.demo.toggle')}
               </span>
               <ChevronRight className="w-4 h-4 flex-shrink-0 transition-transform"
                             style={{ color: '#8A6B1F', transform: hintOpen ? 'rotate(90deg)' : 'none' }} />
             </button>
             {hintOpen && (
               <div className="mt-3 pt-3 border-t text-xs space-y-1.5" style={{ borderColor: '#E8D4A0', color: '#4A433C' }}>
-                <div>Contraseña común: <code className="px-1.5 py-0.5 rounded" style={{ backgroundColor: '#FDFAF3' }}>demo1234</code></div>
+                <div>{t('login.demo.commonPwd')} <code className="px-1.5 py-0.5 rounded" style={{ backgroundColor: '#FDFAF3' }}>demo1234</code></div>
                 <div className="pt-1.5 space-y-0.5">
-                  <div><code style={{ color: '#8A6B1F' }}>aina@felina.app</code> · Superadmin</div>
-                  <div><code>marta@gatsdelbarri.org</code> · Admin de org</div>
-                  <div><code>jordi@gatsdelbarri.org</code> · Coordinador</div>
-                  <div><code>laia@gatsdelbarri.org</code> · Voluntaria</div>
-                  <div><code>p.vila@clinicagracia.cat</code> · Veterinario</div>
-                  <div><code>anna@felinsmaresme.cat</code> · Admin 2ª org</div>
+                  <div><code style={{ color: '#8A6B1F' }}>aina@felina.app</code> · {t('login.demo.aina')}</div>
+                  <div><code>marta@gatsdelbarri.org</code> · {t('login.demo.marta')}</div>
+                  <div><code>jordi@gatsdelbarri.org</code> · {t('login.demo.jordi')}</div>
+                  <div><code>laia@gatsdelbarri.org</code> · {t('login.demo.laia')}</div>
+                  <div><code>p.vila@clinicagracia.cat</code> · {t('login.demo.pvila')}</div>
+                  <div><code>anna@felinsmaresme.cat</code> · {t('login.demo.anna')}</div>
                 </div>
               </div>
             )}
@@ -170,16 +174,17 @@ export const LoginScreen = ({ onLogin, onForgotPassword }) => {
 };
 
 export const ChangePasswordForm = ({ onSave, onCancel }) => {
+  const { t } = useTranslation();
   const [form, setForm] = useState({ current: '', next: '', confirm: '' });
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
   const submit = async () => {
     if (busy) return;
-    if (!form.current) { setError('Introduce tu contraseña actual.'); return; }
+    if (!form.current) { setError(t('changePwd.errMissingCurrent')); return; }
     const pwErr = validatePassword(form.next, form.confirm);
     if (pwErr) { setError(pwErr); return; }
-    if (form.current === form.next) { setError('La nueva contraseña debe ser distinta de la actual.'); return; }
+    if (form.current === form.next) { setError(t('changePwd.errSamePwd')); return; }
     setBusy(true);
     const result = await onSave({ current: form.current, next: form.next });
     setBusy(false);
@@ -189,22 +194,22 @@ export const ChangePasswordForm = ({ onSave, onCancel }) => {
   return (
     <div className="space-y-4">
       <p className="text-xs" style={{ color: '#78706A' }}>
-        Tu nueva contraseña reemplazará la actual la próxima vez que inicies sesión.
+        {t('changePwd.intro')}
       </p>
       <div>
-        <label className="block text-xs font-medium mb-1" style={labelStyle}>Contraseña actual *</label>
+        <label className="block text-xs font-medium mb-1" style={labelStyle}>{t('changePwd.currentLabel')}</label>
         <input type="password" autoComplete="current-password" value={form.current}
                onChange={e => { setForm({ ...form, current: e.target.value }); setError(''); }}
                className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} placeholder="••••••••" />
       </div>
       <div>
-        <label className="block text-xs font-medium mb-1" style={labelStyle}>Nueva contraseña * <span style={{ color: '#8A7A5C' }}>(mín. {PASSWORD_MIN})</span></label>
+        <label className="block text-xs font-medium mb-1" style={labelStyle}>{t('changePwd.newLabel')} <span style={{ color: '#8A7A5C' }}>{t('changePwd.newHint', { min: PASSWORD_MIN })}</span></label>
         <input type="password" autoComplete="new-password" value={form.next}
                onChange={e => { setForm({ ...form, next: e.target.value }); setError(''); }}
                className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} placeholder="••••••••" />
       </div>
       <div>
-        <label className="block text-xs font-medium mb-1" style={labelStyle}>Confirmar nueva contraseña *</label>
+        <label className="block text-xs font-medium mb-1" style={labelStyle}>{t('changePwd.confirmLabel')}</label>
         <input type="password" autoComplete="new-password" value={form.confirm}
                onChange={e => { setForm({ ...form, confirm: e.target.value }); setError(''); }}
                className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} placeholder="••••••••" />
@@ -216,11 +221,11 @@ export const ChangePasswordForm = ({ onSave, onCancel }) => {
       )}
       <div className="flex gap-2 pt-2">
         <button type="button" onClick={onCancel} className="flex-1 py-2.5 rounded-xl text-sm font-medium"
-                style={{ backgroundColor: '#F2EADB', color: '#4A433C' }}>Cancelar</button>
+                style={{ backgroundColor: '#F2EADB', color: '#4A433C' }}>{t('common.cancel')}</button>
         <button type="button" onClick={submit} disabled={busy}
                 className="flex-1 py-2.5 rounded-xl text-sm font-medium disabled:opacity-50"
                 style={{ backgroundColor: '#1F3A2F', color: '#F8F3E8' }}>
-          {busy ? 'Guardando…' : 'Actualizar contraseña'}
+          {busy ? t('changePwd.saving') : t('changePwd.submit')}
         </button>
       </div>
     </div>
@@ -228,6 +233,7 @@ export const ChangePasswordForm = ({ onSave, onCancel }) => {
 };
 
 export const ResetPasswordForm = ({ targetName, onSave, onCancel }) => {
+  const { t } = useTranslation();
   const [form, setForm] = useState({ next: '', confirm: '' });
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -242,19 +248,24 @@ export const ResetPasswordForm = ({ targetName, onSave, onCancel }) => {
     if (result?.error) setError(result.error);
   };
 
+  // Para mantener el nombre destacado <strong> dentro del párrafo, partimos
+  // la frase por el marcador {name} de la cadena traducida.
+  const introTpl = t('resetPwd.intro');
+  const introParts = introTpl.split('{name}');
+
   return (
     <div className="space-y-4">
       <p className="text-xs rounded-lg p-3" style={{ color: '#78706A', backgroundColor: '#F2EADB' }}>
-        Vas a establecer una nueva contraseña para <strong>{targetName}</strong>. Compártesela de forma segura; podrá cambiarla al iniciar sesión.
+        {introParts[0]}<strong>{targetName}</strong>{introParts[1] ?? ''}
       </p>
       <div>
-        <label className="block text-xs font-medium mb-1" style={labelStyle}>Nueva contraseña * <span style={{ color: '#8A7A5C' }}>(mín. {PASSWORD_MIN})</span></label>
+        <label className="block text-xs font-medium mb-1" style={labelStyle}>{t('resetPwd.newLabel')} <span style={{ color: '#8A7A5C' }}>{t('resetPwd.newHint', { min: PASSWORD_MIN })}</span></label>
         <input type="password" autoComplete="new-password" value={form.next} autoFocus
                onChange={e => { setForm({ ...form, next: e.target.value }); setError(''); }}
                className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} placeholder="••••••••" />
       </div>
       <div>
-        <label className="block text-xs font-medium mb-1" style={labelStyle}>Confirmar contraseña *</label>
+        <label className="block text-xs font-medium mb-1" style={labelStyle}>{t('resetPwd.confirmLabel')}</label>
         <input type="password" autoComplete="new-password" value={form.confirm}
                onChange={e => { setForm({ ...form, confirm: e.target.value }); setError(''); }}
                className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} placeholder="••••••••" />
@@ -266,11 +277,11 @@ export const ResetPasswordForm = ({ targetName, onSave, onCancel }) => {
       )}
       <div className="flex gap-2 pt-2">
         <button type="button" onClick={onCancel} className="flex-1 py-2.5 rounded-xl text-sm font-medium"
-                style={{ backgroundColor: '#F2EADB', color: '#4A433C' }}>Cancelar</button>
+                style={{ backgroundColor: '#F2EADB', color: '#4A433C' }}>{t('common.cancel')}</button>
         <button type="button" onClick={submit} disabled={busy}
                 className="flex-1 py-2.5 rounded-xl text-sm font-medium disabled:opacity-50"
                 style={{ backgroundColor: '#1F3A2F', color: '#F8F3E8' }}>
-          {busy ? 'Guardando…' : 'Restablecer contraseña'}
+          {busy ? t('resetPwd.saving') : t('resetPwd.submit')}
         </button>
       </div>
     </div>
@@ -287,6 +298,7 @@ export const ResetPasswordForm = ({ targetName, onSave, onCancel }) => {
 // Recibe userEmail y orgName (opcional) para que la persona vea claramente
 // con qué cuenta y a qué org se está activando.
 export const SetPasswordScreen = ({ mode, userEmail, orgName, onSubmit, onLogout }) => {
+  const { t } = useTranslation();
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [error, setError] = useState('');
@@ -306,6 +318,10 @@ export const SetPasswordScreen = ({ mode, userEmail, orgName, onSubmit, onLogout
 
   const isInvite = mode === 'invite';
 
+  // Construimos el intro de invitación con orgName en negrita partiendo la cadena.
+  const inviteIntroTpl = orgName ? t('setPwd.inviteIntroOrg') : t('setPwd.inviteIntro');
+  const inviteIntroParts = orgName ? inviteIntroTpl.split('{org}') : [inviteIntroTpl, ''];
+
   return (
     <div className="min-h-screen flex items-center justify-center p-5" style={{ backgroundColor: '#F8F3E8' }}>
       <div className="w-full max-w-md">
@@ -315,16 +331,20 @@ export const SetPasswordScreen = ({ mode, userEmail, orgName, onSubmit, onLogout
           </div>
           <div>
             <div className="font-serif text-2xl leading-none" style={{ color: '#1A1712' }}>Felina</div>
-            <div className="text-[10px] uppercase tracking-widest" style={{ color: '#8A7A5C' }}>gestión CER</div>
+            <div className="text-[10px] uppercase tracking-widest" style={{ color: '#8A7A5C' }}>{t('common.brandTag')}</div>
           </div>
         </div>
         <h1 className="font-serif text-4xl mb-2" style={{ color: '#1A1712' }}>
-          {isInvite ? <>Activa tu <span className="italic" style={{ color: '#C67B5C' }}>cuenta</span></> : <>Define tu <span className="italic" style={{ color: '#C67B5C' }}>nueva contraseña</span></>}
+          {isInvite
+            ? <>{t('setPwd.activateTitle')} <span className="italic" style={{ color: '#C67B5C' }}>{t('setPwd.activateTitleEm')}</span></>
+            : <>{t('setPwd.recoveryTitle')} <span className="italic" style={{ color: '#C67B5C' }}>{t('setPwd.recoveryTitleEm')}</span></>}
         </h1>
         <p className="text-sm mb-6" style={{ color: '#6B635A' }}>
           {isInvite
-            ? <>Te han invitado{orgName ? <> a <strong>{orgName}</strong></> : ''}. Para empezar a usar Felina, define una contraseña para tu cuenta.</>
-            : <>Introduce una contraseña nueva para volver a entrar en Felina.</>}
+            ? (orgName
+                ? <>{inviteIntroParts[0]}<strong>{orgName}</strong>{inviteIntroParts[1]}</>
+                : inviteIntroTpl)
+            : t('setPwd.recoveryIntro')}
         </p>
         <form onSubmit={submit} className="space-y-4 rounded-2xl p-5" style={{ backgroundColor: '#FDFAF3', boxShadow: '0 0 0 1px #EADFC9' }}>
           {userEmail && (
@@ -334,13 +354,13 @@ export const SetPasswordScreen = ({ mode, userEmail, orgName, onSubmit, onLogout
             </div>
           )}
           <div>
-            <label className="block text-xs font-medium mb-1" style={labelStyle}>Contraseña nueva * <span style={{ color: '#8A7A5C' }}>(mín. {PASSWORD_MIN})</span></label>
+            <label className="block text-xs font-medium mb-1" style={labelStyle}>{t('setPwd.newPwdLabel')} <span style={{ color: '#8A7A5C' }}>{t('setPwd.newPwdHint', { min: PASSWORD_MIN })}</span></label>
             <input type="password" autoComplete="new-password" autoFocus value={password}
                    onChange={e => { setPassword(e.target.value); setError(''); }}
                    className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} placeholder="••••••••" />
           </div>
           <div>
-            <label className="block text-xs font-medium mb-1" style={labelStyle}>Confirmar contraseña *</label>
+            <label className="block text-xs font-medium mb-1" style={labelStyle}>{t('setPwd.confirmLabel')}</label>
             <input type="password" autoComplete="new-password" value={confirm}
                    onChange={e => { setConfirm(e.target.value); setError(''); }}
                    className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} placeholder="••••••••" />
@@ -353,14 +373,14 @@ export const SetPasswordScreen = ({ mode, userEmail, orgName, onSubmit, onLogout
           <button type="submit" disabled={!password || !confirm || busy}
                   className="w-full py-2.5 rounded-xl text-sm font-medium disabled:opacity-50"
                   style={{ backgroundColor: '#1F3A2F', color: '#F8F3E8' }}>
-            {busy ? 'Guardando…' : (isInvite ? 'Activar cuenta y entrar' : 'Guardar y entrar')}
+            {busy ? t('setPwd.saving') : (isInvite ? t('setPwd.submitInvite') : t('setPwd.submitRecovery'))}
           </button>
         </form>
         {onLogout && (
           <button onClick={onLogout}
                   className="w-full mt-3 py-2 rounded-xl text-xs font-medium"
                   style={{ backgroundColor: 'transparent', color: '#8A7A5C' }}>
-            Cancelar y cerrar sesión
+            {t('setPwd.cancelLogout')}
           </button>
         )}
       </div>

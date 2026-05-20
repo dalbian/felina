@@ -10,26 +10,28 @@ import { isValidEmail, normalizeEmail } from '../lib/auth.js';
 import { ROLES } from '../constants.js';
 import { OrgAvatar, UserAvatar, RoleBadge, Modal } from './ui.jsx';
 import { inputStyle, labelStyle } from '../styles.jsx';
+import { useTranslation } from '../lib/i18n.jsx';
 
 export const SettingsView = ({ currentOrg, currentUser, currentRole, members, onEditOrg, onAddMember, onRemoveMember, onChangeRole, onResetMemberPassword, onChangeMyPassword, onLogout, onLeaveOrg, onDeleteOrg, onResetData }) => {
+  const { t } = useTranslation();
   const [inviteOpen, setInviteOpen] = useState(false);
   const canManage = currentRole === 'admin';
 
   return (
     <div className="space-y-8">
       <div>
-        <div className="text-xs uppercase tracking-[0.18em] mb-2" style={{ color: '#8A7A5C' }}>Configuración</div>
-        <h1 className="font-serif text-4xl md:text-5xl" style={{ color: '#1A1712' }}>Ajustes</h1>
+        <div className="text-xs uppercase tracking-[0.18em] mb-2" style={{ color: '#8A7A5C' }}>{t('settings.kicker')}</div>
+        <h1 className="font-serif text-4xl md:text-5xl" style={{ color: '#1A1712' }}>{t('settings.title')}</h1>
       </div>
 
       <div className="rounded-2xl p-6" style={{ backgroundColor: '#FDFAF3', boxShadow: '0 0 0 1px #EADFC9' }}>
         <div className="flex items-start gap-4">
           <OrgAvatar org={currentOrg} size={64} />
           <div className="flex-1 min-w-0">
-            <div className="text-xs uppercase tracking-widest mb-1" style={{ color: '#8A7A5C' }}>Organización</div>
+            <div className="text-xs uppercase tracking-widest mb-1" style={{ color: '#8A7A5C' }}>{t('settings.org.kicker')}</div>
             <h2 className="font-serif text-2xl leading-tight" style={{ color: '#1A1712' }}>{currentOrg.name}</h2>
             <div className="text-sm mt-1" style={{ color: '#78706A' }}>
-              {currentOrg.city || 'Sin ciudad'}
+              {currentOrg.city || t('settings.org.noCity')}
               {currentOrg.contactEmail && <span className="font-mono text-xs ml-2">· {currentOrg.contactEmail}</span>}
             </div>
           </div>
@@ -44,13 +46,17 @@ export const SettingsView = ({ currentOrg, currentUser, currentRole, members, on
       <div>
         <div className="flex items-end justify-between mb-4 flex-wrap gap-2">
           <div>
-            <h2 className="font-serif text-2xl" style={{ color: '#1A1712' }}>Miembros del equipo</h2>
-            <p className="text-sm mt-1" style={{ color: '#78706A' }}>{members.length} persona{members.length !== 1 ? 's' : ''}</p>
+            <h2 className="font-serif text-2xl" style={{ color: '#1A1712' }}>{t('settings.members.title')}</h2>
+            <p className="text-sm mt-1" style={{ color: '#78706A' }}>
+              {members.length === 1
+                ? t('settings.members.countOne', { n: members.length })
+                : t('settings.members.countMany', { n: members.length })}
+            </p>
           </div>
           {canManage && (
             <button onClick={() => setInviteOpen(true)} className="inline-flex items-center gap-1.5 text-sm font-medium px-3 py-2 rounded-lg"
                     style={{ backgroundColor: '#1F3A2F', color: '#F8F3E8' }}>
-              <UserPlus className="w-4 h-4" /> Invitar miembro
+              <UserPlus className="w-4 h-4" /> {t('settings.members.invite')}
             </button>
           )}
         </div>
@@ -68,21 +74,21 @@ export const SettingsView = ({ currentOrg, currentUser, currentRole, members, on
       </div>
 
       <div>
-        <h2 className="font-serif text-2xl mb-4" style={{ color: '#1A1712' }}>Roles y permisos</h2>
+        <h2 className="font-serif text-2xl mb-4" style={{ color: '#1A1712' }}>{t('settings.roles.title')}</h2>
         <div className="grid md:grid-cols-2 gap-3">
-          {Object.entries(ROLES).map(([key, val]) => (
+          {Object.keys(ROLES).map((key) => (
             <div key={key} className="rounded-xl p-4" style={{ backgroundColor: '#FDFAF3', boxShadow: '0 0 0 1px #EADFC9' }}>
               <div className="flex items-center gap-2 mb-2">
                 <RoleBadge role={key} />
               </div>
-              <p className="text-xs leading-relaxed" style={{ color: '#4A433C' }}>{val.description}</p>
+              <p className="text-xs leading-relaxed" style={{ color: '#4A433C' }}>{t(`role.${key}.description`)}</p>
             </div>
           ))}
         </div>
       </div>
 
       <div className="rounded-2xl p-5" style={{ backgroundColor: '#FDFAF3', boxShadow: '0 0 0 1px #EADFC9' }}>
-        <div className="text-xs uppercase tracking-widest mb-3" style={{ color: '#8A7A5C' }}>Sesión</div>
+        <div className="text-xs uppercase tracking-widest mb-3" style={{ color: '#8A7A5C' }}>{t('settings.session.kicker')}</div>
         <div className="flex items-center gap-3 mb-4">
           <UserAvatar name={currentUser.name} color={currentUser.color} size={44} />
           <div className="flex-1">
@@ -94,16 +100,16 @@ export const SettingsView = ({ currentOrg, currentUser, currentRole, members, on
         <div className="flex flex-wrap gap-2">
           <button onClick={onChangeMyPassword} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium"
                   style={{ backgroundColor: '#F2EADB', color: '#4A433C' }}>
-            <Shield className="w-4 h-4" /> Cambiar contraseña
+            <Shield className="w-4 h-4" /> {t('settings.session.changePwd')}
           </button>
           <button onClick={onLogout} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium"
                   style={{ backgroundColor: '#F2EADB', color: '#4A433C' }}>
-            <LogOut className="w-4 h-4" /> Cerrar sesión
+            <LogOut className="w-4 h-4" /> {t('settings.session.logout')}
           </button>
           {!canManage && (
             <button onClick={onLeaveOrg} className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium"
                     style={{ backgroundColor: 'transparent', color: '#B15A3A' }}>
-              Salir de esta organización
+              {t('settings.session.leaveOrg')}
             </button>
           )}
         </div>
@@ -111,31 +117,31 @@ export const SettingsView = ({ currentOrg, currentUser, currentRole, members, on
 
       {canManage && (
         <div className="rounded-2xl p-5" style={{ backgroundColor: '#FDFAF3', boxShadow: '0 0 0 1px #F5DDCE' }}>
-          <div className="text-xs uppercase tracking-widest mb-2" style={{ color: '#B15A3A' }}>Zona peligrosa</div>
+          <div className="text-xs uppercase tracking-widest mb-2" style={{ color: '#B15A3A' }}>{t('settings.danger.kicker')}</div>
           <p className="text-sm mb-3" style={{ color: '#4A433C' }}>
-            Eliminar la organización borra todas sus colonias, gatos, eventos y miembros. Esta acción no se puede deshacer.
+            {t('settings.danger.body')}
           </p>
           <button onClick={onDeleteOrg} className="text-sm font-medium hover:underline" style={{ color: '#B15A3A' }}>
-            Eliminar organización permanentemente
+            {t('settings.danger.delete')}
           </button>
         </div>
       )}
 
       <div className="rounded-2xl p-5" style={{ backgroundColor: '#FDF4DE', boxShadow: '0 0 0 1px #E8D4A0' }}>
         <div className="text-xs uppercase tracking-widest mb-2 flex items-center gap-1.5" style={{ color: '#8A6B1F' }}>
-          <AlertTriangle className="w-3 h-3" /> Modo de pruebas
+          <AlertTriangle className="w-3 h-3" /> {t('settings.demo.kicker')}
         </div>
         <p className="text-sm mb-3" style={{ color: '#4A433C' }}>
-          Restablece la aplicación a su estado inicial con los datos de demostración. Útil si quieres empezar de cero o si algo se ha roto en tus pruebas. Solo afecta a este dispositivo — no toca los datos de otras personas que estén probando Felina.
+          {t('settings.demo.body')}
         </p>
         <button onClick={onResetData}
                 className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium"
                 style={{ backgroundColor: '#FDFAF3', color: '#8A6B1F', boxShadow: '0 0 0 1px #E8D4A0' }}>
-          <RefreshCw className="w-4 h-4" /> Reiniciar datos de este navegador
+          <RefreshCw className="w-4 h-4" /> {t('settings.demo.reset')}
         </button>
       </div>
 
-      <Modal open={inviteOpen} onClose={() => setInviteOpen(false)} title="Invitar miembro">
+      <Modal open={inviteOpen} onClose={() => setInviteOpen(false)} title={t('invite.modalTitle')}>
         <InviteForm
           onSave={async (data) => {
             const result = await onAddMember(data);
@@ -149,6 +155,7 @@ export const SettingsView = ({ currentOrg, currentUser, currentRole, members, on
 };
 
 export const MemberRow = ({ member, isCurrentUser, canManage, onChangeRole, onRemove, onResetPassword, border }) => {
+  const { t } = useTranslation();
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
@@ -157,7 +164,7 @@ export const MemberRow = ({ member, isCurrentUser, canManage, onChangeRole, onRe
       <div className="flex-1 min-w-0">
         <div className="flex items-baseline gap-2">
           <span className="font-medium text-sm truncate" style={{ color: '#1A1712' }}>{member.name}</span>
-          {isCurrentUser && <span className="text-[10px] uppercase tracking-widest" style={{ color: '#8A7A5C' }}>tú</span>}
+          {isCurrentUser && <span className="text-[10px] uppercase tracking-widest" style={{ color: '#8A7A5C' }}>{t('memberRow.you')}</span>}
         </div>
         {member.email && <div className="text-xs truncate" style={{ color: '#78706A' }}>{member.email}</div>}
       </div>
@@ -172,22 +179,22 @@ export const MemberRow = ({ member, isCurrentUser, canManage, onChangeRole, onRe
               <div className="fixed inset-0 z-30" onClick={() => setMenuOpen(false)} />
               <div className="absolute right-0 top-full mt-1 z-40 rounded-xl py-1.5 min-w-[200px]"
                    style={{ backgroundColor: '#FFFFFF', boxShadow: '0 8px 24px rgba(42,37,32,0.14), 0 0 0 1px #EADFC9' }}>
-                <div className="px-3 py-1 text-[10px] uppercase tracking-widest" style={{ color: '#8A7A5C' }}>Cambiar rol</div>
-                {Object.entries(ROLES).map(([k, v]) => (
+                <div className="px-3 py-1 text-[10px] uppercase tracking-widest" style={{ color: '#8A7A5C' }}>{t('memberRow.changeRole')}</div>
+                {Object.keys(ROLES).map((k) => (
                   <button key={k} onClick={() => { onChangeRole(member.userId, k); setMenuOpen(false); }}
                           className="w-full text-left px-3 py-2 text-sm hover:bg-[#FDFAF3] flex items-center justify-between">
-                    <span style={{ color: '#1A1712' }}>{v.label}</span>
+                    <span style={{ color: '#1A1712' }}>{t(`role.${k}.label`)}</span>
                     {member.role === k && <Check className="w-3.5 h-3.5" style={{ color: '#6B8E4E' }} />}
                   </button>
                 ))}
                 <div className="border-t my-1" style={{ borderColor: '#F0E8D6' }} />
                 <button onClick={() => { onResetPassword(member); setMenuOpen(false); }}
                         className="w-full text-left px-3 py-2 text-sm hover:bg-[#FDFAF3]" style={{ color: '#1A1712' }}>
-                  Restablecer contraseña…
+                  {t('memberRow.resetPwd')}
                 </button>
                 <button onClick={() => { onRemove(member.userId); setMenuOpen(false); }}
                         className="w-full text-left px-3 py-2 text-sm hover:bg-[#FDFAF3]" style={{ color: '#B15A3A' }}>
-                  Expulsar del equipo
+                  {t('memberRow.expel')}
                 </button>
               </div>
             </>
@@ -199,6 +206,7 @@ export const MemberRow = ({ member, isCurrentUser, canManage, onChangeRole, onRe
 };
 
 export const InviteForm = ({ onSave, onCancel }) => {
+  const { t } = useTranslation();
   // El admin introduce email + rol. La Edge Function `invite-member` decide:
   //   - si la persona ya tiene cuenta en Felina → la añade directa y no
   //     manda email.
@@ -211,7 +219,7 @@ export const InviteForm = ({ onSave, onCancel }) => {
   const submit = async () => {
     if (busy) return;
     const email = normalizeEmail(form.email);
-    if (!email || !isValidEmail(email)) { setError('Introduce un email válido.'); return; }
+    if (!email || !isValidEmail(email)) { setError(t('invite.invalidEmail')); return; }
     setBusy(true);
     const result = await onSave({ email, role: form.role });
     setBusy(false);
@@ -221,16 +229,16 @@ export const InviteForm = ({ onSave, onCancel }) => {
   return (
     <div className="space-y-4">
       <p className="text-xs rounded-lg p-3" style={{ color: '#78706A', backgroundColor: '#F2EADB' }}>
-        Si la persona ya tiene cuenta en Felina, la añadimos directamente como miembro. Si no, recibirá un email con un enlace para activar su cuenta (puede tardar unos minutos en llegar y, las primeras veces, puede caer en spam).
+        {t('invite.body')}
       </p>
       <div>
-        <label className="block text-xs font-medium mb-1" style={labelStyle}>Email de la persona *</label>
+        <label className="block text-xs font-medium mb-1" style={labelStyle}>{t('invite.emailLabel')}</label>
         <input type="email" autoComplete="off" autoFocus value={form.email}
                onChange={e => { setForm({ ...form, email: e.target.value }); setError(''); }}
-               className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} placeholder="persona@ejemplo.org" />
+               className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} placeholder={t('invite.emailPh')} />
       </div>
       <div>
-        <label className="block text-xs font-medium mb-2" style={labelStyle}>Rol en la organización</label>
+        <label className="block text-xs font-medium mb-2" style={labelStyle}>{t('invite.roleLabel')}</label>
         <div className="space-y-2">
           {Object.entries(ROLES).map(([k, v]) => {
             const active = form.role === k;
@@ -242,10 +250,10 @@ export const InviteForm = ({ onSave, onCancel }) => {
                         boxShadow: active ? `0 0 0 2px ${v.color}` : '0 0 0 1px #EADFC9'
                       }}>
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="font-medium text-sm" style={{ color: active ? v.color : '#1A1712' }}>{v.label}</span>
+                  <span className="font-medium text-sm" style={{ color: active ? v.color : '#1A1712' }}>{t(`role.${k}.label`)}</span>
                   {active && <Check className="w-3.5 h-3.5" style={{ color: v.color }} />}
                 </div>
-                <div className="text-xs" style={{ color: active ? v.color : '#78706A' }}>{v.description}</div>
+                <div className="text-xs" style={{ color: active ? v.color : '#78706A' }}>{t(`role.${k}.description`)}</div>
               </button>
             );
           })}
@@ -258,11 +266,11 @@ export const InviteForm = ({ onSave, onCancel }) => {
       )}
       <div className="flex gap-2 pt-2">
         <button type="button" onClick={onCancel} className="flex-1 py-2.5 rounded-xl text-sm font-medium"
-                style={{ backgroundColor: '#F2EADB', color: '#4A433C' }}>Cancelar</button>
+                style={{ backgroundColor: '#F2EADB', color: '#4A433C' }}>{t('common.cancel')}</button>
         <button type="button" onClick={submit} disabled={busy}
                 className="flex-1 py-2.5 rounded-xl text-sm font-medium disabled:opacity-50"
                 style={{ backgroundColor: '#1F3A2F', color: '#F8F3E8' }}>
-          {busy ? 'Añadiendo…' : 'Añadir al equipo'}
+          {busy ? t('invite.adding') : t('invite.submit')}
         </button>
       </div>
     </div>
@@ -270,34 +278,35 @@ export const InviteForm = ({ onSave, onCancel }) => {
 };
 
 export const OrgForm = ({ org, onSave, onCancel }) => {
+  const { t } = useTranslation();
   const [form, setForm] = useState(org || { name: '', city: '', contactEmail: '' });
   const valid = form.name.trim();
   return (
     <div className="space-y-4">
       <div>
-        <label className="block text-xs font-medium mb-1" style={labelStyle}>Nombre de la organización *</label>
+        <label className="block text-xs font-medium mb-1" style={labelStyle}>{t('orgForm.nameLabel')}</label>
         <input type="text" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
                className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle}
-               placeholder="Associació Gats del Barri" />
+               placeholder={t('orgForm.namePh')} />
       </div>
       <div>
-        <label className="block text-xs font-medium mb-1" style={labelStyle}>Ciudad / municipio</label>
+        <label className="block text-xs font-medium mb-1" style={labelStyle}>{t('orgForm.cityLabel')}</label>
         <input type="text" value={form.city} onChange={e => setForm({ ...form, city: e.target.value })}
                className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle}
-               placeholder="Barcelona" />
+               placeholder={t('orgForm.cityPh')} />
       </div>
       <div>
-        <label className="block text-xs font-medium mb-1" style={labelStyle}>Email de contacto</label>
+        <label className="block text-xs font-medium mb-1" style={labelStyle}>{t('orgForm.emailLabel')}</label>
         <input type="email" value={form.contactEmail} onChange={e => setForm({ ...form, contactEmail: e.target.value })}
                className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle}
-               placeholder="info@ejemplo.org" />
+               placeholder={t('orgForm.emailPh')} />
       </div>
       <div className="flex gap-2 pt-2">
         <button onClick={onCancel} className="flex-1 py-2.5 rounded-xl text-sm font-medium"
-                style={{ backgroundColor: '#F2EADB', color: '#4A433C' }}>Cancelar</button>
+                style={{ backgroundColor: '#F2EADB', color: '#4A433C' }}>{t('common.cancel')}</button>
         <button onClick={() => valid && onSave(form)} disabled={!valid}
                 className="flex-1 py-2.5 rounded-xl text-sm font-medium disabled:opacity-50"
-                style={{ backgroundColor: '#1F3A2F', color: '#F8F3E8' }}>Guardar</button>
+                style={{ backgroundColor: '#1F3A2F', color: '#F8F3E8' }}>{t('common.save')}</button>
       </div>
     </div>
   );

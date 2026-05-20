@@ -390,6 +390,130 @@ const dict = {
     'reminderForm.saving': 'Guardando…',
     'reminderForm.save': 'Guardar recordatorio',
 
+    // ─── Confirm/Notify por defecto (ConfirmDialog en ui.jsx) ───
+    'confirm.accept': 'Aceptar',
+
+    // ─── Pantalla SetPasswordScreen ───
+    'setPwd.activateTitle': 'Activa tu',
+    'setPwd.activateTitleEm': 'cuenta',
+    'setPwd.recoveryTitle': 'Define tu',
+    'setPwd.recoveryTitleEm': 'nueva contraseña',
+    'setPwd.inviteIntro': 'Te han invitado. Para empezar a usar Felina, define una contraseña para tu cuenta.',
+    'setPwd.inviteIntroOrg': 'Te han invitado a {org}. Para empezar a usar Felina, define una contraseña para tu cuenta.',
+    'setPwd.recoveryIntro': 'Introduce una contraseña nueva para volver a entrar en Felina.',
+    'setPwd.newPwdLabel': 'Contraseña nueva *',
+    'setPwd.newPwdHint': '(mín. {min})',
+    'setPwd.confirmLabel': 'Confirmar contraseña *',
+    'setPwd.saving': 'Guardando…',
+    'setPwd.submitInvite': 'Activar cuenta y entrar',
+    'setPwd.submitRecovery': 'Guardar y entrar',
+    'setPwd.cancelLogout': 'Cancelar y cerrar sesión',
+
+    // ─── ChangePasswordForm (cambiar mi contraseña) ───
+    'changePwd.intro': 'Tu nueva contraseña reemplazará la actual la próxima vez que inicies sesión.',
+    'changePwd.currentLabel': 'Contraseña actual *',
+    'changePwd.newLabel': 'Nueva contraseña *',
+    'changePwd.newHint': '(mín. {min})',
+    'changePwd.confirmLabel': 'Confirmar nueva contraseña *',
+    'changePwd.errMissingCurrent': 'Introduce tu contraseña actual.',
+    'changePwd.errSamePwd': 'La nueva contraseña debe ser distinta de la actual.',
+    'changePwd.saving': 'Guardando…',
+    'changePwd.submit': 'Actualizar contraseña',
+
+    // ─── ResetPasswordForm (admin restablece a otra persona) ───
+    'resetPwd.intro': 'Vas a establecer una nueva contraseña para {name}. Compártesela de forma segura; podrá cambiarla al iniciar sesión.',
+    'resetPwd.newLabel': 'Nueva contraseña *',
+    'resetPwd.newHint': '(mín. {min})',
+    'resetPwd.confirmLabel': 'Confirmar contraseña *',
+    'resetPwd.saving': 'Guardando…',
+    'resetPwd.submit': 'Restablecer contraseña',
+
+    // ─── RgpdGate (aviso legal primer login) ───
+    'rgpd.welcome': 'Bienvenido/a',
+    'rgpd.welcomeName': 'Bienvenido/a, {name}',
+    'rgpd.intro': 'Antes de empezar, dos cosas que conviene tener claras:',
+    'rgpd.dataTitle': 'Tus datos están a salvo.',
+    'rgpd.dataBody': 'Se guardan en un servidor europeo (Frankfurt/Dublín) en cumplimiento del RGPD. Solo las personas que tu organización autorice pueden verlos.',
+    'rgpd.betaTitle': 'Es una versión inicial.',
+    'rgpd.betaBody': 'Si algo se ve raro o se atasca, avísanos — el feedback es lo que la hará mejor.',
+    'rgpd.accept': 'Entendido, empezar a usar Felina',
+
+    // ─── Bloque demo del LoginScreen ───
+    'login.demo.toggle': '¿Probando el prototipo? Ver credenciales de demostración',
+    'login.demo.commonPwd': 'Contraseña común:',
+    'login.demo.aina': 'Superadmin',
+    'login.demo.marta': 'Admin de org',
+    'login.demo.jordi': 'Coordinador',
+    'login.demo.laia': 'Voluntaria',
+    'login.demo.pvila': 'Veterinario',
+    'login.demo.anna': 'Admin 2ª org',
+
+    // ─── Vista Ajustes (settings) ───
+    'settings.kicker': 'Configuración',
+    'settings.title': 'Ajustes',
+    'settings.org.kicker': 'Organización',
+    'settings.org.noCity': 'Sin ciudad',
+    'settings.members.title': 'Miembros del equipo',
+    'settings.members.countOne': '{n} persona',
+    'settings.members.countMany': '{n} personas',
+    'settings.members.invite': 'Invitar miembro',
+    'settings.roles.title': 'Roles y permisos',
+    'settings.session.kicker': 'Sesión',
+    'settings.session.changePwd': 'Cambiar contraseña',
+    'settings.session.logout': 'Cerrar sesión',
+    'settings.session.leaveOrg': 'Salir de esta organización',
+    'settings.danger.kicker': 'Zona peligrosa',
+    'settings.danger.body': 'Eliminar la organización borra todas sus colonias, gatos, eventos y miembros. Esta acción no se puede deshacer.',
+    'settings.danger.delete': 'Eliminar organización permanentemente',
+    'settings.demo.kicker': 'Modo de pruebas',
+    'settings.demo.body': 'Restablece la aplicación a su estado inicial con los datos de demostración. Útil si quieres empezar de cero o si algo se ha roto en tus pruebas. Solo afecta a este dispositivo — no toca los datos de otras personas que estén probando Felina.',
+    'settings.demo.reset': 'Reiniciar datos de este navegador',
+
+    // ─── MemberRow (fila de miembro en ajustes) ───
+    'memberRow.you': 'tú',
+    'memberRow.changeRole': 'Cambiar rol',
+    'memberRow.resetPwd': 'Restablecer contraseña…',
+    'memberRow.expel': 'Expulsar del equipo',
+
+    // ─── Modal: Invitar miembro ───
+    'invite.modalTitle': 'Invitar miembro',
+    'invite.body': 'Si la persona ya tiene cuenta en Felina, la añadimos directamente como miembro. Si no, recibirá un email con un enlace para activar su cuenta (puede tardar unos minutos en llegar y, las primeras veces, puede caer en spam).',
+    'invite.emailLabel': 'Email de la persona *',
+    'invite.emailPh': 'persona@ejemplo.org',
+    'invite.invalidEmail': 'Introduce un email válido.',
+    'invite.roleLabel': 'Rol en la organización',
+    'invite.adding': 'Añadiendo…',
+    'invite.submit': 'Añadir al equipo',
+
+    // ─── OrgForm (crear/editar organización) ───
+    'orgForm.nameLabel': 'Nombre de la organización *',
+    'orgForm.namePh': 'Associació Gats del Barri',
+    'orgForm.cityLabel': 'Ciudad / municipio',
+    'orgForm.cityPh': 'Barcelona',
+    'orgForm.emailLabel': 'Email de contacto',
+    'orgForm.emailPh': 'info@ejemplo.org',
+
+    // ─── App.jsx: pantallas de estado y notify() ───
+    'app.noOrg.title': 'Hola',
+    'app.noOrg.titleName': 'Hola, {name}',
+    'app.noOrg.line1': 'Tu cuenta existe, pero todavía no perteneces a ninguna organización.',
+    'app.noOrg.line2': 'Pídele a la administración de tu protectora que te asigne acceso usando este email:',
+    'app.noOrg.logout': 'Cerrar sesión',
+
+    'app.suspended.title': 'Organización suspendida',
+    'app.suspended.body': '{org} está suspendida temporalmente. Contacta con la administración de la plataforma para reactivarla.',
+    'app.suspended.others': 'Otras organizaciones',
+    'app.suspended.logout': 'Cerrar sesión',
+
+    'app.notify.noPermTitle': 'Sin permiso',
+    'app.notify.noPermColony': 'Tu rol actual no permite añadir colonias.',
+    'app.notify.noPermCat': 'Tu rol actual no permite añadir fichas de gato.',
+    'app.notify.noPermGeneric': 'Tu rol actual no permite esta acción.',
+    'app.notify.noPermReminder': 'Tu rol actual no permite gestionar recordatorios.',
+    'app.notify.noPermShifts': 'Solo administración o coordinación puede gestionar plantillas de turnos.',
+    'app.notify.resetPwdTitle': 'Restablecer contraseña',
+    'app.notify.resetPwdBody': '{name} debe pulsar "He olvidado mi contraseña" en la pantalla de login para recibir un email de recuperación. Si necesitas hacerlo manualmente, contacta con la administración de la plataforma.',
+
     'login.brandTag': 'gestión CER',
     'login.welcome': 'Bienvenido/a',
     'login.welcomeEm': 'de vuelta',
@@ -800,6 +924,130 @@ const dict = {
     'reminderForm.notesPh': 'Indicacions, dosi, anotacions…',
     'reminderForm.saving': 'Desant…',
     'reminderForm.save': 'Desa el recordatori',
+
+    // ─── Confirm/Notify per defecte ───
+    'confirm.accept': 'D\'acord',
+
+    // ─── Pantalla SetPasswordScreen ───
+    'setPwd.activateTitle': 'Activa el teu',
+    'setPwd.activateTitleEm': 'compte',
+    'setPwd.recoveryTitle': 'Defineix la teva',
+    'setPwd.recoveryTitleEm': 'nova contrasenya',
+    'setPwd.inviteIntro': 'T\'han convidat. Per començar a fer servir Felina, defineix una contrasenya per al teu compte.',
+    'setPwd.inviteIntroOrg': 'T\'han convidat a {org}. Per començar a fer servir Felina, defineix una contrasenya per al teu compte.',
+    'setPwd.recoveryIntro': 'Introdueix una contrasenya nova per tornar a entrar a Felina.',
+    'setPwd.newPwdLabel': 'Contrasenya nova *',
+    'setPwd.newPwdHint': '(mín. {min})',
+    'setPwd.confirmLabel': 'Confirma la contrasenya *',
+    'setPwd.saving': 'Desant…',
+    'setPwd.submitInvite': 'Activa el compte i entra',
+    'setPwd.submitRecovery': 'Desa i entra',
+    'setPwd.cancelLogout': 'Cancel·la i tanca la sessió',
+
+    // ─── ChangePasswordForm ───
+    'changePwd.intro': 'La teva nova contrasenya reemplaçarà l\'actual la pròxima vegada que iniciïs sessió.',
+    'changePwd.currentLabel': 'Contrasenya actual *',
+    'changePwd.newLabel': 'Contrasenya nova *',
+    'changePwd.newHint': '(mín. {min})',
+    'changePwd.confirmLabel': 'Confirma la contrasenya nova *',
+    'changePwd.errMissingCurrent': 'Introdueix la teva contrasenya actual.',
+    'changePwd.errSamePwd': 'La nova contrasenya ha de ser diferent de l\'actual.',
+    'changePwd.saving': 'Desant…',
+    'changePwd.submit': 'Actualitza la contrasenya',
+
+    // ─── ResetPasswordForm ───
+    'resetPwd.intro': 'Establiràs una contrasenya nova per a {name}. Comparteix-la de manera segura; podrà canviar-la en iniciar sessió.',
+    'resetPwd.newLabel': 'Contrasenya nova *',
+    'resetPwd.newHint': '(mín. {min})',
+    'resetPwd.confirmLabel': 'Confirma la contrasenya *',
+    'resetPwd.saving': 'Desant…',
+    'resetPwd.submit': 'Restableix la contrasenya',
+
+    // ─── RgpdGate ───
+    'rgpd.welcome': 'Benvingut/da',
+    'rgpd.welcomeName': 'Benvingut/da, {name}',
+    'rgpd.intro': 'Abans de començar, dues coses que convé tenir clares:',
+    'rgpd.dataTitle': 'Les teves dades estan segures.',
+    'rgpd.dataBody': 'Es guarden en un servidor europeu (Frankfurt/Dublín) en compliment del RGPD. Només les persones que la teva organització autoritzi poden veure-les.',
+    'rgpd.betaTitle': 'És una versió inicial.',
+    'rgpd.betaBody': 'Si veus res estrany o s\'encalla, avisa\'ns — el feedback és el que la farà millor.',
+    'rgpd.accept': 'Entesos, comença a fer servir Felina',
+
+    // ─── Bloc demo del LoginScreen ───
+    'login.demo.toggle': 'Estàs provant el prototip? Mostra credencials de demostració',
+    'login.demo.commonPwd': 'Contrasenya comuna:',
+    'login.demo.aina': 'Superadmin',
+    'login.demo.marta': 'Admin d\'org',
+    'login.demo.jordi': 'Coordinador',
+    'login.demo.laia': 'Voluntària',
+    'login.demo.pvila': 'Veterinari',
+    'login.demo.anna': 'Admin 2a org',
+
+    // ─── Vista Configuració (settings) ───
+    'settings.kicker': 'Configuració',
+    'settings.title': 'Configuració',
+    'settings.org.kicker': 'Organització',
+    'settings.org.noCity': 'Sense ciutat',
+    'settings.members.title': 'Membres de l\'equip',
+    'settings.members.countOne': '{n} persona',
+    'settings.members.countMany': '{n} persones',
+    'settings.members.invite': 'Convida un membre',
+    'settings.roles.title': 'Rols i permisos',
+    'settings.session.kicker': 'Sessió',
+    'settings.session.changePwd': 'Canvia la contrasenya',
+    'settings.session.logout': 'Tanca la sessió',
+    'settings.session.leaveOrg': 'Surt d\'aquesta organització',
+    'settings.danger.kicker': 'Zona perillosa',
+    'settings.danger.body': 'Eliminar l\'organització esborra totes les seves colònies, gats, esdeveniments i membres. Aquesta acció no es pot desfer.',
+    'settings.danger.delete': 'Elimina l\'organització permanentment',
+    'settings.demo.kicker': 'Mode de proves',
+    'settings.demo.body': 'Restableix l\'aplicació al seu estat inicial amb les dades de demostració. Útil si vols començar de zero o si alguna cosa s\'ha trencat a les teves proves. Només afecta a aquest dispositiu — no toca les dades d\'altres persones que estiguin provant Felina.',
+    'settings.demo.reset': 'Reinicia les dades d\'aquest navegador',
+
+    // ─── MemberRow ───
+    'memberRow.you': 'tu',
+    'memberRow.changeRole': 'Canvia el rol',
+    'memberRow.resetPwd': 'Restableix la contrasenya…',
+    'memberRow.expel': 'Expulsa de l\'equip',
+
+    // ─── Modal: Convida membre ───
+    'invite.modalTitle': 'Convida un membre',
+    'invite.body': 'Si la persona ja té compte a Felina, l\'afegim directament com a membre. Si no, rebrà un correu amb un enllaç per activar el compte (pot trigar uns minuts a arribar i, els primers cops, pot caure a la safata de correu brossa).',
+    'invite.emailLabel': 'Correu de la persona *',
+    'invite.emailPh': 'persona@exemple.org',
+    'invite.invalidEmail': 'Introdueix un correu vàlid.',
+    'invite.roleLabel': 'Rol a l\'organització',
+    'invite.adding': 'Afegint…',
+    'invite.submit': 'Afegeix a l\'equip',
+
+    // ─── OrgForm ───
+    'orgForm.nameLabel': 'Nom de l\'organització *',
+    'orgForm.namePh': 'Associació Gats del Barri',
+    'orgForm.cityLabel': 'Ciutat / municipi',
+    'orgForm.cityPh': 'Barcelona',
+    'orgForm.emailLabel': 'Correu de contacte',
+    'orgForm.emailPh': 'info@exemple.org',
+
+    // ─── App.jsx: pantalles d\'estat i notify() ───
+    'app.noOrg.title': 'Hola',
+    'app.noOrg.titleName': 'Hola, {name}',
+    'app.noOrg.line1': 'El teu compte existeix, però encara no pertanys a cap organització.',
+    'app.noOrg.line2': 'Demana a l\'administració de la teva protectora que t\'assigni accés fent servir aquest correu:',
+    'app.noOrg.logout': 'Tanca la sessió',
+
+    'app.suspended.title': 'Organització suspesa',
+    'app.suspended.body': '{org} està suspesa temporalment. Contacta amb l\'administració de la plataforma per reactivar-la.',
+    'app.suspended.others': 'Altres organitzacions',
+    'app.suspended.logout': 'Tanca la sessió',
+
+    'app.notify.noPermTitle': 'Sense permís',
+    'app.notify.noPermColony': 'El teu rol actual no permet afegir colònies.',
+    'app.notify.noPermCat': 'El teu rol actual no permet afegir fitxes de gat.',
+    'app.notify.noPermGeneric': 'El teu rol actual no permet aquesta acció.',
+    'app.notify.noPermReminder': 'El teu rol actual no permet gestionar recordatoris.',
+    'app.notify.noPermShifts': 'Només l\'administració o coordinació poden gestionar plantilles de torns.',
+    'app.notify.resetPwdTitle': 'Restableix la contrasenya',
+    'app.notify.resetPwdBody': '{name} ha de prémer "He oblidat la contrasenya" a la pantalla d\'inici de sessió per rebre un correu de recuperació. Si necessites fer-ho manualment, contacta amb l\'administració de la plataforma.',
 
     'login.brandTag': 'gestió CER',
     'login.welcome': 'Benvingut/da',

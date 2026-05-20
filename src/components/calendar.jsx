@@ -450,12 +450,12 @@ export const CalendarFilters = ({ colonies, colonyFilter, setColonyFilter, taskF
   return (
     <div className="flex flex-wrap gap-2 mb-4">
       <select value={colonyFilter} onChange={e => setColonyFilter(e.target.value)}
-              className="px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle}>
+              className="pl-3 pr-9 py-2 rounded-lg text-sm outline-none" style={inputStyle}>
         <option value="all">{t('cal.allColonies')}</option>
         {colonies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
       </select>
       <select value={taskFilter} onChange={e => setTaskFilter(e.target.value)}
-              className="px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle}>
+              className="pl-3 pr-9 py-2 rounded-lg text-sm outline-none" style={inputStyle}>
         <option value="all">{t('cal.allTasks')}</option>
         {Object.entries(SHIFT_TASKS).map(([k]) => <option key={k} value={k}>{t(`task.${k}.label`)}</option>)}
       </select>
