@@ -27,6 +27,9 @@ Funcionalidad cubierta:
 - Colonias (con mapa), gatos (con foto y estado CER), eventos veterinarios.
 - Calendario de turnos recurrentes de voluntariado.
 - Recordatorios médicos por gato con avisos en el panel.
+- Interfaz bilingüe **catalán / castellano** con selector en login y sidebar,
+  preferencia persistida por dispositivo y detección automática del idioma del
+  navegador en el primer acceso.
 
 ## Stack
 
@@ -93,7 +96,7 @@ felina/
 │   ├── constants.js      # diccionarios de dominio (estados, roles, tareas)
 │   ├── hooks/
 │   │   └── useFelinaStore.js   # TODO el estado y la lógica de negocio
-│   ├── lib/              # helpers puros + cliente Supabase
+│   ├── lib/              # helpers puros + cliente Supabase + i18n.jsx
 │   └── components/       # vistas (dashboard, cats, calendar, …)
 └── supabase/
     ├── migrations/       # esquema SQL versionado (0001…0007)
