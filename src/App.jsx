@@ -6,6 +6,7 @@
 import { AlertTriangle, ChevronRight, Crown } from 'lucide-react';
 
 import { can } from './lib/permissions.js';
+import { useTranslation } from './lib/i18n.jsx';
 import { GlobalStyle } from './styles.jsx';
 import { OrgAvatar, ConfirmDialog } from './components/ui.jsx';
 import { useFelinaStore } from './hooks/useFelinaStore.js';
@@ -111,6 +112,7 @@ import { GlobalModals } from './components/modals.jsx';
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function App() {
+  const { t } = useTranslation();
   const {
     // UI state
     loading, session, rgpdAcknowledged,
@@ -150,7 +152,7 @@ export default function App() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#F8F3E8' }}>
-        <div className="font-serif italic text-xl" style={{ color: '#8A7A5C' }}>Cargando…</div>
+        <div className="font-serif italic text-xl" style={{ color: '#8A7A5C' }}>{t('common.loading')}</div>
       </div>
     );
   }
@@ -307,20 +309,20 @@ export default function App() {
                  style={{ backgroundColor: '#FDF4DE', borderBottom: '1px solid #E8D4A0', color: '#8A6B1F' }}>
               <span className="flex items-center gap-1.5 min-w-0">
                 <Crown className="w-3.5 h-3.5 flex-shrink-0" />
-                <span className="hidden sm:inline">Estás viendo&nbsp;</span>
+                <span className="hidden sm:inline">{t('layout.adminBanner.viewing')}&nbsp;</span>
                 <strong className="truncate">{currentOrg.name}</strong>
-                <span className="hidden md:inline">&nbsp;como superadministrador</span>
+                <span className="hidden md:inline">&nbsp;{t('layout.adminBanner.as')}</span>
                 {orgSuspended && (
                   <span className="ml-1 px-2 py-0.5 rounded flex-shrink-0"
                         style={{ backgroundColor: '#F5DDCE', color: '#B15A3A' }}>
-                    Suspendida
+                    {t('layout.adminBanner.suspended')}
                   </span>
                 )}
               </span>
               <button onClick={handleExitToPlatform}
                       className="font-medium hover:underline whitespace-nowrap flex-shrink-0">
-                <span className="sm:hidden">← Volver</span>
-                <span className="hidden sm:inline">← Volver a Plataforma</span>
+                <span className="sm:hidden">{t('layout.adminBanner.back')}</span>
+                <span className="hidden sm:inline">{t('layout.adminBanner.backLong')}</span>
               </button>
             </div>
           )}

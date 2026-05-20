@@ -8,9 +8,11 @@ import {
   Check, MoreHorizontal, LogOut,
 } from 'lucide-react';
 import { ROLES } from '../constants.js';
+import { useTranslation } from '../lib/i18n.jsx';
 import { OrgAvatar, UserAvatar } from './ui.jsx';
 
 export const OrgSwitcher = ({ currentOrg, userOrgs, currentRole, onSwitch, onCreateNew, isSuperAdmin, onExitToPlatform }) => {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
 
   return (
@@ -22,7 +24,7 @@ export const OrgSwitcher = ({ currentOrg, userOrgs, currentRole, onSwitch, onCre
           <div className="text-sm font-medium truncate" style={{ color: '#1A1712' }}>{currentOrg?.name || '—'}</div>
           <div className="text-[10px] uppercase tracking-wider mt-0.5 flex items-center gap-1" style={{ color: isSuperAdmin ? '#8A6B1F' : (ROLES[currentRole]?.color || '#8A7A5C') }}>
             {isSuperAdmin && <Crown className="w-2.5 h-2.5" />}
-            {isSuperAdmin ? 'Superadmin' : (ROLES[currentRole]?.label || '—')}
+            {isSuperAdmin ? t('layout.superAdminShort') : (currentRole ? t(`role.${currentRole}.label`) : '—')}
           </div>
         </div>
         <MoreHorizontal className="w-4 h-4 flex-shrink-0" style={{ color: '#8A7A5C' }} />
@@ -39,13 +41,13 @@ export const OrgSwitcher = ({ currentOrg, userOrgs, currentRole, onSwitch, onCre
                   <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#8A6B1F' }}>
                     <Crown className="w-3.5 h-3.5" style={{ color: '#FDF4DE' }} />
                   </div>
-                  <span className="text-sm font-medium" style={{ color: '#8A6B1F' }}>Volver a Plataforma</span>
+                  <span className="text-sm font-medium" style={{ color: '#8A6B1F' }}>{t('layout.backToPlatform')}</span>
                 </button>
                 <div className="border-t my-1" style={{ borderColor: '#F0E8D6' }} />
               </>
             )}
             <div className="px-3 py-1.5 text-[10px] uppercase tracking-widest" style={{ color: '#8A7A5C' }}>
-              {isSuperAdmin ? 'Todas las organizaciones' : 'Tus organizaciones'}
+              {isSuperAdmin ? t('layout.allOrgs') : t('layout.yourOrgs')}
             </div>
             {userOrgs.map(({ org, role }) => (
               <button key={org.id} onClick={() => { onSwitch(org.id); setOpen(false); }}
@@ -55,8 +57,8 @@ export const OrgSwitcher = ({ currentOrg, userOrgs, currentRole, onSwitch, onCre
                   <div className="text-sm truncate" style={{ color: '#1A1712' }}>{org.name}</div>
                   <div className="text-[10px] uppercase tracking-wider flex items-center gap-1" style={{ color: ROLES[role]?.color }}>
                     {role === 'admin' && isSuperAdmin && <Crown className="w-2.5 h-2.5" style={{ color: '#8A6B1F' }} />}
-                    {ROLES[role]?.short}
-                    {org.suspended && <span className="ml-1 text-[9px]" style={{ color: '#B15A3A' }}>· suspendida</span>}
+                    {t(`role.${role}.short`)}
+                    {org.suspended && <span className="ml-1 text-[9px]" style={{ color: '#B15A3A' }}>· {t('layout.suspended')}</span>}
                   </div>
                 </div>
                 {currentOrg?.id === org.id && <Check className="w-4 h-4 flex-shrink-0" style={{ color: '#6B8E4E' }} />}
@@ -69,21 +71,24 @@ export const OrgSwitcher = ({ currentOrg, userOrgs, currentRole, onSwitch, onCre
   );
 };
 
+// Estructura de items del menú. La etiqueta visible se resuelve con t(item.labelKey)
+// en el componente que renderiza, no aquí, para que getNav siga siendo puro.
 const getNav = ({ isSuperAdmin, hasOrg }) => {
   const items = [];
-  if (isSuperAdmin) items.push({ key: 'platform', label: 'Plataforma', icon: Crown });
+  if (isSuperAdmin) items.push({ key: 'platform', labelKey: 'nav.platform', icon: Crown });
   if (hasOrg) items.push(
-    { key: 'dashboard', label: 'Panel',      icon: Home },
-    { key: 'colonies',  label: 'Colonias',   icon: MapPin },
-    { key: 'map',       label: 'Mapa',       icon: Map },
-    { key: 'cats',      label: 'Gatos',      icon: PawPrint },
-    { key: 'calendar',  label: 'Calendario', icon: Calendar },
-    { key: 'settings',  label: 'Ajustes',    icon: Settings },
+    { key: 'dashboard', labelKey: 'nav.dashboard', icon: Home },
+    { key: 'colonies',  labelKey: 'nav.colonies',  icon: MapPin },
+    { key: 'map',       labelKey: 'nav.map',       icon: Map },
+    { key: 'cats',      labelKey: 'nav.cats',      icon: PawPrint },
+    { key: 'calendar',  labelKey: 'nav.calendar',  icon: Calendar },
+    { key: 'settings',  labelKey: 'nav.settings',  icon: Settings },
   );
   return items;
 };
 
 export const Sidebar = ({ view, onNav, currentOrg, userOrgs, currentRole, currentUser, onSwitchOrg, onCreateOrg, onLogout, isSuperAdmin }) => {
+  const { t } = useTranslation();
   const navItems = getNav({ isSuperAdmin, hasOrg: !!currentOrg });
   return (
     <aside className="hidden md:flex flex-col w-64 flex-shrink-0 py-6 px-4 sticky top-[28px] h-[calc(100vh-28px)]">
@@ -93,7 +98,7 @@ export const Sidebar = ({ view, onNav, currentOrg, userOrgs, currentRole, curren
         </div>
         <div>
           <div className="font-serif text-xl leading-none" style={{ color: '#1A1712' }}>Felina</div>
-          <div className="text-[9px] uppercase tracking-widest mt-0.5" style={{ color: '#8A7A5C' }}>gestión CER</div>
+          <div className="text-[9px] uppercase tracking-widest mt-0.5" style={{ color: '#8A7A5C' }}>{t('common.brandTag')}</div>
         </div>
       </div>
 
@@ -109,14 +114,14 @@ export const Sidebar = ({ view, onNav, currentOrg, userOrgs, currentRole, curren
             <Crown className="w-4 h-4" style={{ color: '#FDF4DE' }} />
           </div>
           <div className="flex-1 min-w-0 text-left">
-            <div className="text-sm font-medium" style={{ color: '#1A1712' }}>Plataforma</div>
-            <div className="text-[10px] uppercase tracking-wider" style={{ color: '#8A6B1F' }}>Super admin</div>
+            <div className="text-sm font-medium" style={{ color: '#1A1712' }}>{t('layout.platform')}</div>
+            <div className="text-[10px] uppercase tracking-wider" style={{ color: '#8A6B1F' }}>{t('layout.superAdminBadge')}</div>
           </div>
         </button>
       ) : null}
 
       <nav className="space-y-0.5 mt-6">
-        {navItems.map(({ key, label, icon: Icon }) => {
+        {navItems.map(({ key, labelKey, icon: Icon }) => {
           const active = view === key || (key === 'colonies' && view === 'colony') || (key === 'cats' && view === 'cat');
           return (
             <button key={key} onClick={() => onNav(key)}
@@ -125,7 +130,7 @@ export const Sidebar = ({ view, onNav, currentOrg, userOrgs, currentRole, curren
                       backgroundColor: active ? (key === 'platform' ? '#8A6B1F' : '#1F3A2F') : 'transparent',
                       color: active ? '#F5EDD8' : '#4A433C'
                     }}>
-              <Icon className="w-4 h-4" /> {label}
+              <Icon className="w-4 h-4" /> {t(labelKey)}
             </button>
           );
         })}
@@ -137,10 +142,10 @@ export const Sidebar = ({ view, onNav, currentOrg, userOrgs, currentRole, curren
           <div className="flex-1 min-w-0">
             <div className="text-xs font-medium truncate" style={{ color: '#1A1712' }}>{currentUser?.name}</div>
             <div className="text-[10px] uppercase tracking-wider" style={{ color: isSuperAdmin && !currentOrg ? '#8A6B1F' : (ROLES[currentRole]?.color || '#8A7A5C') }}>
-              {isSuperAdmin && !currentOrg ? 'Super admin' : (ROLES[currentRole]?.short || '—')}
+              {isSuperAdmin && !currentOrg ? t('layout.superAdminBadge') : (currentRole ? t(`role.${currentRole}.short`) : '—')}
             </div>
           </div>
-          <button onClick={onLogout} title="Cerrar sesión"
+          <button onClick={onLogout} title={t('layout.logout')}
                   className="p-1.5 rounded-lg hover:bg-[#E8DFCE]">
             <LogOut className="w-4 h-4" style={{ color: '#4A433C' }} />
           </button>
@@ -151,18 +156,19 @@ export const Sidebar = ({ view, onNav, currentOrg, userOrgs, currentRole, curren
 };
 
 export const BottomNav = ({ view, onNav, isSuperAdmin, hasOrg }) => {
+  const { t } = useTranslation();
   const navItems = getNav({ isSuperAdmin, hasOrg });
   if (navItems.length === 0) return null;
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 border-t grid"
          style={{ backgroundColor: '#FDFAF3', borderColor: '#EADFC9', gridTemplateColumns: `repeat(${navItems.length}, 1fr)` }}>
-      {navItems.map(({ key, label, icon: Icon }) => {
+      {navItems.map(({ key, labelKey, icon: Icon }) => {
         const active = view === key || (key === 'colonies' && view === 'colony') || (key === 'cats' && view === 'cat');
         return (
           <button key={key} onClick={() => onNav(key)}
                   className="flex flex-col items-center gap-1 py-2.5 text-[10px] font-medium"
                   style={{ color: active ? (key === 'platform' ? '#8A6B1F' : '#1F3A2F') : '#8A7A5C' }}>
-            <Icon className="w-5 h-5" /> {label}
+            <Icon className="w-5 h-5" /> {t(labelKey)}
           </button>
         );
       })}

@@ -37,9 +37,104 @@ const dict = {
   es: {
     'common.email': 'Email',
     'common.cancel': 'Cancelar',
+    'common.brandTag': 'gestión CER',
+    'common.loading': 'Cargando…',
 
     'banner.short': 'Versión inicial',
     'banner.long': ' · si encuentras algo raro, escríbenos',
+
+    // Navegación (sidebar y bottom nav)
+    'nav.platform': 'Plataforma',
+    'nav.dashboard': 'Panel',
+    'nav.colonies': 'Colonias',
+    'nav.map': 'Mapa',
+    'nav.cats': 'Gatos',
+    'nav.calendar': 'Calendario',
+    'nav.settings': 'Ajustes',
+
+    // Sidebar y selector de organización
+    'layout.platform': 'Plataforma',
+    'layout.superAdminBadge': 'Super admin',
+    'layout.superAdminShort': 'Superadmin',
+    'layout.backToPlatform': 'Volver a Plataforma',
+    'layout.allOrgs': 'Todas las organizaciones',
+    'layout.yourOrgs': 'Tus organizaciones',
+    'layout.suspended': 'suspendida',
+    'layout.logout': 'Cerrar sesión',
+    'layout.adminBanner.viewing': 'Estás viendo',
+    'layout.adminBanner.as': 'como superadministrador',
+    'layout.adminBanner.suspended': 'Suspendida',
+    'layout.adminBanner.back': '← Volver',
+    'layout.adminBanner.backLong': '← Volver a Plataforma',
+
+    // Roles
+    'role.admin.label': 'Administrador/a',
+    'role.admin.short': 'Admin',
+    'role.admin.description': 'Acceso total: gestiona organización, miembros y datos.',
+    'role.coordinator.label': 'Coordinador/a',
+    'role.coordinator.short': 'Coordinador',
+    'role.coordinator.description': 'Gestiona colonias, gatos e historial. No administra al equipo.',
+    'role.volunteer.label': 'Voluntario/a',
+    'role.volunteer.short': 'Voluntario',
+    'role.volunteer.description': 'Puede añadir gatos y eventos. No elimina registros.',
+    'role.vet.label': 'Veterinario/a',
+    'role.vet.short': 'Veterinario',
+    'role.vet.description': 'Solo lectura + registro de eventos veterinarios.',
+
+    // Estados CER
+    'cer.pendiente.label': 'Pendiente captura',
+    'cer.pendiente.short': 'Pendiente',
+    'cer.capturado.label': 'Capturado',
+    'cer.capturado.short': 'Capturado',
+    'cer.esterilizado.label': 'Esterilizado',
+    'cer.esterilizado.short': 'CER hecho',
+    'cer.en_colonia.label': 'En colonia',
+    'cer.en_colonia.short': 'En colonia',
+    'cer.en_acogida.label': 'En acogida',
+    'cer.en_acogida.short': 'Acogida',
+    'cer.adoptado.label': 'Adoptado',
+    'cer.adoptado.short': 'Adoptado',
+    'cer.fallecido.label': 'Fallecido',
+    'cer.fallecido.short': '✝',
+
+    // Tipos de evento veterinario
+    'event.esterilizacion.label': 'Esterilización',
+    'event.vacunacion.label': 'Vacunación',
+    'event.desparasitacion.label': 'Desparasitación',
+    'event.consulta.label': 'Consulta vet.',
+    'event.tratamiento.label': 'Tratamiento',
+
+    // Tareas de turno
+    'task.alimentacion.label': 'Alimentación',
+    'task.alimentacion.short': 'Comida',
+    'task.agua_limpieza.label': 'Agua y limpieza',
+    'task.agua_limpieza.short': 'Limpieza',
+    'task.observacion.label': 'Observación',
+    'task.observacion.short': 'Control',
+    'task.medicacion.label': 'Medicación',
+    'task.medicacion.short': 'Medic.',
+    'task.otros.label': 'Otros',
+    'task.otros.short': 'Otros',
+
+    // Franjas de turno
+    'slot.morning.label': 'Mañana',
+    'slot.morning.short': 'Mañana',
+    'slot.afternoon.label': 'Tarde',
+    'slot.afternoon.short': 'Tarde',
+
+    // Días de la semana (clave por número 0..6, domingo=0)
+    'day.0.label': 'Domingo', 'day.0.short': 'D',
+    'day.1.label': 'Lunes',   'day.1.short': 'L',
+    'day.2.label': 'Martes',  'day.2.short': 'M',
+    'day.3.label': 'Miércoles','day.3.short': 'X',
+    'day.4.label': 'Jueves',  'day.4.short': 'J',
+    'day.5.label': 'Viernes', 'day.5.short': 'V',
+    'day.6.label': 'Sábado',  'day.6.short': 'S',
+
+    // Sexo
+    'sex.H': 'Hembra',
+    'sex.M': 'Macho',
+    'sex.D': 'Desconocido',
 
     'login.brandTag': 'gestión CER',
     'login.welcome': 'Bienvenido/a',
@@ -99,9 +194,104 @@ const dict = {
   ca: {
     'common.email': 'Correu electrònic',
     'common.cancel': 'Cancel·la',
+    'common.brandTag': 'gestió CER',
+    'common.loading': 'Carregant…',
 
     'banner.short': 'Versió inicial',
     'banner.long': ' · si trobes res estrany, escriu-nos',
+
+    // Navegació
+    'nav.platform': 'Plataforma',
+    'nav.dashboard': 'Tauler',
+    'nav.colonies': 'Colònies',
+    'nav.map': 'Mapa',
+    'nav.cats': 'Gats',
+    'nav.calendar': 'Calendari',
+    'nav.settings': 'Configuració',
+
+    // Sidebar i selector d’organització
+    'layout.platform': 'Plataforma',
+    'layout.superAdminBadge': 'Super admin',
+    'layout.superAdminShort': 'Superadmin',
+    'layout.backToPlatform': 'Torna a la Plataforma',
+    'layout.allOrgs': 'Totes les organitzacions',
+    'layout.yourOrgs': 'Les teves organitzacions',
+    'layout.suspended': 'suspesa',
+    'layout.logout': 'Tanca la sessió',
+    'layout.adminBanner.viewing': 'Estàs veient',
+    'layout.adminBanner.as': 'com a superadministrador',
+    'layout.adminBanner.suspended': 'Suspesa',
+    'layout.adminBanner.back': '← Torna',
+    'layout.adminBanner.backLong': '← Torna a la Plataforma',
+
+    // Rols
+    'role.admin.label': 'Administrador/a',
+    'role.admin.short': 'Admin',
+    'role.admin.description': 'Accés total: gestiona l’organització, els membres i les dades.',
+    'role.coordinator.label': 'Coordinador/a',
+    'role.coordinator.short': 'Coordinador',
+    'role.coordinator.description': 'Gestiona colònies, gats i historial. No administra l’equip.',
+    'role.volunteer.label': 'Voluntari/ària',
+    'role.volunteer.short': 'Voluntari',
+    'role.volunteer.description': 'Pot afegir gats i esdeveniments. No elimina registres.',
+    'role.vet.label': 'Veterinari/ària',
+    'role.vet.short': 'Veterinari',
+    'role.vet.description': 'Només lectura + registre d’esdeveniments veterinaris.',
+
+    // Estats CER
+    'cer.pendiente.label': 'Pendent de captura',
+    'cer.pendiente.short': 'Pendent',
+    'cer.capturado.label': 'Capturat',
+    'cer.capturado.short': 'Capturat',
+    'cer.esterilizado.label': 'Esterilitzat',
+    'cer.esterilizado.short': 'CER fet',
+    'cer.en_colonia.label': 'A la colònia',
+    'cer.en_colonia.short': 'A la colònia',
+    'cer.en_acogida.label': 'En acollida',
+    'cer.en_acogida.short': 'Acollida',
+    'cer.adoptado.label': 'Adoptat',
+    'cer.adoptado.short': 'Adoptat',
+    'cer.fallecido.label': 'Mort',
+    'cer.fallecido.short': '✝',
+
+    // Tipus d’esdeveniment veterinari
+    'event.esterilizacion.label': 'Esterilització',
+    'event.vacunacion.label': 'Vacunació',
+    'event.desparasitacion.label': 'Desparasitació',
+    'event.consulta.label': 'Consulta vet.',
+    'event.tratamiento.label': 'Tractament',
+
+    // Tasques de torn
+    'task.alimentacion.label': 'Alimentació',
+    'task.alimentacion.short': 'Menjar',
+    'task.agua_limpieza.label': 'Aigua i neteja',
+    'task.agua_limpieza.short': 'Neteja',
+    'task.observacion.label': 'Observació',
+    'task.observacion.short': 'Control',
+    'task.medicacion.label': 'Medicació',
+    'task.medicacion.short': 'Medic.',
+    'task.otros.label': 'Altres',
+    'task.otros.short': 'Altres',
+
+    // Franges de torn
+    'slot.morning.label': 'Matí',
+    'slot.morning.short': 'Matí',
+    'slot.afternoon.label': 'Tarda',
+    'slot.afternoon.short': 'Tarda',
+
+    // Dies de la setmana (clau per número 0..6, diumenge=0)
+    'day.0.label': 'Diumenge', 'day.0.short': 'dg',
+    'day.1.label': 'Dilluns',  'day.1.short': 'dl',
+    'day.2.label': 'Dimarts',  'day.2.short': 'dt',
+    'day.3.label': 'Dimecres', 'day.3.short': 'dc',
+    'day.4.label': 'Dijous',   'day.4.short': 'dj',
+    'day.5.label': 'Divendres','day.5.short': 'dv',
+    'day.6.label': 'Dissabte', 'day.6.short': 'ds',
+
+    // Sexe
+    'sex.H': 'Femella',
+    'sex.M': 'Mascle',
+    'sex.D': 'Desconegut',
 
     'login.brandTag': 'gestió CER',
     'login.welcome': 'Benvingut/da',
