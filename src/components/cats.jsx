@@ -8,7 +8,7 @@ import {
   Bell, CheckCircle2, RotateCcw, AlertCircle,
 } from 'lucide-react';
 import { fmtDate, parseYmd, todayYmd } from '../lib/dates.js';
-import { CER_STATUS, SEX_OPTIONS, EVENT_TYPES } from '../constants.js';
+import { CER_STATUS, SEX_VALUES, EVENT_TYPES } from '../constants.js';
 import { CatAvatar, StatusBadge, FilterPill, EmptyState, Field } from './ui.jsx';
 import { inputStyle, labelStyle } from '../styles.jsx';
 import { useTranslation } from '../lib/i18n.jsx';
@@ -504,7 +504,7 @@ export const CatForm = ({ cat, colonies, onSave, onCancel, onError }) => {
               <label className="block text-xs font-medium mb-1" style={labelStyle}>{t('catForm.sexLabel')}</label>
               <select value={form.sex} onChange={e => setForm({ ...form, sex: e.target.value })}
                       className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle}>
-                {Object.keys(SEX_OPTIONS).map((k) => <option key={k} value={k}>{t(`sex.${k}`)}</option>)}
+                {SEX_VALUES.map((k) => <option key={k} value={k}>{t(`sex.${k}`)}</option>)}
               </select>
             </div>
             <div>

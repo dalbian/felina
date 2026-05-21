@@ -6,11 +6,12 @@ import { ymd, addDays } from './dates.js';
 // Franjas del día. Decisión de producto en fase piloto: la gente del pueblo no
 // necesita precisión de minutos — "Mañana" / "Tarde" basta. Si hace falta más
 // granularidad (mediodía, noche…) se amplía aquí.
-// El campo `icon` queda vacío: los componentes de presentación asocian el
-// icono correspondiente de lucide-react según el slot.
+// Solo metadatos no textuales (orden + color): las etiquetas visibles salen de
+// i18n (slot.morning / slot.afternoon). El icono lo añade constants.js
+// (SHIFT_SLOTS) para no acoplar este módulo puro a lucide-react/React.
 export const SHIFT_SLOT_META = {
-  morning:   { label: 'Mañana', short: 'Mañana', order: 0, color: '#8A6B1F', bg: '#FDF4DE' },
-  afternoon: { label: 'Tarde',  short: 'Tarde',  order: 1, color: '#B15A3A', bg: '#F5DDCE' },
+  morning:   { order: 0, color: '#8A6B1F', bg: '#FDF4DE' },
+  afternoon: { order: 1, color: '#B15A3A', bg: '#F5DDCE' },
 };
 
 // Convierte una hora "HH:MM" heredada al slot correspondiente. Corte a las 14:00.
