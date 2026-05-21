@@ -275,6 +275,11 @@ falla en producción):
   `https://www.gestiofelina.org`, `https://www.gestiofelina.org/**`,
   `https://felina-512.pages.dev`, `.../**`, `http://localhost:5173`, `.../**`
 
+**Supabase Auth → Email Templates** (plantillas de invitación y recuperación en
+catalán): los textos están versionados en **[docs/EMAILS-SUPABASE.md](EMAILS-SUPABASE.md)**.
+Se editan a mano en el dashboard (Authentication → Emails). Felina solo usa las
+plantillas *Invite user* y *Reset Password*.
+
 ## 9. Servicios externos y costes
 
 | Servicio | Para qué | Plan | Coste |
