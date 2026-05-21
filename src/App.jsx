@@ -3,6 +3,7 @@
 // modales globales. La lógica de negocio vive en hooks/useFelinaStore; los
 // componentes de vista en components/*; los helpers puros en lib/*.
 
+import { lazy, Suspense } from 'react';
 import { AlertTriangle, ChevronRight, Crown } from 'lucide-react';
 
 import { can } from './lib/permissions.js';
@@ -14,12 +15,16 @@ import { useFelinaStore } from './hooks/useFelinaStore.js';
 import { Dashboard } from './components/dashboard.jsx';
 import { ColoniesView, ColonyDetail } from './components/colonies.jsx';
 import { CatsView, CatDetail } from './components/cats.jsx';
-import { MapView } from './components/map.jsx';
 import { CalendarView } from './components/calendar.jsx';
 import { PrototypeBanner, RgpdGate, LoginScreen, SetPasswordScreen } from './components/auth.jsx';
 import { SettingsView } from './components/settings.jsx';
-import { PlatformView } from './components/platform.jsx';
 import { Sidebar, BottomNav } from './components/layout.jsx';
+
+// Vistas diferidas (code-splitting). Solo se descargan al navegar a ellas:
+//   - MapView: arrastra el componente del mapa (Leaflet ya va por CDN aparte).
+//   - PlatformView: solo la usa el super_admin, el resto nunca la descarga.
+const MapView = lazy(() => import('./components/map.jsx').then(m => ({ default: m.MapView })));
+const PlatformView = lazy(() => import('./components/platform.jsx').then(m => ({ default: m.PlatformView })));
 import { GlobalModals } from './components/modals.jsx';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -333,6 +338,11 @@ export default function App() {
             </div>
           )}
           <div className="max-w-6xl mx-auto px-5 md:px-8 py-8">
+            <Suspense fallback={
+              <div className="flex items-center justify-center py-20">
+                <div className="font-serif italic text-lg" style={{ color: '#8A7A5C' }}>{t('common.loading')}</div>
+              </div>
+            }>
             {view === 'platform' && isSuperAdmin && (
               <PlatformView organizations={organizations} users={users} memberships={memberships}
                             colonies={colonies} cats={cats} events={events}
@@ -431,6 +441,7 @@ export default function App() {
                             onDeleteOrg={handleDeleteOrg}
                             onResetData={handleResetData} />
             )}
+            </Suspense>
           </div>
         </main>
 
