@@ -52,9 +52,10 @@ src/
 │                            `view` y la rama de sesión (login / sin org /
 │                            org suspendida / set-password / app normal).
 │                            Cablea todos los modales globales.
-├── constants.js             Diccionarios de dominio con su presentación:
-│                            CER_STATUS, EVENT_TYPES, SHIFT_TASKS,
-│                            SHIFT_SLOTS, ROLES, DAYS_OF_WEEK, SEX_OPTIONS.
+├── constants.js             Diccionarios de dominio con su presentación VISUAL
+│                            (color/bg/icono): CER_STATUS, EVENT_TYPES,
+│                            SHIFT_TASKS, SHIFT_SLOTS, ROLES, DAYS_OF_WEEK,
+│                            SEX_VALUES. El texto va por i18n, no aquí.
 ├── hooks/
 │   └── useFelinaStore.js    EL núcleo. Estado (datos + UI), carga inicial,
 │                            listener de auth, y TODOS los handlers
@@ -274,6 +275,11 @@ falla en producción):
   `https://www.gestiofelina.org`, `https://www.gestiofelina.org/**`,
   `https://felina-512.pages.dev`, `.../**`, `http://localhost:5173`, `.../**`
 
+**Supabase Auth → Email Templates** (plantillas de invitación y recuperación en
+catalán): los textos están versionados en **[docs/EMAILS-SUPABASE.md](EMAILS-SUPABASE.md)**.
+Se editan a mano en el dashboard (Authentication → Emails). Felina solo usa las
+plantillas *Invite user* y *Reset Password*.
+
 ## 9. Servicios externos y costes
 
 | Servicio | Para qué | Plan | Coste |
@@ -434,12 +440,16 @@ Si añades **un idioma nuevo** (p.ej. gallego): añade `'gl'` al array `LANGS`,
 crea el bloque `gl:` con todas las claves, ajusta `detectInitialLang()` para
 detectarlo, y actualiza el control segmentado en `LanguageSwitcher`.
 
-### Dead code en `constants.js`
+### `constants.js` solo contiene presentación visual
 
-Los campos `.label`, `.short` y `.description` de `ROLES`, `CER_STATUS`,
-`EVENT_TYPES`, `SHIFT_TASKS`, `SHIFT_SLOTS` y `SEX_OPTIONS` **ya no se leen**
-desde ningún componente; las traducciones se resuelven por `t('cer.X.short')`,
-`t('role.X.label')`, etc. Lo que sí se sigue usando son los campos no textuales
-(`.color`, `.bg`, `.dot`, `.icon`). Se han mantenido los `.label/.short/.description`
-en castellano como referencia legible al recorrer el código; cuando estorben se
-pueden retirar de una pasada sin afectar a la UI.
+Tras la migración i18n, `constants.js` (y `SHIFT_SLOT_META` en `lib/shifts.js`)
+**ya no guardan texto**: los campos `.label`/`.short`/`.description` se eliminaron
+porque todas las etiquetas se resuelven por `t('cer.X.short')`, `t('role.X.label')`,
+`t('event.X.label')`, etc. Lo que queda son los campos no textuales que los
+componentes necesitan para pintar: `.color`, `.bg`, `.dot`, `.icon`, y `n` (índice
+de día en `DAYS_OF_WEEK`). `SEX_OPTIONS` (objeto con valores en castellano) se
+sustituyó por `SEX_VALUES = ['H','M','D']`.
+
+Regla para mantenerlo: si añades un estado/rol/tipo nuevo, pon aquí solo su
+color/icono y la etiqueta en los dos diccionarios (`es`/`ca`) de `i18n.jsx`. No
+vuelvas a meter texto en `constants.js`.

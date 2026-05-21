@@ -5,7 +5,7 @@ import { MapPin, AlertTriangle, ChevronRight, CalendarClock, Stethoscope, Bell }
 import { addDays, parseYmd, todayYmd, fmtDate, fmtShortDay } from '../lib/dates.js';
 import { fmtRelative } from '../lib/dates.js';
 import { computeShifts, isShiftPast as isShiftPastRaw } from '../lib/shifts.js';
-import { EVENT_TYPES, SHIFT_TASKS, SHIFT_SLOTS } from '../constants.js';
+import { EVENT_TYPES, SHIFT_TASKS } from '../constants.js';
 import { UserAvatar } from './ui.jsx';
 import { useTranslation } from '../lib/i18n.jsx';
 
@@ -169,7 +169,7 @@ export const Dashboard = ({ cats, colonies, events, reminders = [], templates, s
           <div className="space-y-1.5">
             {pendingReminders.map(r => {
               const cat = catsById[r.catId];
-              const type = EVENT_TYPES[r.type] || { label: 'Otro', icon: Bell, color: '#6B635A' };
+              const type = EVENT_TYPES[r.type] || { icon: Bell, color: '#6B635A' };
               const Icon = type.icon;
               const overdue = r.dueDate < today;
               const isToday = r.dueDate === today;

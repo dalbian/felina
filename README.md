@@ -82,6 +82,9 @@ datos local: trabajas contra datos reales. Cuidado con lo que borras.
   despliegue, y cómo retomar el proyecto tras meses sin tocarlo.
 - **[docs/GUIA-USUARIO.md](docs/GUIA-USUARIO.md)** — manual para las protectoras:
   roles, cómo gestionar colonias, gatos, turnos y recordatorios.
+- **[docs/EMAILS-SUPABASE.md](docs/EMAILS-SUPABASE.md)** — textos en catalán de los
+  emails de invitación y recuperación de contraseña, para configurar en el
+  dashboard de Supabase.
 
 ## Estructura rápida
 
