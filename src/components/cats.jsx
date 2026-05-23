@@ -125,6 +125,8 @@ export const CatDetail = ({
   const { t } = useTranslation();
   const [statusMenu, setStatusMenu] = useState(false);
   const [showCompletedReminders, setShowCompletedReminders] = useState(false);
+  // Pestaña activa de la zona inferior: recordatorios o historial veterinario.
+  const [detailTab, setDetailTab] = useState('reminders');
   const catEvents = events.filter(e => e.catId === cat.id).sort((a,b) => b.date - a.date);
   const status = CER_STATUS[cat.cerStatus] || CER_STATUS.pendiente;
   const statusLabel = t(`cer.${cat.cerStatus}.label`);
@@ -228,20 +230,50 @@ export const CatDetail = ({
         </div>
       </div>
 
-      {/* Sección de recordatorios: pendientes (vencidos primero) + completados colapsables */}
+      {/* Zona inferior en pestañas: recordatorios | historial veterinario.
+          Evita el scroll interminable cuando ambas listas son largas. */}
       <div>
-        <div className="flex items-end justify-between mb-4">
-          <h2 className="font-serif text-2xl inline-flex items-center gap-2" style={{ color: '#1A1712' }}>
-            <Bell className="w-5 h-5" style={{ color: '#B15A3A' }} /> {t('catDetail.reminders')}
-          </h2>
-          {canManageReminders && (
+        <div className="flex items-center justify-between gap-3 mb-5 flex-wrap">
+          <div className="flex gap-2">
+            <button onClick={() => setDetailTab('reminders')}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-colors"
+                    style={{
+                      backgroundColor: detailTab === 'reminders' ? '#1F3A2F' : '#FDFAF3',
+                      color: detailTab === 'reminders' ? '#F8F3E8' : '#4A433C',
+                      boxShadow: detailTab === 'reminders' ? 'none' : '0 0 0 1px #EADFC9',
+                    }}>
+              <Bell className="w-4 h-4" /> {t('catDetail.reminders')}
+              <span className="font-mono" style={{ opacity: 0.7 }}>{catReminders.length}</span>
+            </button>
+            <button onClick={() => setDetailTab('history')}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-colors"
+                    style={{
+                      backgroundColor: detailTab === 'history' ? '#1F3A2F' : '#FDFAF3',
+                      color: detailTab === 'history' ? '#F8F3E8' : '#4A433C',
+                      boxShadow: detailTab === 'history' ? 'none' : '0 0 0 1px #EADFC9',
+                    }}>
+              <Stethoscope className="w-4 h-4" /> {t('catDetail.history')}
+              <span className="font-mono" style={{ opacity: 0.7 }}>{catEvents.length}</span>
+            </button>
+          </div>
+          {detailTab === 'reminders' && canManageReminders && (
             <button onClick={onAddReminder}
                     className="inline-flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg"
                     style={{ backgroundColor: '#F2EADB', color: '#2D4A3E' }}>
               <Plus className="w-4 h-4" /> {t('catDetail.addReminder')}
             </button>
           )}
+          {detailTab === 'history' && canAddEvent && (
+            <button onClick={onAddEvent}
+                    className="inline-flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg"
+                    style={{ backgroundColor: '#F2EADB', color: '#2D4A3E' }}>
+              <Plus className="w-4 h-4" /> {t('catDetail.addEvent')}
+            </button>
+          )}
         </div>
+
+        {detailTab === 'reminders' && (
+        <div>
         {pendingReminders.length === 0 && completedReminders.length === 0 ? (
           <div className="rounded-xl p-4 text-sm text-center"
                style={{ backgroundColor: '#FDFAF3', color: '#78706A', boxShadow: '0 0 0 1px #EADFC9' }}>
@@ -370,18 +402,10 @@ export const CatDetail = ({
           </div>
         )}
       </div>
+        )}
 
-      <div>
-        <div className="flex items-end justify-between mb-4">
-          <h2 className="font-serif text-2xl" style={{ color: '#1A1712' }}>{t('catDetail.history')}</h2>
-          {canAddEvent && (
-            <button onClick={onAddEvent}
-                    className="inline-flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg"
-                    style={{ backgroundColor: '#F2EADB', color: '#2D4A3E' }}>
-              <Plus className="w-4 h-4" /> {t('catDetail.addEvent')}
-            </button>
-          )}
-        </div>
+        {detailTab === 'history' && (
+        <div>
         {catEvents.length === 0 ? (
           <EmptyState icon={Stethoscope} title={t('catDetail.emptyEvents')} description={t('catDetail.emptyEventsDesc')}
                       action={canAddEvent ? <button onClick={onAddEvent} className="px-4 py-2 rounded-xl text-sm font-medium" style={{ backgroundColor: '#1F3A2F', color: '#F8F3E8' }}>{t('catDetail.firstEvent')}</button> : null} />
@@ -420,6 +444,8 @@ export const CatDetail = ({
               );
             })}
           </ol>
+        )}
+        </div>
         )}
       </div>
     </div>
