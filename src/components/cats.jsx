@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { fmtDate, parseYmd, todayYmd } from '../lib/dates.js';
 import { CER_STATUS, SEX_VALUES, EVENT_TYPES } from '../constants.js';
-import { CatAvatar, StatusBadge, FilterPill, EmptyState, Field } from './ui.jsx';
+import { CatAvatar, StatusBadge, SexBadge, FilterPill, EmptyState, Field } from './ui.jsx';
 import { inputStyle, labelStyle } from '../styles.jsx';
 import { useTranslation } from '../lib/i18n.jsx';
 
@@ -21,7 +21,7 @@ export const CatCard = ({ cat, onSelect, colonyName }) => (
     <div className="flex-1 min-w-0">
       <div className="flex items-center gap-2 mb-1">
         <h3 className="font-serif text-lg truncate" style={{ color: '#1A1712' }}>{cat.name}</h3>
-        <span className="text-xs font-mono" style={{ color: '#B8A888' }}>{cat.sex}</span>
+        <SexBadge sex={cat.sex} />
       </div>
       <div className="text-xs truncate mb-1.5" style={{ color: '#78706A' }}>{cat.color}{colonyName ? ` · ${colonyName}` : ''}</div>
       <StatusBadge status={cat.cerStatus} size="sm" />
@@ -117,9 +117,9 @@ export const CatsView = ({ cats, colonies, onSelect, onAdd, filter, setFilter })
 
 export const CatDetail = ({
   cat, colony, events, reminders = [], members = [],
-  onBack, onEdit, onAddEvent, onDelete, onChangeStatus,
+  onBack, onEdit, onAddEvent, onEditEvent, onDelete, onChangeStatus,
   onAddReminder, onEditReminder, onDeleteReminder, onCompleteReminder, onUncompleteReminder,
-  canEdit = true, canDelete = true, canAddEvent = true, canChangeStatus = true,
+  canEdit = true, canDelete = true, canAddEvent = true, canEditEvent = true, canChangeStatus = true,
   canManageReminders = true, canDeleteReminders = true,
 }) => {
   const { t } = useTranslation();
@@ -181,7 +181,7 @@ export const CatDetail = ({
           <div className="text-xs uppercase tracking-[0.18em] mb-2" style={{ color: '#8A7A5C' }}>{t('catDetail.kicker')}</div>
           <div className="flex items-baseline gap-3 flex-wrap mb-3">
             <h1 className="font-serif text-5xl" style={{ color: '#1A1712' }}>{cat.name}</h1>
-            <span className="text-lg font-mono" style={{ color: '#B8A888' }}>{cat.sex}</span>
+            <SexBadge sex={cat.sex} size="lg" />
           </div>
 
           <div className="relative inline-block">
@@ -400,7 +400,17 @@ export const CatDetail = ({
                   <div className="rounded-xl p-4" style={{ backgroundColor: '#FDFAF3', boxShadow: '0 0 0 1px #EADFC9' }}>
                     <div className="flex items-baseline justify-between flex-wrap gap-2 mb-1">
                       <h4 className="font-serif text-lg" style={{ color: '#1A1712' }}>{evLabel}</h4>
-                      <span className="text-xs font-mono" style={{ color: '#8A7A5C' }}>{fmtDate(ev.date)}</span>
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <span className="text-xs font-mono" style={{ color: '#8A7A5C' }}>{fmtDate(ev.date)}</span>
+                        {canEditEvent && (
+                          <button onClick={() => onEditEvent(ev)}
+                                  title={t('common.edit')}
+                                  className="p-1 rounded-lg hover:bg-white"
+                                  style={{ color: '#4A433C' }}>
+                            <Edit3 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
                     </div>
                     {ev.vet && ev.vet !== '-' && <div className="text-xs mb-1.5" style={{ color: '#78706A' }}>{ev.vet}</div>}
                     {ev.notes && <p className="text-sm leading-relaxed" style={{ color: '#4A433C' }}>{ev.notes}</p>}
@@ -572,10 +582,22 @@ export const CatForm = ({ cat, colonies, onSave, onCancel, onError }) => {
   );
 };
 
-export const EventForm = ({ onSave, onCancel }) => {
+export const EventForm = ({ event, onSave, onCancel }) => {
   const { t } = useTranslation();
   const today = new Date().toISOString().slice(0, 10);
-  const [form, setForm] = useState({ type: 'vacunacion', date: today, vet: '', cost: '', notes: '' });
+  // En edición precargamos desde el evento: la fecha (ms) se pasa a 'YYYY-MM-DD'
+  // para el input date, y el coste a string para el input numérico.
+  const [form, setForm] = useState(event
+    ? {
+        id: event.id,
+        type: event.type,
+        date: new Date(event.date).toISOString().slice(0, 10),
+        vet: event.vet && event.vet !== '-' ? event.vet : '',
+        cost: event.cost === null || event.cost === undefined ? '' : String(event.cost),
+        notes: event.notes || '',
+      }
+    : { type: 'vacunacion', date: today, vet: '', cost: '', notes: '' }
+  );
 
   return (
     <div className="space-y-4">

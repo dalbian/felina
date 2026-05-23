@@ -20,6 +20,27 @@ export const StatusBadge = ({ status, size = 'md' }) => {
   );
 };
 
+// Indicador de sexo del gato: símbolo ♀/♂ en un badge redondo de color
+// (rosa hembra, azul macho, neutro desconocido). Sustituye a mostrar la letra
+// H/M/D. El title accesible usa la etiqueta traducida (sex.H / sex.M / sex.D).
+const SEX_BADGE = {
+  H: { symbol: '♀', color: '#B5548A', bg: '#F4DCE8' },
+  M: { symbol: '♂', color: '#4E7DA8', bg: '#D6E3F0' },
+  D: { symbol: '?', color: '#8A7A5C', bg: '#EDE4D0' },
+};
+export const SexBadge = ({ sex, size = 'md' }) => {
+  const { t } = useTranslation();
+  const cfg = SEX_BADGE[sex] || SEX_BADGE.D;
+  const dim = size === 'lg' ? 'w-9 h-9 text-xl' : 'w-6 h-6 text-sm';
+  return (
+    <span className={`inline-flex items-center justify-center rounded-full font-bold leading-none ${dim}`}
+          style={{ backgroundColor: cfg.bg, color: cfg.color }}
+          title={t(`sex.${sex}`)}>
+      {cfg.symbol}
+    </span>
+  );
+};
+
 export const CatAvatar = ({ cat, size = 56 }) => {
   if (cat.photoUrl) {
     return (

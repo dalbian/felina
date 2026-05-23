@@ -4,7 +4,7 @@
 const COORDINATOR_ACTIONS = [
   'edit_cat', 'delete_cat', 'add_cat',
   'edit_colony', 'delete_colony', 'add_colony',
-  'add_event', 'change_status',
+  'add_event', 'edit_event', 'change_status',
   'manage_shifts', 'assign_shift', 'claim_shift', 'complete_shift',
 ];
 

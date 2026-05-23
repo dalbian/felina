@@ -984,13 +984,12 @@ export function useFelinaStore() {
   };
 
   const saveEvent = async (form) => {
-    if (!can(currentRole, 'add_event')) {
+    // Editar exige más permiso que crear: la RLS de `events` solo deja UPDATE a
+    // admin/coordinación (o super_admin), mientras que crear lo puede cualquiera
+    // con add_event (incl. voluntario/vet). Reflejamos eso aquí con edit_event.
+    const isEdit = !!form.id;
+    if (!can(currentRole, isEdit ? 'edit_event' : 'add_event')) {
       await notify({ title: t('store.noPerm.title'), message: t('store.noPerm.body'), tone: 'warning' });
-      return;
-    }
-    const cat = cats.find(c => c.id === selectedCat);
-    if (!cat || cat.orgId !== session.orgId) {
-      await notify({ title: t('store.invalidOp.title'), message: t('store.invalidOp.catOrg') });
       return;
     }
     // form.date llega como ms (Date.now() en el form) o ISO string. Postgres
@@ -1000,18 +999,38 @@ export function useFelinaStore() {
       ? new Date(form.date).toISOString()
       : new Date().toISOString();
     const payload = {
-      cat_id: selectedCat,
-      org_id: session.orgId,
       type: form.type,
       date: dateIso,
       vet: form.vet || null,
       cost: form.cost === '' || form.cost === undefined || form.cost === null ? null : Number(form.cost),
       notes: form.notes || null,
     };
-    const { error } = await supabase.from('events').insert(payload);
-    if (error) {
-      await notify({ title: t('store.event.errTitle'), message: error.message });
-      return;
+
+    if (isEdit) {
+      const existing = events.find(e => e.id === form.id);
+      if (!existing || existing.orgId !== session.orgId) {
+        await notify({ title: t('store.invalidOp.title'), message: t('store.invalidOp.eventOrg') });
+        return;
+      }
+      // No tocamos cat_id ni org_id: solo los campos editables del evento.
+      const { error } = await supabase.from('events').update(payload).eq('id', form.id);
+      if (error) {
+        await notify({ title: t('store.err.saveFail'), message: error.message });
+        return;
+      }
+    } else {
+      const cat = cats.find(c => c.id === selectedCat);
+      if (!cat || cat.orgId !== session.orgId) {
+        await notify({ title: t('store.invalidOp.title'), message: t('store.invalidOp.catOrg') });
+        return;
+      }
+      const { error } = await supabase.from('events').insert({
+        ...payload, cat_id: selectedCat, org_id: session.orgId,
+      });
+      if (error) {
+        await notify({ title: t('store.event.errTitle'), message: error.message });
+        return;
+      }
     }
     await refresh();
     setModal(null);
