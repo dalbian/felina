@@ -699,8 +699,15 @@ export const ReminderForm = ({ reminder, onSave, onCancel }) => {
   );
   const [busy, setBusy] = useState(false);
 
+  // Un recordatorio mira al futuro: no tiene sentido crearlo ya vencido. El
+  // mínimo es hoy. Excepción: al editar uno que YA estaba vencido, conservamos
+  // su fecha original como mínimo para no obligar a moverla solo por tocar otro
+  // campo (pero tampoco se puede retroceder más).
+  const minDate = reminder && reminder.dueDate < today ? reminder.dueDate : today;
+  const pastDate = !!form.dueDate && form.dueDate < minDate;
+
   const submit = async () => {
-    if (busy || !form.dueDate) return;
+    if (busy || !form.dueDate || pastDate) return;
     setBusy(true);
     await onSave(form);
     setBusy(false);
@@ -731,8 +738,11 @@ export const ReminderForm = ({ reminder, onSave, onCancel }) => {
 
       <div>
         <label className="block text-xs font-medium mb-1" style={labelStyle}>{t('reminderForm.dueDateLabel')}</label>
-        <input type="date" value={form.dueDate} onChange={e => setForm({ ...form, dueDate: e.target.value })}
+        <input type="date" min={minDate} value={form.dueDate} onChange={e => setForm({ ...form, dueDate: e.target.value })}
                className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
+        {pastDate && (
+          <p className="text-xs mt-1.5" style={{ color: '#B15A3A' }}>{t('reminderForm.errPastDate')}</p>
+        )}
       </div>
 
       <div>
@@ -756,7 +766,7 @@ export const ReminderForm = ({ reminder, onSave, onCancel }) => {
       <div className="flex gap-2 pt-2">
         <button type="button" onClick={onCancel} className="flex-1 py-2.5 rounded-xl text-sm font-medium"
                 style={{ backgroundColor: '#F2EADB', color: '#4A433C' }}>{t('common.cancel')}</button>
-        <button type="button" onClick={submit} disabled={busy || !form.dueDate}
+        <button type="button" onClick={submit} disabled={busy || !form.dueDate || pastDate}
                 className="flex-1 py-2.5 rounded-xl text-sm font-medium disabled:opacity-50"
                 style={{ backgroundColor: '#1F3A2F', color: '#F8F3E8' }}>
           {busy ? t('reminderForm.saving') : t('reminderForm.save')}
