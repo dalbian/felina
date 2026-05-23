@@ -390,6 +390,7 @@ const dict = {
     'reminderForm.notesPh': 'Indicaciones, dosis, anotaciones…',
     'reminderForm.saving': 'Guardando…',
     'reminderForm.save': 'Guardar recordatorio',
+    'reminderForm.errPastDate': 'No se puede elegir una fecha pasada.',
 
     // ─── Confirm/Notify por defecto (ConfirmDialog en ui.jsx) ───
     'confirm.accept': 'Aceptar',
@@ -1062,6 +1063,7 @@ const dict = {
     'reminderForm.notesPh': 'Indicacions, dosi, anotacions…',
     'reminderForm.saving': 'Desant…',
     'reminderForm.save': 'Desa el recordatori',
+    'reminderForm.errPastDate': 'No es pot triar una data passada.',
 
     // ─── Confirm/Notify per defecte ───
     'confirm.accept': 'D\'acord',
