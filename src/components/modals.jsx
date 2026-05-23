@@ -66,6 +66,11 @@ export const GlobalModals = ({
     <Modal open={modal === 'addEvent'} onClose={() => setModal(null)} title={t('modal.title.addEvent')}>
       <EventForm onSave={saveEvent} onCancel={() => setModal(null)} />
     </Modal>
+    <Modal open={modal?.type === 'editEvent'} onClose={() => setModal(null)} title={t('modal.title.editEvent')}>
+      {modal?.type === 'editEvent' && modal.event && (
+        <EventForm event={modal.event} onSave={saveEvent} onCancel={() => setModal(null)} />
+      )}
+    </Modal>
 
     <Modal open={modal === 'addReminder'} onClose={() => setModal(null)} title={t('modal.title.addReminder')}>
       {currentCat && (

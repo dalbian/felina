@@ -399,6 +399,7 @@ export default function App() {
                          onBack={() => setView(selectedColony && currentCat.colonyId === selectedColony ? 'colony' : 'cats')}
                          onEdit={() => can(currentRole, 'edit_cat') ? setModal('editCat') : notify({ title: t('app.notify.noPermTitle'), message: t('app.notify.noPermGeneric') })}
                          onAddEvent={() => can(currentRole, 'add_event') ? setModal('addEvent') : notify({ title: t('app.notify.noPermTitle'), message: t('app.notify.noPermGeneric') })}
+                         onEditEvent={(event) => can(currentRole, 'edit_event') ? setModal({ type: 'editEvent', event }) : notify({ title: t('app.notify.noPermTitle'), message: t('app.notify.noPermGeneric') })}
                          onDelete={deleteCat}
                          onChangeStatus={changeCatStatus}
                          onAddReminder={() => can(currentRole, 'add_event') ? setModal('addReminder') : notify({ title: t('app.notify.noPermTitle'), message: t('app.notify.noPermReminder') })}
@@ -409,6 +410,7 @@ export default function App() {
                          canEdit={can(currentRole, 'edit_cat')}
                          canDelete={can(currentRole, 'delete_cat')}
                          canAddEvent={can(currentRole, 'add_event')}
+                         canEditEvent={can(currentRole, 'edit_event')}
                          canChangeStatus={can(currentRole, 'change_status')}
                          canManageReminders={can(currentRole, 'add_event')}
                          canDeleteReminders={isSuperAdmin || currentRole === 'admin' || currentRole === 'coordinator'} />

@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { fmtDate, parseYmd, todayYmd } from '../lib/dates.js';
 import { CER_STATUS, SEX_VALUES, EVENT_TYPES } from '../constants.js';
-import { CatAvatar, StatusBadge, FilterPill, EmptyState, Field } from './ui.jsx';
+import { CatAvatar, StatusBadge, SexBadge, FilterPill, EmptyState, Field } from './ui.jsx';
 import { inputStyle, labelStyle } from '../styles.jsx';
 import { useTranslation } from '../lib/i18n.jsx';
 
@@ -21,7 +21,7 @@ export const CatCard = ({ cat, onSelect, colonyName }) => (
     <div className="flex-1 min-w-0">
       <div className="flex items-center gap-2 mb-1">
         <h3 className="font-serif text-lg truncate" style={{ color: '#1A1712' }}>{cat.name}</h3>
-        <span className="text-xs font-mono" style={{ color: '#B8A888' }}>{cat.sex}</span>
+        <SexBadge sex={cat.sex} />
       </div>
       <div className="text-xs truncate mb-1.5" style={{ color: '#78706A' }}>{cat.color}{colonyName ? ` · ${colonyName}` : ''}</div>
       <StatusBadge status={cat.cerStatus} size="sm" />
@@ -117,14 +117,16 @@ export const CatsView = ({ cats, colonies, onSelect, onAdd, filter, setFilter })
 
 export const CatDetail = ({
   cat, colony, events, reminders = [], members = [],
-  onBack, onEdit, onAddEvent, onDelete, onChangeStatus,
+  onBack, onEdit, onAddEvent, onEditEvent, onDelete, onChangeStatus,
   onAddReminder, onEditReminder, onDeleteReminder, onCompleteReminder, onUncompleteReminder,
-  canEdit = true, canDelete = true, canAddEvent = true, canChangeStatus = true,
+  canEdit = true, canDelete = true, canAddEvent = true, canEditEvent = true, canChangeStatus = true,
   canManageReminders = true, canDeleteReminders = true,
 }) => {
   const { t } = useTranslation();
   const [statusMenu, setStatusMenu] = useState(false);
   const [showCompletedReminders, setShowCompletedReminders] = useState(false);
+  // Pestaña activa de la zona inferior: recordatorios o historial veterinario.
+  const [detailTab, setDetailTab] = useState('reminders');
   const catEvents = events.filter(e => e.catId === cat.id).sort((a,b) => b.date - a.date);
   const status = CER_STATUS[cat.cerStatus] || CER_STATUS.pendiente;
   const statusLabel = t(`cer.${cat.cerStatus}.label`);
@@ -181,7 +183,7 @@ export const CatDetail = ({
           <div className="text-xs uppercase tracking-[0.18em] mb-2" style={{ color: '#8A7A5C' }}>{t('catDetail.kicker')}</div>
           <div className="flex items-baseline gap-3 flex-wrap mb-3">
             <h1 className="font-serif text-5xl" style={{ color: '#1A1712' }}>{cat.name}</h1>
-            <span className="text-lg font-mono" style={{ color: '#B8A888' }}>{cat.sex}</span>
+            <SexBadge sex={cat.sex} size="lg" />
           </div>
 
           <div className="relative inline-block">
@@ -228,20 +230,50 @@ export const CatDetail = ({
         </div>
       </div>
 
-      {/* Sección de recordatorios: pendientes (vencidos primero) + completados colapsables */}
+      {/* Zona inferior en pestañas: recordatorios | historial veterinario.
+          Evita el scroll interminable cuando ambas listas son largas. */}
       <div>
-        <div className="flex items-end justify-between mb-4">
-          <h2 className="font-serif text-2xl inline-flex items-center gap-2" style={{ color: '#1A1712' }}>
-            <Bell className="w-5 h-5" style={{ color: '#B15A3A' }} /> {t('catDetail.reminders')}
-          </h2>
-          {canManageReminders && (
+        <div className="flex items-center justify-between gap-3 mb-5 flex-wrap">
+          <div className="flex gap-2">
+            <button onClick={() => setDetailTab('reminders')}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-colors"
+                    style={{
+                      backgroundColor: detailTab === 'reminders' ? '#1F3A2F' : '#FDFAF3',
+                      color: detailTab === 'reminders' ? '#F8F3E8' : '#4A433C',
+                      boxShadow: detailTab === 'reminders' ? 'none' : '0 0 0 1px #EADFC9',
+                    }}>
+              <Bell className="w-4 h-4" /> {t('catDetail.reminders')}
+              <span className="font-mono" style={{ opacity: 0.7 }}>{catReminders.length}</span>
+            </button>
+            <button onClick={() => setDetailTab('history')}
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-colors"
+                    style={{
+                      backgroundColor: detailTab === 'history' ? '#1F3A2F' : '#FDFAF3',
+                      color: detailTab === 'history' ? '#F8F3E8' : '#4A433C',
+                      boxShadow: detailTab === 'history' ? 'none' : '0 0 0 1px #EADFC9',
+                    }}>
+              <Stethoscope className="w-4 h-4" /> {t('catDetail.history')}
+              <span className="font-mono" style={{ opacity: 0.7 }}>{catEvents.length}</span>
+            </button>
+          </div>
+          {detailTab === 'reminders' && canManageReminders && (
             <button onClick={onAddReminder}
                     className="inline-flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg"
                     style={{ backgroundColor: '#F2EADB', color: '#2D4A3E' }}>
               <Plus className="w-4 h-4" /> {t('catDetail.addReminder')}
             </button>
           )}
+          {detailTab === 'history' && canAddEvent && (
+            <button onClick={onAddEvent}
+                    className="inline-flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg"
+                    style={{ backgroundColor: '#F2EADB', color: '#2D4A3E' }}>
+              <Plus className="w-4 h-4" /> {t('catDetail.addEvent')}
+            </button>
+          )}
         </div>
+
+        {detailTab === 'reminders' && (
+        <div>
         {pendingReminders.length === 0 && completedReminders.length === 0 ? (
           <div className="rounded-xl p-4 text-sm text-center"
                style={{ backgroundColor: '#FDFAF3', color: '#78706A', boxShadow: '0 0 0 1px #EADFC9' }}>
@@ -370,18 +402,10 @@ export const CatDetail = ({
           </div>
         )}
       </div>
+        )}
 
-      <div>
-        <div className="flex items-end justify-between mb-4">
-          <h2 className="font-serif text-2xl" style={{ color: '#1A1712' }}>{t('catDetail.history')}</h2>
-          {canAddEvent && (
-            <button onClick={onAddEvent}
-                    className="inline-flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg"
-                    style={{ backgroundColor: '#F2EADB', color: '#2D4A3E' }}>
-              <Plus className="w-4 h-4" /> {t('catDetail.addEvent')}
-            </button>
-          )}
-        </div>
+        {detailTab === 'history' && (
+        <div>
         {catEvents.length === 0 ? (
           <EmptyState icon={Stethoscope} title={t('catDetail.emptyEvents')} description={t('catDetail.emptyEventsDesc')}
                       action={canAddEvent ? <button onClick={onAddEvent} className="px-4 py-2 rounded-xl text-sm font-medium" style={{ backgroundColor: '#1F3A2F', color: '#F8F3E8' }}>{t('catDetail.firstEvent')}</button> : null} />
@@ -400,7 +424,17 @@ export const CatDetail = ({
                   <div className="rounded-xl p-4" style={{ backgroundColor: '#FDFAF3', boxShadow: '0 0 0 1px #EADFC9' }}>
                     <div className="flex items-baseline justify-between flex-wrap gap-2 mb-1">
                       <h4 className="font-serif text-lg" style={{ color: '#1A1712' }}>{evLabel}</h4>
-                      <span className="text-xs font-mono" style={{ color: '#8A7A5C' }}>{fmtDate(ev.date)}</span>
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <span className="text-xs font-mono" style={{ color: '#8A7A5C' }}>{fmtDate(ev.date)}</span>
+                        {canEditEvent && (
+                          <button onClick={() => onEditEvent(ev)}
+                                  title={t('common.edit')}
+                                  className="p-1 rounded-lg hover:bg-white"
+                                  style={{ color: '#4A433C' }}>
+                            <Edit3 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
                     </div>
                     {ev.vet && ev.vet !== '-' && <div className="text-xs mb-1.5" style={{ color: '#78706A' }}>{ev.vet}</div>}
                     {ev.notes && <p className="text-sm leading-relaxed" style={{ color: '#4A433C' }}>{ev.notes}</p>}
@@ -410,6 +444,8 @@ export const CatDetail = ({
               );
             })}
           </ol>
+        )}
+        </div>
         )}
       </div>
     </div>
@@ -572,10 +608,22 @@ export const CatForm = ({ cat, colonies, onSave, onCancel, onError }) => {
   );
 };
 
-export const EventForm = ({ onSave, onCancel }) => {
+export const EventForm = ({ event, onSave, onCancel }) => {
   const { t } = useTranslation();
   const today = new Date().toISOString().slice(0, 10);
-  const [form, setForm] = useState({ type: 'vacunacion', date: today, vet: '', cost: '', notes: '' });
+  // En edición precargamos desde el evento: la fecha (ms) se pasa a 'YYYY-MM-DD'
+  // para el input date, y el coste a string para el input numérico.
+  const [form, setForm] = useState(event
+    ? {
+        id: event.id,
+        type: event.type,
+        date: new Date(event.date).toISOString().slice(0, 10),
+        vet: event.vet && event.vet !== '-' ? event.vet : '',
+        cost: event.cost === null || event.cost === undefined ? '' : String(event.cost),
+        notes: event.notes || '',
+      }
+    : { type: 'vacunacion', date: today, vet: '', cost: '', notes: '' }
+  );
 
   return (
     <div className="space-y-4">
