@@ -122,7 +122,7 @@ export default function App() {
   const {
     // UI state
     loading, session, rgpdAcknowledged,
-    view, selectedColony, setSelectedColony, selectedCat, setSelectedCat,
+    view, setView, selectedColony, setSelectedColony, selectedCat, setSelectedCat,
     selectedShift, setSelectedShift, selectedTemplate, setSelectedTemplate,
     modal, setModal, filter, setFilter,
     confirmState, resolveConfirm, notify,
