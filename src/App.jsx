@@ -23,8 +23,10 @@ import { Sidebar, BottomNav } from './components/layout.jsx';
 // Vistas diferidas (code-splitting). Solo se descargan al navegar a ellas:
 //   - MapView: arrastra el componente del mapa (Leaflet ya va por CDN aparte).
 //   - PlatformView: solo la usa el super_admin, el resto nunca la descarga.
+//   - StatsView: arrastra recharts (~80KB gzip). No todos los usuarios la abren.
 const MapView = lazy(() => import('./components/map.jsx').then(m => ({ default: m.MapView })));
 const PlatformView = lazy(() => import('./components/platform.jsx').then(m => ({ default: m.PlatformView })));
+const StatsView = lazy(() => import('./components/stats.jsx').then(m => ({ default: m.StatsView })));
 import { GlobalModals } from './components/modals.jsx';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -378,6 +380,7 @@ export default function App() {
             )}
             {view === 'colony' && currentColony && (
               <ColonyDetail colony={currentColony} cats={orgCats}
+                            events={orgEvents} reminders={orgReminders}
                             onBack={() => setView('colonies')}
                             onSelectCat={(id) => onNav('cat', id)}
                             onAddCat={() => can(currentRole, 'add_cat') ? setModal('addCat') : notify({ title: t('app.notify.noPermTitle'), message: t('app.notify.noPermGeneric') })}
@@ -414,6 +417,10 @@ export default function App() {
                          canChangeStatus={can(currentRole, 'change_status')}
                          canManageReminders={can(currentRole, 'add_event')}
                          canDeleteReminders={isSuperAdmin || currentRole === 'admin' || currentRole === 'coordinator'} />
+            )}
+            {view === 'stats' && currentOrg && (
+              <StatsView cats={orgCats} colonies={orgColonies}
+                         events={orgEvents} reminders={orgReminders} />
             )}
             {view === 'calendar' && currentOrg && (
               <CalendarView templates={orgTemplates} shifts={orgShifts}

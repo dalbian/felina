@@ -1,13 +1,17 @@
 // Vista y formulario de colonias. ColonyDetail muestra las tarjetas de gato
 // dentro de la colonia; de ahí la importación cruzada a cats.jsx (CatCard).
 
-import { useState } from 'react';
-import { MapPin, Plus, Search, ChevronLeft, Edit3, Trash2, PawPrint, Locate, Check } from 'lucide-react';
+import { useState, lazy, Suspense } from 'react';
+import { MapPin, Plus, Search, ChevronLeft, Edit3, Trash2, PawPrint, Locate, Check, BarChart3 } from 'lucide-react';
 import { fmtRelative } from '../lib/dates.js';
 import { EmptyState } from './ui.jsx';
 import { CatCard } from './cats.jsx';
 import { inputStyle, labelStyle } from '../styles.jsx';
 import { useTranslation } from '../lib/i18n.jsx';
+
+// Lazy: la pestaña Estadísticas arrastra recharts; solo se carga si el usuario
+// la abre. Comparte el vendor-charts chunk con la vista global de stats.
+const ColonyStats = lazy(() => import('./stats.jsx').then(m => ({ default: m.ColonyStats })));
 
 export const ColoniesView = ({ colonies, cats, onSelect, onAdd }) => {
   const { t } = useTranslation();
@@ -82,8 +86,9 @@ export const ColoniesView = ({ colonies, cats, onSelect, onAdd }) => {
   );
 };
 
-export const ColonyDetail = ({ colony, cats, onBack, onSelectCat, onAddCat, onEdit, onDelete, canEdit = true, canDelete = true, canAddCat = true }) => {
+export const ColonyDetail = ({ colony, cats, events = [], reminders = [], onBack, onSelectCat, onAddCat, onEdit, onDelete, canEdit = true, canDelete = true, canAddCat = true }) => {
   const { t } = useTranslation();
+  const [tab, setTab] = useState('cats'); // 'cats' | 'stats'
   const colCats = cats.filter(c => c.colonyId === colony.id);
 
   return (
@@ -146,25 +151,51 @@ export const ColonyDetail = ({ colony, cats, onBack, onSelectCat, onAddCat, onEd
         </div>
       )}
 
-      <div>
-        <div className="flex items-end justify-between mb-4">
-          <h2 className="font-serif text-2xl" style={{ color: '#1A1712' }}>{t('col.detail.catsTitle')}</h2>
-          {canAddCat && (
-            <button onClick={onAddCat} className="inline-flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg"
-                    style={{ backgroundColor: '#F2EADB', color: '#2D4A3E' }}>
-              <Plus className="w-4 h-4" /> {t('col.detail.addCat')}
-            </button>
+      {/* Pestañas: Gatos / Estadísticas */}
+      <div className="flex gap-1 p-1 rounded-xl w-fit" style={{ backgroundColor: '#F2EADB' }}>
+        <button onClick={() => setTab('cats')}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                style={{ backgroundColor: tab === 'cats' ? '#FDFAF3' : 'transparent', color: tab === 'cats' ? '#1A1712' : '#6B635A', boxShadow: tab === 'cats' ? '0 1px 3px rgba(42,37,32,0.08)' : 'none' }}>
+          <PawPrint className="w-4 h-4" /> {t('col.detail.tabCats')}
+        </button>
+        <button onClick={() => setTab('stats')}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                style={{ backgroundColor: tab === 'stats' ? '#FDFAF3' : 'transparent', color: tab === 'stats' ? '#1A1712' : '#6B635A', boxShadow: tab === 'stats' ? '0 1px 3px rgba(42,37,32,0.08)' : 'none' }}>
+          <BarChart3 className="w-4 h-4" /> {t('col.detail.tabStats')}
+        </button>
+      </div>
+
+      {tab === 'cats' && (
+        <div>
+          <div className="flex items-end justify-between mb-4">
+            <h2 className="font-serif text-2xl" style={{ color: '#1A1712' }}>{t('col.detail.catsTitle')}</h2>
+            {canAddCat && (
+              <button onClick={onAddCat} className="inline-flex items-center gap-1.5 text-sm font-medium px-3 py-1.5 rounded-lg"
+                      style={{ backgroundColor: '#F2EADB', color: '#2D4A3E' }}>
+                <Plus className="w-4 h-4" /> {t('col.detail.addCat')}
+              </button>
+            )}
+          </div>
+          {colCats.length === 0 ? (
+            <EmptyState icon={PawPrint} title={t('col.detail.emptyCats')} description={t('col.detail.emptyCatsDesc')}
+                        action={canAddCat ? <button onClick={onAddCat} className="px-4 py-2 rounded-xl text-sm font-medium" style={{ backgroundColor: '#1F3A2F', color: '#F8F3E8' }}>{t('col.detail.addFirstCat')}</button> : null} />
+          ) : (
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {colCats.map(cat => <CatCard key={cat.id} cat={cat} onSelect={() => onSelectCat(cat.id)} />)}
+            </div>
           )}
         </div>
-        {colCats.length === 0 ? (
-          <EmptyState icon={PawPrint} title={t('col.detail.emptyCats')} description={t('col.detail.emptyCatsDesc')}
-                      action={canAddCat ? <button onClick={onAddCat} className="px-4 py-2 rounded-xl text-sm font-medium" style={{ backgroundColor: '#1F3A2F', color: '#F8F3E8' }}>{t('col.detail.addFirstCat')}</button> : null} />
-        ) : (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {colCats.map(cat => <CatCard key={cat.id} cat={cat} onSelect={() => onSelectCat(cat.id)} />)}
+      )}
+
+      {tab === 'stats' && (
+        <Suspense fallback={
+          <div className="flex items-center justify-center py-16 text-sm italic" style={{ color: '#8A7A5C' }}>
+            {t('common.loading')}
           </div>
-        )}
-      </div>
+        }>
+          <ColonyStats colony={colony} cats={cats} events={events} reminders={reminders} />
+        </Suspense>
+      )}
     </div>
   );
 };

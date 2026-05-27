@@ -4,7 +4,7 @@
 
 import { useState } from 'react';
 import {
-  Crown, Home, MapPin, PawPrint, Calendar, Settings, Map,
+  Crown, Home, MapPin, PawPrint, Calendar, Settings, Map, BarChart3,
   Check, MoreHorizontal, LogOut,
 } from 'lucide-react';
 import { ROLES } from '../constants.js';
@@ -82,6 +82,7 @@ const getNav = ({ isSuperAdmin, hasOrg }) => {
     { key: 'map',       labelKey: 'nav.map',       icon: Map },
     { key: 'cats',      labelKey: 'nav.cats',      icon: PawPrint },
     { key: 'calendar',  labelKey: 'nav.calendar',  icon: Calendar },
+    { key: 'stats',     labelKey: 'nav.stats',     icon: BarChart3 },
     { key: 'settings',  labelKey: 'nav.settings',  icon: Settings },
   );
   return items;
