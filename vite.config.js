@@ -7,19 +7,15 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        // Separamos las librerías grandes en chunks propios. No reduce el peso
-        // total, pero: (1) reparte el bundle en piezas < 500 KB (silencia el
-        // aviso de Vite), y (2) mejora el cacheo en visitas repetidas — al
-        // publicar cambios de la app, el navegador no re-descarga React ni
-        // Supabase, que casi nunca cambian.
-        // Orden importante: 'lucide-react' contiene la subcadena 'react', así
-        // que se comprueba antes que el chunk genérico de react.
-        manualChunks(id) {
-          if (!id.includes('node_modules')) return;
-          if (id.includes('@supabase')) return 'vendor-supabase';
-          if (id.includes('lucide-react')) return 'vendor-icons';
-          if (id.includes('react') || id.includes('scheduler')) return 'vendor-react';
-          return 'vendor';
+        // Code-splitting de vendors con sintaxis de objeto (no función).
+        // Indica a Vite/Rollup qué packages top-level entran en cada chunk;
+        // Rollup resuelve dependencias transitivas SIN crear ciclos (la
+        // sintaxis función anterior daba el warning circular vendor↔vendor-react
+        // y rompía la app en producción al añadir recharts).
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom'],
+          'vendor-supabase': ['@supabase/supabase-js'],
+          'vendor-icons': ['lucide-react'],
         },
       },
     },
