@@ -27,6 +27,9 @@ import { Sidebar, BottomNav } from './components/layout.jsx';
 const MapView = lazy(() => import('./components/map.jsx').then(m => ({ default: m.MapView })));
 const PlatformView = lazy(() => import('./components/platform.jsx').then(m => ({ default: m.PlatformView })));
 const StatsView = lazy(() => import('./components/stats.jsx').then(m => ({ default: m.StatsView })));
+// Vista de registro de actividad. Solo accesible para admin/super_admin
+// desde el botón de Ajustes (no en la nav principal).
+const ActivityView = lazy(() => import('./components/activityLog.jsx').then(m => ({ default: m.ActivityView })));
 import { GlobalModals } from './components/modals.jsx';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -133,6 +136,7 @@ export default function App() {
     // Derivados
     currentUser, currentOrg, isSuperAdmin, currentRole,
     orgColonies, orgCats, orgEvents, orgTemplates, orgShifts, orgReminders,
+    orgActivityLog,
     userOrgs, orgMembers, realMembership,
     // Handlers
     handleAcceptRgpd,
@@ -433,9 +437,16 @@ export default function App() {
                               : notify({ title: t('app.notify.noPermTitle'), message: t('app.notify.noPermShifts') })}
                             onEditTemplate={(tpl) => { setSelectedTemplate(tpl); setModal('editTemplate'); }} />
             )}
+            {view === 'activity' && currentOrg && (isSuperAdmin || currentRole === 'admin') && (
+              <ActivityView activityLog={orgActivityLog} members={orgMembers}
+                            onBack={() => setView('settings')} />
+            )}
             {view === 'settings' && currentOrg && (
               <SettingsView currentOrg={currentOrg} currentUser={currentUser} currentRole={currentRole}
                             members={orgMembers}
+                            activityLog={orgActivityLog}
+                            isSuperAdmin={isSuperAdmin}
+                            onOpenActivity={() => setView('activity')}
                             onEditOrg={() => setModal('editOrg')}
                             onAddMember={handleAddMember}
                             onRemoveMember={handleRemoveMember}

@@ -3,7 +3,7 @@
 // (ver memoria del proyecto: felina_temporary_pieces).
 
 import { useState } from 'react';
-import { AlertTriangle, Heart, Shield, PawPrint, ChevronRight, Mail, KeyRound } from 'lucide-react';
+import { AlertTriangle, Heart, Shield, PawPrint, ChevronRight, Mail, KeyRound, Activity } from 'lucide-react';
 import { PASSWORD_MIN, SHOW_DEMO_CREDENTIALS, validatePassword, isValidEmail, normalizeEmail } from '../lib/auth.js';
 import { useTranslation, LanguageSwitcher } from '../lib/i18n.jsx';
 import { inputStyle, labelStyle } from '../styles.jsx';
@@ -50,6 +50,10 @@ export const RgpdGate = ({ userName, onAccept }) => {
           <li className="flex gap-2">
             <Shield className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: '#4A6332' }} />
             <span><strong>{t('rgpd.dataTitle')}</strong> {t('rgpd.dataBody')}</span>
+          </li>
+          <li className="flex gap-2">
+            <Activity className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: '#7B6EA8' }} />
+            <span><strong>{t('rgpd.activityTitle')}</strong> {t('rgpd.activityBody')}</span>
           </li>
           <li className="flex gap-2">
             <Heart className="w-4 h-4 flex-shrink-0 mt-0.5" style={{ color: '#C67B5C' }} />

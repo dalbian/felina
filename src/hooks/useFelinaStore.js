@@ -21,6 +21,7 @@ import { slotFromTime } from '../lib/shifts.js';
 import { supabase, initialAuthFlow } from '../lib/supabaseClient.js';
 import { uploadCatPhoto, deleteCatPhoto } from '../lib/images.js';
 import { useTranslation } from '../lib/i18n.jsx';
+import { logActivity, ACTIONS, ENTITY, mapActivity } from '../lib/activity.js';
 
 // Mappers fila Postgres (snake_case) ↔ forma in-memory (camelCase) que ya
 // consumen los componentes. Mantenerlos centralizados aquí evita reescribir
@@ -115,6 +116,9 @@ export function useFelinaStore() {
   const [shiftTemplates, setShiftTemplates] = useState([]);
   const [shifts, setShifts] = useState([]);
   const [reminders, setReminders] = useState([]);
+  // Log de actividad. Solo trae filas a admins/super_admin (RLS lo aplica
+  // en BD); otros roles reciben array vacío de forma transparente.
+  const [activityLog, setActivityLog] = useState([]);
 
   // UI
   const [view, setView] = useState('dashboard');
@@ -160,7 +164,7 @@ export function useFelinaStore() {
   // Devuelve { me, ownOrgIds } para que el llamador pueda decidir la vista y
   // la org por defecto sin esperar al re-render de React.
   const loadAuthenticatedData = async (userId, userEmail) => {
-    const [meRes, profilesRes, orgsRes, membersRes, coloniesRes, catsRes, eventsRes, templatesRes, shiftsRes, remindersRes] = await Promise.all([
+    const [meRes, profilesRes, orgsRes, membersRes, coloniesRes, catsRes, eventsRes, templatesRes, shiftsRes, remindersRes, activityRes] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', userId).single(),
       supabase.from('profiles').select('*'),
       supabase.from('organizations').select('*'),
@@ -171,6 +175,10 @@ export function useFelinaStore() {
       supabase.from('shift_templates').select('*'),
       supabase.from('shifts').select('*'),
       supabase.from('cat_reminders').select('*'),
+      // RLS de activity_log devuelve [] a roles no admin → no necesitamos
+      // filtrar en cliente. Limitamos a 500 entradas para no inflar memoria
+      // (90 días × org activa con uso intenso ≈ < 500 normalmente).
+      supabase.from('activity_log').select('*').order('created_at', { ascending: false }).limit(500),
     ]);
 
     const me = mapProfile(meRes.data);
@@ -187,6 +195,7 @@ export function useFelinaStore() {
     setShiftTemplates((templatesRes.data || []).map(mapShiftTemplate));
     setShifts((shiftsRes.data || []).map(mapShift));
     setReminders((remindersRes.data || []).map(mapCatReminder));
+    setActivityLog((activityRes.data || []).map(mapActivity));
 
     const ownOrgIds = allMemberships
       .filter(m => m.userId === userId)
@@ -239,6 +248,7 @@ export function useFelinaStore() {
         setSession(null);
         setUsers([]); setOrganizations([]); setMemberships([]); setColonies([]);
         setCats([]); setEvents([]); setShiftTemplates([]); setShifts([]); setReminders([]);
+        setActivityLog([]);
       }
       if (mounted) setLoading(false);
     };
@@ -308,6 +318,7 @@ export function useFelinaStore() {
   const orgTemplates = shiftTemplates.filter(t => t.orgId === session?.orgId);
   const orgShifts = shifts.filter(s => s.orgId === session?.orgId);
   const orgReminders = reminders.filter(r => r.orgId === session?.orgId);
+  const orgActivityLog = activityLog.filter(a => a.orgId === session?.orgId);
 
   // Orgs del usuario actual (superadmin ve todas)
   const userOrgs = isSuperAdmin
@@ -440,6 +451,44 @@ export function useFelinaStore() {
     setView('dashboard'); setSelectedCat(null); setSelectedColony(null);
   };
 
+  // Helper para registrar actividad. Captura orgId/userId/userName del
+  // estado actual, hace un update OPTIMISTA del estado local (la entrada
+  // aparece al instante en la UI) y dispara el insert real fire-and-forget.
+  // Al siguiente refresh() el SELECT trae la fila real con id de BD y
+  // sustituye el optimista. Si el insert falla, el optimista persiste hasta
+  // el siguiente refresh y luego desaparece — aceptable para auditoría.
+  const log = (action, params = {}) => {
+    if (!session?.orgId || !session?.userId) return;
+    const me = users.find(u => u.id === session.userId);
+    const userName = me?.name || '?';
+
+    // Update optimista local. Id temporal con prefijo 'tmp:' para distinguirlo
+    // si en algún sitio se diferencia (hoy no se diferencia).
+    const optimisticEntry = {
+      id: `tmp:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`,
+      orgId: session.orgId,
+      userId: session.userId,
+      userName,
+      action,
+      entityType: params.entityType || null,
+      entityId: params.entityId || null,
+      entityName: params.entityName || null,
+      metadata: params.metadata || {},
+      createdAt: Date.now(),
+    };
+    setActivityLog(prev => [optimisticEntry, ...prev]);
+
+    // Insert real (fire-and-forget). El siguiente refresh() reemplaza la
+    // entrada optimista con la versión persistida (con id real de Postgres).
+    logActivity({
+      orgId: session.orgId,
+      userId: session.userId,
+      userName,
+      action,
+      ...params,
+    });
+  };
+
   // ───── Gestión de miembros ─────
   // Invitar a una persona a la org actual. Se delega en la Edge Function
   // `invite-member` (Supabase) porque crear cuentas de auth.users requiere
@@ -479,6 +528,12 @@ export function useFelinaStore() {
     if (data?.error) return { error: data.error };
 
     await refresh();
+
+    log(ACTIONS.MEMBER_INVITED, {
+      entityType: ENTITY.MEMBER,
+      entityName: data?.name || normEmail,
+      metadata: { email: normEmail, role, mode: data?.mode },
+    });
 
     // Cuando se envía email de invitación, el miembro no aparece todavía
     // en la lista (no hay membership hasta que active la cuenta). Sin
@@ -536,6 +591,7 @@ export function useFelinaStore() {
 
   const handleRemoveMember = async (userId) => {
     const target = users.find(u => u.id === userId);
+    const targetMembership = memberships.find(m => m.userId === userId && m.orgId === session.orgId);
     const ok = await confirmAsync({
       title: t('store.expel.title'),
       message: target?.name
@@ -553,10 +609,18 @@ export function useFelinaStore() {
       await notify({ title: t('store.err.expelFail'), message: error.message });
       return;
     }
+    log(ACTIONS.MEMBER_REMOVED, {
+      entityType: ENTITY.MEMBER,
+      entityId: userId,
+      entityName: target?.name || target?.email || '?',
+      metadata: { previousRole: targetMembership?.role || null },
+    });
     await refresh();
   };
 
   const handleChangeRole = async (userId, role) => {
+    const target = users.find(u => u.id === userId);
+    const prev = memberships.find(m => m.userId === userId && m.orgId === session.orgId);
     const { error } = await supabase.from('memberships')
       .update({ role })
       .eq('user_id', userId)
@@ -565,6 +629,12 @@ export function useFelinaStore() {
       await notify({ title: t('store.err.changeRoleFail'), message: error.message });
       return;
     }
+    log(ACTIONS.MEMBER_ROLE_CHANGED, {
+      entityType: ENTITY.MEMBER,
+      entityId: userId,
+      entityName: target?.name || target?.email || '?',
+      metadata: { from: prev?.role || null, to: role },
+    });
     await refresh();
   };
 
@@ -579,6 +649,13 @@ export function useFelinaStore() {
       await notify({ title: t('store.err.saveFail'), message: error.message });
       return;
     }
+    const orgNow = organizations.find(o => o.id === session.orgId);
+    log(ACTIONS.ORG_UPDATED, {
+      entityType: ENTITY.ORG,
+      entityId: session.orgId,
+      entityName: data.name || orgNow?.name || '?',
+      metadata: { fieldsChanged: Object.keys(patch) },
+    });
     await refresh();
     setModal(null);
   };
@@ -805,15 +882,25 @@ export function useFelinaStore() {
         await notify({ title: t('store.err.saveFail'), message: error.message });
         return;
       }
+      log(ACTIONS.COLONY_UPDATED, {
+        entityType: ENTITY.COLONY,
+        entityId: form.id,
+        entityName: payload.name,
+      });
     } else {
-      const { error } = await supabase.from('colonies').insert({
+      const { data: inserted, error } = await supabase.from('colonies').insert({
         ...payload,
         org_id: session.orgId,
-      });
+      }).select('id').single();
       if (error) {
         await notify({ title: t('store.createColony.errTitle'), message: error.message });
         return;
       }
+      log(ACTIONS.COLONY_ADDED, {
+        entityType: ENTITY.COLONY,
+        entityId: inserted?.id || null,
+        entityName: payload.name,
+      });
     }
 
     await refresh();
@@ -848,6 +935,11 @@ export function useFelinaStore() {
       await notify({ title: t('store.err.deleteFail'), message: error.message });
       return;
     }
+    log(ACTIONS.COLONY_DELETED, {
+      entityType: ENTITY.COLONY,
+      entityId: selectedColony,
+      entityName: existing.name,
+    });
     await refresh();
     setSelectedColony(null);
     setView('colonies');
@@ -891,6 +983,15 @@ export function useFelinaStore() {
         return;
       }
       savedCatId = form.id;
+      const colonyName = payload.colony_id
+        ? colonies.find(c => c.id === payload.colony_id)?.name || null
+        : null;
+      log(ACTIONS.CAT_UPDATED, {
+        entityType: ENTITY.CAT,
+        entityId: form.id,
+        entityName: payload.name,
+        metadata: { colonyName },
+      });
     } else {
       const { data, error } = await supabase.from('cats')
         .insert({ ...payload, org_id: session.orgId })
@@ -901,6 +1002,15 @@ export function useFelinaStore() {
         return;
       }
       savedCatId = data.id;
+      const colonyName = payload.colony_id
+        ? colonies.find(c => c.id === payload.colony_id)?.name || null
+        : null;
+      log(ACTIONS.CAT_ADDED, {
+        entityType: ENTITY.CAT,
+        entityId: data.id,
+        entityName: payload.name,
+        metadata: { colonyName },
+      });
     }
 
     // Gestión de la foto. Tres casos:
@@ -958,6 +1068,12 @@ export function useFelinaStore() {
       await notify({ title: t('store.err.deleteFail'), message: error.message });
       return;
     }
+    log(ACTIONS.CAT_DELETED, {
+      entityType: ENTITY.CAT,
+      entityId: selectedCat,
+      entityName: existing.name,
+      metadata: { eventCount },
+    });
     // Limpiar también la foto del bucket si la tenía. No bloqueamos si falla.
     if (existing.photoUrl) await deleteCatPhoto(existing.photoUrl);
     await refresh();
@@ -975,11 +1091,18 @@ export function useFelinaStore() {
       await notify({ title: t('store.invalidOp.title'), message: t('store.invalidOp.catOrg') });
       return;
     }
+    const previousStatus = existing.cerStatus;
     const { error } = await supabase.from('cats').update({ cer_status: status }).eq('id', selectedCat);
     if (error) {
       await notify({ title: t('store.err.changeStatusFail'), message: error.message });
       return;
     }
+    log(ACTIONS.CAT_STATUS_CHANGED, {
+      entityType: ENTITY.CAT,
+      entityId: selectedCat,
+      entityName: existing.name,
+      metadata: { from: previousStatus, to: status },
+    });
     await refresh();
   };
 
@@ -1018,19 +1141,32 @@ export function useFelinaStore() {
         await notify({ title: t('store.err.saveFail'), message: error.message });
         return;
       }
+      const cat = cats.find(c => c.id === existing.catId);
+      log(ACTIONS.EVENT_UPDATED, {
+        entityType: ENTITY.EVENT,
+        entityId: form.id,
+        entityName: cat?.name || '?',
+        metadata: { eventType: payload.type, cost: payload.cost },
+      });
     } else {
       const cat = cats.find(c => c.id === selectedCat);
       if (!cat || cat.orgId !== session.orgId) {
         await notify({ title: t('store.invalidOp.title'), message: t('store.invalidOp.catOrg') });
         return;
       }
-      const { error } = await supabase.from('events').insert({
+      const { data: inserted, error } = await supabase.from('events').insert({
         ...payload, cat_id: selectedCat, org_id: session.orgId,
-      });
+      }).select('id').single();
       if (error) {
         await notify({ title: t('store.event.errTitle'), message: error.message });
         return;
       }
+      log(ACTIONS.EVENT_ADDED, {
+        entityType: ENTITY.EVENT,
+        entityId: inserted?.id || null,
+        entityName: cat.name,
+        metadata: { eventType: payload.type, cost: payload.cost },
+      });
     }
     await refresh();
     setModal(null);
@@ -1063,6 +1199,9 @@ export function useFelinaStore() {
         await notify({ title: t('store.err.saveFail'), message: error.message });
         return;
       }
+      // Edición de un recordatorio existente: la registramos como "añadido"
+      // de nuevo por simplicidad (es un caso minoritario); si en el futuro
+      // se quiere distinguir, añadir REMINDER_UPDATED.
     } else {
       if (!form.catId) {
         await notify({ title: t('store.invalidOp.title'), message: t('store.invalidOp.missingCat') });
@@ -1073,13 +1212,19 @@ export function useFelinaStore() {
         await notify({ title: t('store.invalidOp.title'), message: t('store.invalidOp.catOrg') });
         return;
       }
-      const { error } = await supabase.from('cat_reminders').insert({
+      const { data: inserted, error } = await supabase.from('cat_reminders').insert({
         ...payload, cat_id: form.catId, org_id: session.orgId,
-      });
+      }).select('id').single();
       if (error) {
         await notify({ title: t('store.createReminder.errTitle'), message: error.message });
         return;
       }
+      log(ACTIONS.REMINDER_ADDED, {
+        entityType: ENTITY.REMINDER,
+        entityId: inserted?.id || null,
+        entityName: cat.name,
+        metadata: { reminderType: payload.type, dueDate: payload.due_date },
+      });
     }
     await refresh();
     setModal(null);
@@ -1115,6 +1260,8 @@ export function useFelinaStore() {
       await notify({ title: t('store.noPerm.title'), message: t('store.noPerm.bodyShort') });
       return;
     }
+    const reminder = reminders.find(r => r.id === reminderId);
+    const cat = reminder ? cats.find(c => c.id === reminder.catId) : null;
     const { error } = await supabase.from('cat_reminders')
       .update({ completed_at: new Date().toISOString(), completed_by: session.userId })
       .eq('id', reminderId);
@@ -1122,6 +1269,12 @@ export function useFelinaStore() {
       await notify({ title: t('store.completeReminder.errTitle'), message: error.message });
       return;
     }
+    log(ACTIONS.REMINDER_COMPLETED, {
+      entityType: ENTITY.REMINDER,
+      entityId: reminderId,
+      entityName: cat?.name || '?',
+      metadata: { reminderType: reminder?.type || null },
+    });
     await refresh();
   };
 
@@ -1281,6 +1434,13 @@ export function useFelinaStore() {
     }
     const saved = await upsertShift(shift, { assigneeId: session.userId, status: 'assigned' });
     if (!saved) return;
+    const colony = colonies.find(c => c.id === saved.colonyId);
+    log(ACTIONS.SHIFT_ASSIGNED, {
+      entityType: ENTITY.SHIFT,
+      entityId: saved.id,
+      entityName: colony?.name || '?',
+      metadata: { date: saved.date, slot: saved.slot, task: saved.task, self: true },
+    });
     setSelectedShift(saved);
   };
 
@@ -1327,6 +1487,18 @@ export function useFelinaStore() {
     }
     const saved = await upsertShift(shift, { assigneeId: userId, status: 'assigned' });
     if (!saved) return;
+    const colony = colonies.find(c => c.id === saved.colonyId);
+    const assignee = users.find(u => u.id === userId);
+    log(ACTIONS.SHIFT_ASSIGNED, {
+      entityType: ENTITY.SHIFT,
+      entityId: saved.id,
+      entityName: colony?.name || '?',
+      metadata: {
+        date: saved.date, slot: saved.slot, task: saved.task,
+        assigneeName: assignee?.name || null,
+        self: userId === session.userId,
+      },
+    });
     setSelectedShift(saved); setModal('viewShift');
   };
 
@@ -1342,6 +1514,13 @@ export function useFelinaStore() {
       assigneeId: shift.assigneeId || session.userId,
     });
     if (!saved) return;
+    const colony = colonies.find(c => c.id === saved.colonyId);
+    log(ACTIONS.SHIFT_COMPLETED, {
+      entityType: ENTITY.SHIFT,
+      entityId: saved.id,
+      entityName: colony?.name || '?',
+      metadata: { date: saved.date, slot: saved.slot, task: saved.task },
+    });
     setSelectedShift(saved);
   };
 
@@ -1386,6 +1565,7 @@ export function useFelinaStore() {
     // Derivados
     currentUser, currentOrg, isSuperAdmin, realMembership, currentRole,
     orgColonies, orgCats, orgEvents, orgTemplates, orgShifts, orgReminders,
+    orgActivityLog,
     userOrgs, orgMembers,
 
     // Handlers de sesión y RGPD

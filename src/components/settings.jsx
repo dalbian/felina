@@ -5,6 +5,7 @@
 import { useState } from 'react';
 import {
   Edit3, UserPlus, Check, MoreHorizontal, LogOut, Shield, RefreshCw, AlertTriangle,
+  Activity, ChevronRight,
 } from 'lucide-react';
 import { isValidEmail, normalizeEmail } from '../lib/auth.js';
 import { ROLES } from '../constants.js';
@@ -12,10 +13,11 @@ import { OrgAvatar, UserAvatar, RoleBadge, Modal } from './ui.jsx';
 import { inputStyle, labelStyle } from '../styles.jsx';
 import { useTranslation } from '../lib/i18n.jsx';
 
-export const SettingsView = ({ currentOrg, currentUser, currentRole, members, onEditOrg, onAddMember, onRemoveMember, onChangeRole, onResetMemberPassword, onChangeMyPassword, onLogout, onLeaveOrg, onDeleteOrg, onResetData }) => {
+export const SettingsView = ({ currentOrg, currentUser, currentRole, members, activityLog = [], isSuperAdmin, onOpenActivity, onEditOrg, onAddMember, onRemoveMember, onChangeRole, onResetMemberPassword, onChangeMyPassword, onLogout, onLeaveOrg, onDeleteOrg, onResetData }) => {
   const { t } = useTranslation();
   const [inviteOpen, setInviteOpen] = useState(false);
   const canManage = currentRole === 'admin';
+  const canSeeActivity = canManage || isSuperAdmin;
 
   return (
     <div className="space-y-8">
@@ -86,6 +88,32 @@ export const SettingsView = ({ currentOrg, currentUser, currentRole, members, on
           ))}
         </div>
       </div>
+
+      {canSeeActivity && (
+        <button onClick={onOpenActivity}
+                className="w-full text-left rounded-2xl p-5 transition-all hover:translate-y-[-1px]"
+                style={{ backgroundColor: '#FDFAF3', boxShadow: '0 1px 3px rgba(42,37,32,0.04), 0 0 0 1px #EADFC9' }}>
+          <div className="flex items-center gap-4">
+            <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+                 style={{ backgroundColor: '#DCD6EE' }}>
+              <Activity className="w-5 h-5" style={{ color: '#7B6EA8' }} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="font-serif text-xl" style={{ color: '#1A1712' }}>
+                {t('settings.activityCard.title')}
+              </div>
+              <div className="text-xs mt-0.5" style={{ color: '#78706A' }}>
+                {activityLog.length === 0
+                  ? t('settings.activityCard.empty')
+                  : activityLog.length === 1
+                    ? t('settings.activityCard.countOne')
+                    : t('settings.activityCard.countMany', { n: activityLog.length })}
+              </div>
+            </div>
+            <ChevronRight className="w-5 h-5 flex-shrink-0" style={{ color: '#B8A888' }} />
+          </div>
+        </button>
+      )}
 
       <div className="rounded-2xl p-5" style={{ backgroundColor: '#FDFAF3', boxShadow: '0 0 0 1px #EADFC9' }}>
         <div className="text-xs uppercase tracking-widest mb-3" style={{ color: '#8A7A5C' }}>{t('settings.session.kicker')}</div>
