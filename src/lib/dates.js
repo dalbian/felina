@@ -91,3 +91,41 @@ export const fmtWeekday = (d, short = false) =>
 // Día de semana abreviado + número de día (ej. "lun 14" / "dl. 14").
 export const fmtShortDay = (d) =>
   new Date(d).toLocaleDateString(_locale, { weekday: 'short', day: '2-digit' });
+
+// Mes + año en formato corto (ej. "mar 2022" / "març 2022"). Útil para
+// mostrar la fecha aproximada de nacimiento de un gato.
+export const fmtMonthYear = (s) => {
+  if (!s) return '';
+  const d = parseYmd(s);
+  return d.toLocaleDateString(_locale, { month: 'short', year: 'numeric' });
+};
+
+// Calcula la edad de un gato (años o meses) a partir de su fecha aproximada
+// de nacimiento en formato 'YYYY-MM-DD'. La aplicación siempre guarda día 1,
+// pero esta función tolera cualquier día.
+//
+// Devuelve null si:
+//   - birthDateStr es falsy o no parseable
+//   - birthDateStr es futura
+//
+// En otro caso devuelve { years, months }:
+//   - Si la edad es >= 1 año: years > 0, months = 0 (precisión a año)
+//   - Si la edad es < 1 año: years = 0, months >= 0 (precisión a mes)
+//
+// Comparamos contra `now` opcional (param para testing); por defecto Date.now().
+export const calculateAge = (birthDateStr, now = new Date()) => {
+  if (!birthDateStr) return null;
+  const birth = parseYmd(birthDateStr);
+  if (isNaN(birth.getTime())) return null;
+  if (birth.getTime() > now.getTime()) return null;
+
+  // Total de meses transcurridos desde el nacimiento.
+  let totalMonths = (now.getFullYear() - birth.getFullYear()) * 12
+    + (now.getMonth() - birth.getMonth());
+  // Si aún no ha pasado el día del mes, restar un mes.
+  if (now.getDate() < birth.getDate()) totalMonths -= 1;
+  if (totalMonths < 0) return null;
+
+  if (totalMonths < 12) return { years: 0, months: totalMonths };
+  return { years: Math.floor(totalMonths / 12), months: 0 };
+};

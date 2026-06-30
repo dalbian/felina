@@ -8,6 +8,7 @@ import {
   startOfMonth,
   isSameYmd,
   fmtRelative,
+  calculateAge,
 } from './dates.js';
 
 afterEach(() => {
@@ -108,5 +109,41 @@ describe('fmtRelative', () => {
     expect(fmtRelative(now - 5 * 24 * 60 * 60 * 1000)).toMatch(/hace 5 días/);
     expect(fmtRelative(now - 60 * 24 * 60 * 60 * 1000)).toMatch(/meses/);
     expect(fmtRelative(now - 400 * 24 * 60 * 60 * 1000)).toMatch(/años/);
+  });
+});
+
+describe('calculateAge', () => {
+  // El segundo parámetro `now` permite testear sin depender de Date real.
+  const ref = (y, m, d) => new Date(y, m - 1, d);
+
+  it('devuelve null si no hay fecha', () => {
+    expect(calculateAge(null)).toBeNull();
+    expect(calculateAge('')).toBeNull();
+    expect(calculateAge(undefined)).toBeNull();
+  });
+
+  it('devuelve null si la fecha es futura', () => {
+    expect(calculateAge('2027-06-01', ref(2026, 6, 15))).toBeNull();
+  });
+
+  it('redondea a años cuando >= 12 meses', () => {
+    // Nacido marzo 2022; hoy junio 2026 → 4 años y 3 meses → 4 años
+    expect(calculateAge('2022-03-01', ref(2026, 6, 15))).toEqual({ years: 4, months: 0 });
+    // Justo 1 año
+    expect(calculateAge('2025-06-15', ref(2026, 6, 15))).toEqual({ years: 1, months: 0 });
+  });
+
+  it('devuelve meses cuando < 1 año', () => {
+    // Nacido marzo 2026; hoy junio 2026 → 3 meses
+    expect(calculateAge('2026-03-01', ref(2026, 6, 15))).toEqual({ years: 0, months: 3 });
+    // Justo recién nacido (mismo mes)
+    expect(calculateAge('2026-06-01', ref(2026, 6, 15))).toEqual({ years: 0, months: 0 });
+  });
+
+  it('no cuenta el cumple si aún no ha pasado el día del mes', () => {
+    // Nacido el día 20; hoy día 15 del mismo mes objetivo → 1 año menos
+    expect(calculateAge('2025-06-20', ref(2026, 6, 15))).toEqual({ years: 0, months: 11 });
+    // Mismo cumple, ya pasado en el día → 1 año cumplido
+    expect(calculateAge('2025-06-10', ref(2026, 6, 15))).toEqual({ years: 1, months: 0 });
   });
 });

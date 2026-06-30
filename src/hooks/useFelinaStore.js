@@ -56,6 +56,9 @@ const mapCat = (row) => row && {
   name: row.name, sex: row.sex, color: row.color,
   cerStatus: row.cer_status, notes: row.notes, signs: row.signs,
   microchip: row.microchip, age: row.age,
+  // birth_date llega como 'YYYY-MM-DD' (DATE puro de Postgres), lo mantenemos así.
+  // La app guarda siempre día 1; calculateAge() en lib/dates.js tolera cualquier día.
+  birthDate: row.birth_date || null,
   photoUrl: row.photo_url,
   createdAt: toMs(row.created_at),
 };
@@ -952,6 +955,14 @@ export function useFelinaStore() {
     }
 
     const toTextOrNull = (v) => (v === '' || v === undefined || v === null ? null : v);
+    // El form da birthDate como 'YYYY-MM' (input type=month). Lo
+    // normalizamos a 'YYYY-MM-01' para que Postgres lo acepte como DATE.
+    const toBirthDateOrNull = (v) => {
+      if (!v) return null;
+      if (/^\d{4}-\d{2}$/.test(v)) return `${v}-01`;
+      if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+      return null;
+    };
     const payload = {
       name: form.name,
       sex: form.sex || 'D',
@@ -962,6 +973,7 @@ export function useFelinaStore() {
       signs: toTextOrNull(form.signs),
       microchip: toTextOrNull(form.microchip),
       age: toTextOrNull(form.age),
+      birth_date: toBirthDateOrNull(form.birthDate),
     };
 
     // El campo `photoUrl` lo gestionamos APARTE tras el insert/update:

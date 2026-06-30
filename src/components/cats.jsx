@@ -7,11 +7,42 @@ import {
   PawPrint, Camera, Check, Stethoscope, X as XIcon,
   Bell, CheckCircle2, RotateCcw, AlertCircle,
 } from 'lucide-react';
-import { fmtDate, parseYmd, todayYmd } from '../lib/dates.js';
+import { fmtDate, fmtMonthYear, parseYmd, todayYmd, calculateAge } from '../lib/dates.js';
 import { CER_STATUS, SEX_VALUES, EVENT_TYPES } from '../constants.js';
 import { CatAvatar, StatusBadge, SexBadge, FilterPill, EmptyState, Field } from './ui.jsx';
 import { inputStyle, labelStyle } from '../styles.jsx';
 import { useTranslation } from '../lib/i18n.jsx';
+
+// Renderiza el campo "Edad" de la ficha. Reglas:
+//   - Si el gato está fallecido: mostramos solo la fecha aproximada de
+//     nacimiento (si la hay), porque "tiene X años" no aplica.
+//   - Si tiene birthDate: edad calculada dinámicamente + fecha en gris.
+//   - Si no tiene birthDate pero sí el campo `age` heredado (texto libre
+//     de fichas creadas antes de migrar): mostramos ese texto tal cual.
+//   - Si no hay nada: guion.
+const renderCatAge = (cat, t) => {
+  const isDeceased = cat.cerStatus === 'fallecido';
+  if (cat.birthDate) {
+    const monthYear = fmtMonthYear(cat.birthDate);
+    if (isDeceased) return monthYear || '—';
+    const age = calculateAge(cat.birthDate);
+    if (!age) return monthYear || '—';
+    let label;
+    if (age.years === 1) label = t('catDetail.ageYearOne');
+    else if (age.years > 1) label = t('catDetail.ageYears', { n: age.years });
+    else if (age.months <= 0) label = t('catDetail.ageNewborn');
+    else if (age.months === 1) label = t('catDetail.ageMonthOne');
+    else label = t('catDetail.ageMonths', { n: age.months });
+    return (
+      <span>
+        {label}{' '}
+        <span style={{ color: '#8A7A5C' }} className="font-mono text-xs">({monthYear})</span>
+      </span>
+    );
+  }
+  // Fallback al texto libre antiguo si no se ha rellenado birthDate todavía.
+  return cat.age || '—';
+};
 
 export const CatCard = ({ cat, onSelect, colonyName }) => (
   <button onClick={onSelect}
@@ -219,7 +250,7 @@ export const CatDetail = ({
 
           <dl className="grid grid-cols-2 gap-x-6 gap-y-4 mt-6">
             <Field label={t('catDetail.field.colony')} value={colony?.name || '—'} />
-            <Field label={t('catDetail.field.age')} value={cat.age || '—'} />
+            <Field label={t('catDetail.field.age')} value={renderCatAge(cat, t)} />
             <Field label={t('catDetail.field.color')} value={cat.color || '—'} />
             <Field label={t('catDetail.field.microchip')} value={cat.microchip ? <span className="font-mono text-xs">{cat.microchip}</span> : '—'} />
             <Field label={t('catDetail.field.signs')} value={cat.signs || '—'} wide />
@@ -463,9 +494,12 @@ export const CatForm = ({ cat, colonies, onSave, onCancel, onError }) => {
   //   - photoFile: File pendiente de subir (solo en memoria, null si no hay).
   // El upload real se hace en saveCat al confirmar el form; aquí mostramos
   // un preview local con createObjectURL para feedback inmediato.
-  const [form, setForm] = useState(cat ? { ...cat, photoFile: null } : {
+  // Para edición: birthDate viene como 'YYYY-MM-DD' de la BD; el input
+  // type=month necesita 'YYYY-MM'. Cortamos a los 7 primeros caracteres.
+  const initialBirth = cat?.birthDate ? cat.birthDate.slice(0, 7) : '';
+  const [form, setForm] = useState(cat ? { ...cat, birthDate: initialBirth, photoFile: null } : {
     name: '', sex: 'D', color: '', colonyId: colonies[0]?.id || '',
-    cerStatus: 'pendiente', age: '', microchip: '', signs: '', notes: '',
+    cerStatus: 'pendiente', age: '', birthDate: '', microchip: '', signs: '', notes: '',
     photoUrl: null, photoFile: null,
   });
   const fileRef = useRef(null);
@@ -548,10 +582,11 @@ export const CatForm = ({ cat, colonies, onSave, onCancel, onError }) => {
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium mb-1" style={labelStyle}>{t('catForm.ageLabel')}</label>
-              <input type="text" value={form.age} onChange={e => setForm({ ...form, age: e.target.value })}
-                     className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle}
-                     placeholder={t('catForm.agePh')} />
+              <label className="block text-xs font-medium mb-1" style={labelStyle}>{t('catForm.birthLabel')}</label>
+              <input type="month" value={form.birthDate || ''}
+                     onChange={e => setForm({ ...form, birthDate: e.target.value })}
+                     className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle} />
+              <p className="text-[11px] mt-1" style={{ color: '#78706A' }}>{t('catForm.birthHint')}</p>
             </div>
           </div>
         </div>
