@@ -89,7 +89,9 @@ export const ColoniesView = ({ colonies, cats, onSelect, onAdd }) => {
 export const ColonyDetail = ({ colony, cats, events = [], reminders = [], onBack, onSelectCat, onAddCat, onEdit, onDelete, canEdit = true, canDelete = true, canAddCat = true }) => {
   const { t } = useTranslation();
   const [tab, setTab] = useState('cats'); // 'cats' | 'stats'
-  const colCats = cats.filter(c => c.colonyId === colony.id);
+  const colCats = cats
+    .filter(c => c.colonyId === colony.id)
+    .sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' }));
 
   return (
     <div className="space-y-6">

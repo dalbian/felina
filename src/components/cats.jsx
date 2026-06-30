@@ -41,11 +41,15 @@ export const CatsView = ({ cats, colonies, onSelect, onAdd, filter, setFilter })
     ? cats
     : cats.filter(c => c.colonyId === colonyFilter);
 
-  const filtered = byColony.filter(c => {
-    if (filter !== 'all' && c.cerStatus !== filter) return false;
-    const q = search.toLowerCase();
-    return !q || c.name.toLowerCase().includes(q) || (c.color || '').toLowerCase().includes(q);
-  });
+  // Orden alfabético por nombre, insensible a mayúsculas y acentos (`base`).
+  // Hecho con localeCompare para respetar las reglas del idioma activo.
+  const filtered = byColony
+    .filter(c => {
+      if (filter !== 'all' && c.cerStatus !== filter) return false;
+      const q = search.toLowerCase();
+      return !q || c.name.toLowerCase().includes(q) || (c.color || '').toLowerCase().includes(q);
+    })
+    .sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' }));
 
   return (
     <div className="space-y-6">
