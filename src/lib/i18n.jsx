@@ -142,6 +142,11 @@ const dict = {
     'sex.M': 'Macho',
     'sex.D': 'Desconocido',
 
+    // Presencia en la colonia
+    'presence.habitual': 'Habitual',
+    'presence.esporadico': 'Esporádico',
+    'presence.no_viene': 'No viene',
+
     // ─── Calendario ───
     'cal.title': 'Calendario',
     'cal.subtitle': 'Turnos de voluntariado y cuidado de las colonias.',
@@ -324,6 +329,10 @@ const dict = {
     'cats.newCat': 'Nuevo gato',
     'cats.searchPh': 'Buscar por nombre o color…',
     'cats.filterAll': 'Todos',
+    'cats.filterAlerts': 'Con avisos',
+    'cats.filterPresenceAll': 'Cualquier presencia',
+    'cats.reminderBadge.overdue': 'Tiene recordatorios vencidos',
+    'cats.reminderBadge.soon': 'Tiene recordatorios próximos (7 días)',
     'cats.emptyResults': 'Sin resultados',
     'cats.emptyResultsInColony': 'No hay gatos en "{name}" que coincidan con los filtros.',
     'cats.emptyResultsGeneric': 'No hay gatos que coincidan con esta búsqueda o filtro.',
@@ -332,6 +341,7 @@ const dict = {
     'catDetail.editCardBtn': 'Editar ficha',
     'catDetail.kicker': 'Ficha individual',
     'catDetail.field.colony': 'Colonia',
+    'catDetail.field.presence': 'Presencia',
     'catDetail.field.age': 'Edad',
     'catDetail.ageYearOne': '1 año',
     'catDetail.ageYears': '{n} años',
@@ -374,6 +384,7 @@ const dict = {
     'catForm.birthHint': 'Solo mes y año. La edad se calculará sola.',
     'catForm.colonyLabel': 'Colonia *',
     'catForm.cerLabel': 'Estado CER',
+    'catForm.presenceLabel': 'Presencia',
     'catForm.colorLabel': 'Color / pelaje',
     'catForm.colorPh': 'Atigrado marrón, negro pelo largo…',
     'catForm.signsLabel': 'Señas identificativas',
@@ -936,6 +947,11 @@ const dict = {
     'sex.M': 'Mascle',
     'sex.D': 'Desconegut',
 
+    // Presència a la colònia
+    'presence.habitual': 'Habitual',
+    'presence.esporadico': 'Esporàdic',
+    'presence.no_viene': 'No ve',
+
     // ─── Calendari ───
     'cal.title': 'Calendari',
     'cal.subtitle': 'Torns de voluntariat i cura de les colònies.',
@@ -1118,6 +1134,10 @@ const dict = {
     'cats.newCat': 'Nou gat',
     'cats.searchPh': 'Cerca per nom o color…',
     'cats.filterAll': 'Tots',
+    'cats.filterAlerts': 'Amb avisos',
+    'cats.filterPresenceAll': 'Qualsevol presència',
+    'cats.reminderBadge.overdue': 'Té recordatoris vençuts',
+    'cats.reminderBadge.soon': 'Té recordatoris pròxims (7 dies)',
     'cats.emptyResults': 'Sense resultats',
     'cats.emptyResultsInColony': 'No hi ha gats a "{name}" que coincideixin amb els filtres.',
     'cats.emptyResultsGeneric': 'No hi ha gats que coincideixin amb aquesta cerca o filtre.',
@@ -1126,6 +1146,7 @@ const dict = {
     'catDetail.editCardBtn': 'Edita la fitxa',
     'catDetail.kicker': 'Fitxa individual',
     'catDetail.field.colony': 'Colònia',
+    'catDetail.field.presence': 'Presència',
     'catDetail.field.age': 'Edat',
     'catDetail.ageYearOne': '1 any',
     'catDetail.ageYears': '{n} anys',
@@ -1168,6 +1189,7 @@ const dict = {
     'catForm.birthHint': 'Només mes i any. L\'edat es calcularà sola.',
     'catForm.colonyLabel': 'Colònia *',
     'catForm.cerLabel': 'Estat CER',
+    'catForm.presenceLabel': 'Presència',
     'catForm.colorLabel': 'Color / pelatge',
     'catForm.colorPh': 'Atigrat marró, negre de pèl llarg…',
     'catForm.signsLabel': 'Senyals identificatius',

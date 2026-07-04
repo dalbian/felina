@@ -5,10 +5,11 @@ import { useState, useRef, useEffect } from 'react';
 import {
   MapPin, Plus, Search, ChevronLeft, ChevronRight, Edit3, Trash2,
   PawPrint, Camera, Check, Stethoscope, X as XIcon,
-  Bell, CheckCircle2, RotateCcw, AlertCircle,
+  Bell, CheckCircle2, RotateCcw, AlertCircle, Repeat,
 } from 'lucide-react';
 import { fmtDate, fmtMonthYear, parseYmd, todayYmd, calculateAge } from '../lib/dates.js';
-import { CER_STATUS, SEX_VALUES, EVENT_TYPES } from '../constants.js';
+import { catReminderStatus } from '../lib/reminders.js';
+import { CER_STATUS, SEX_VALUES, PRESENCE_VALUES, EVENT_TYPES } from '../constants.js';
 import { CatAvatar, StatusBadge, SexBadge, FilterPill, EmptyState, Field } from './ui.jsx';
 import { inputStyle, labelStyle } from '../styles.jsx';
 import { useTranslation } from '../lib/i18n.jsx';
@@ -44,7 +45,46 @@ const renderCatAge = (cat, t) => {
   return cat.age || '—';
 };
 
-export const CatCard = ({ cat, onSelect, colonyName }) => (
+// Presencia del gato en la colonia, con un punto de color: verde habitual,
+// ámbar esporádico, gris "no viene". Solo informativo.
+const PRESENCE_DOT = {
+  habitual:   '#6B8E4E',
+  esporadico: '#B89238',
+  no_viene:   '#8A8580',
+};
+const renderPresence = (presence, t) => {
+  const key = PRESENCE_DOT[presence] ? presence : 'habitual';
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <span className="w-2 h-2 rounded-full" style={{ backgroundColor: PRESENCE_DOT[key] }} />
+      {t(`presence.${key}`)}
+    </span>
+  );
+};
+
+// Badge de aviso de recordatorios. `status` viene calculado del padre
+// (catReminderStatus): 'overdue' rojo, 'soon' ámbar, null sin badge.
+// Fondo sólido + icono claro para que destaque en la tarjeta (con fondo
+// claro apenas se veía). El overdue lleva un anillo suave para reforzar
+// la urgencia.
+const REMINDER_BADGE = {
+  overdue: { icon: '#FDFAF3', bg: '#C0442A', ring: '0 0 0 3px rgba(192,68,42,0.18)' },
+  soon:    { icon: '#FDFAF3', bg: '#C6912F', ring: 'none' },
+};
+const ReminderBell = ({ status }) => {
+  const { t } = useTranslation();
+  if (!status) return null;
+  const cfg = REMINDER_BADGE[status];
+  return (
+    <span className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
+          style={{ backgroundColor: cfg.bg, boxShadow: cfg.ring }}
+          title={t(`cats.reminderBadge.${status}`)}>
+      <Bell className="w-3.5 h-3.5" style={{ color: cfg.icon }} strokeWidth={2.5} />
+    </span>
+  );
+};
+
+export const CatCard = ({ cat, onSelect, colonyName, reminderStatus = null }) => (
   <button onClick={onSelect}
           className="text-left p-4 rounded-2xl transition-all hover:translate-y-[-2px] flex items-center gap-3"
           style={{ backgroundColor: '#FDFAF3', boxShadow: '0 1px 3px rgba(42,37,32,0.04), 0 0 0 1px #EADFC9' }}>
@@ -53,6 +93,7 @@ export const CatCard = ({ cat, onSelect, colonyName }) => (
       <div className="flex items-center gap-2 mb-1">
         <h3 className="font-serif text-lg truncate" style={{ color: '#1A1712' }}>{cat.name}</h3>
         <SexBadge sex={cat.sex} />
+        <div className="ml-auto"><ReminderBell status={reminderStatus} /></div>
       </div>
       <div className="text-xs truncate mb-1.5" style={{ color: '#78706A' }}>{cat.color}{colonyName ? ` · ${colonyName}` : ''}</div>
       <StatusBadge status={cat.cerStatus} size="sm" />
@@ -60,23 +101,44 @@ export const CatCard = ({ cat, onSelect, colonyName }) => (
   </button>
 );
 
-export const CatsView = ({ cats, colonies, onSelect, onAdd, filter, setFilter }) => {
+export const CatsView = ({ cats, colonies, reminders = [], onSelect, onAdd, filter, setFilter }) => {
   const { t } = useTranslation();
   const [search, setSearch] = useState('');
   const [colonyFilter, setColonyFilter] = useState('all');
+  const [presenceFilter, setPresenceFilter] = useState('all');
   const coloniesById = Object.fromEntries(colonies.map(c => [c.id, c]));
 
-  // El filtro de colonia se aplica primero: así las píldoras de estado CER
-  // reflejan recuentos dentro de la colonia seleccionada, no del total global.
-  const byColony = colonyFilter === 'all'
-    ? cats
-    : cats.filter(c => c.colonyId === colonyFilter);
+  // Estado de avisos por gato: { catId → 'overdue'|'soon'|null }. Se calcula
+  // una vez por render con el `hoy` de hoy y se reutiliza para el badge, el
+  // filtro "Con avisos" y el recuento de la píldora.
+  const today = todayYmd();
+  const reminderStatusById = Object.fromEntries(
+    cats.map(c => [c.id, catReminderStatus(c.id, reminders, today)])
+  );
+
+  // Scope: dos dimensiones combinables (colonia + presencia) que se aplican
+  // ANTES de las píldoras CER/avisos. Así los recuentos de las píldoras
+  // reflejan el scope activo y se pueden cruzar dimensiones (ej. habituales
+  // + pendientes de CER dentro de una colonia).
+  const scoped = cats.filter(c => {
+    if (colonyFilter !== 'all' && c.colonyId !== colonyFilter) return false;
+    if (presenceFilter !== 'all' && c.presence !== presenceFilter) return false;
+    return true;
+  });
+
+  // Nº de gatos con aviso (vencido o próximo) dentro del scope.
+  const alertCount = scoped.filter(c => reminderStatusById[c.id]).length;
 
   // Orden alfabético por nombre, insensible a mayúsculas y acentos (`base`).
   // Hecho con localeCompare para respetar las reglas del idioma activo.
-  const filtered = byColony
+  const filtered = scoped
     .filter(c => {
-      if (filter !== 'all' && c.cerStatus !== filter) return false;
+      // 'alerts' es un pseudo-filtro: gatos con recordatorio vencido o próximo.
+      if (filter === 'alerts') {
+        if (!reminderStatusById[c.id]) return false;
+      } else if (filter !== 'all' && c.cerStatus !== filter) {
+        return false;
+      }
       const q = search.toLowerCase();
       return !q || c.name.toLowerCase().includes(q) || (c.color || '').toLowerCase().includes(q);
     })
@@ -117,12 +179,26 @@ export const CatsView = ({ cats, colonies, onSelect, onAdd, filter, setFilter })
             </select>
           </div>
         )}
+        <div className="relative min-w-[180px]">
+          <Repeat className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" style={{ color: '#8A7A5C' }} />
+          <select value={presenceFilter} onChange={e => setPresenceFilter(e.target.value)}
+                  className="w-full pl-11 pr-4 py-3 rounded-xl text-sm outline-none"
+                  style={{ backgroundColor: '#FDFAF3', boxShadow: '0 0 0 1px #EADFC9', color: '#1A1712' }}>
+            <option value="all">{t('cats.filterPresenceAll')}</option>
+            {PRESENCE_VALUES.map(p => <option key={p} value={p}>{t(`presence.${p}`)}</option>)}
+          </select>
+        </div>
       </div>
 
       <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
-        <FilterPill active={filter === 'all'} onClick={() => setFilter('all')} count={byColony.length}>{t('cats.filterAll')}</FilterPill>
+        <FilterPill active={filter === 'all'} onClick={() => setFilter('all')} count={scoped.length}>{t('cats.filterAll')}</FilterPill>
+        {alertCount > 0 && (
+          <FilterPill active={filter === 'alerts'} onClick={() => setFilter('alerts')} count={alertCount} dotColor="#C67B5C">
+            {t('cats.filterAlerts')}
+          </FilterPill>
+        )}
         {Object.entries(CER_STATUS).map(([key, val]) => {
-          const n = byColony.filter(c => c.cerStatus === key).length;
+          const n = scoped.filter(c => c.cerStatus === key).length;
           if (n === 0) return null;
           return (
             <FilterPill key={key} active={filter === key} onClick={() => setFilter(key)} count={n} dotColor={val.dot}>
@@ -142,7 +218,9 @@ export const CatsView = ({ cats, colonies, onSelect, onAdd, filter, setFilter })
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
           {filtered.map(cat => (
-            <CatCard key={cat.id} cat={cat} colonyName={coloniesById[cat.colonyId]?.name} onSelect={() => onSelect(cat.id)} />
+            <CatCard key={cat.id} cat={cat} colonyName={coloniesById[cat.colonyId]?.name}
+                     reminderStatus={reminderStatusById[cat.id]}
+                     onSelect={() => onSelect(cat.id)} />
           ))}
         </div>
       )}
@@ -250,6 +328,7 @@ export const CatDetail = ({
 
           <dl className="grid grid-cols-2 gap-x-6 gap-y-4 mt-6">
             <Field label={t('catDetail.field.colony')} value={colony?.name || '—'} />
+            <Field label={t('catDetail.field.presence')} value={renderPresence(cat.presence, t)} />
             <Field label={t('catDetail.field.age')} value={renderCatAge(cat, t)} />
             <Field label={t('catDetail.field.color')} value={cat.color || '—'} />
             <Field label={t('catDetail.field.microchip')} value={cat.microchip ? <span className="font-mono text-xs">{cat.microchip}</span> : '—'} />
@@ -499,7 +578,7 @@ export const CatForm = ({ cat, colonies, onSave, onCancel, onError }) => {
   const initialBirth = cat?.birthDate ? cat.birthDate.slice(0, 7) : '';
   const [form, setForm] = useState(cat ? { ...cat, birthDate: initialBirth, photoFile: null } : {
     name: '', sex: 'D', color: '', colonyId: colonies[0]?.id || '',
-    cerStatus: 'pendiente', age: '', birthDate: '', microchip: '', signs: '', notes: '',
+    cerStatus: 'pendiente', presence: 'habitual', age: '', birthDate: '', microchip: '', signs: '', notes: '',
     photoUrl: null, photoFile: null,
   });
   const fileRef = useRef(null);
@@ -600,12 +679,21 @@ export const CatForm = ({ cat, colonies, onSave, onCancel, onError }) => {
         </select>
       </div>
 
-      <div>
-        <label className="block text-xs font-medium mb-1" style={labelStyle}>{t('catForm.cerLabel')}</label>
-        <select value={form.cerStatus} onChange={e => setForm({ ...form, cerStatus: e.target.value })}
-                className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle}>
-          {Object.keys(CER_STATUS).map((k) => <option key={k} value={k}>{t(`cer.${k}.label`)}</option>)}
-        </select>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs font-medium mb-1" style={labelStyle}>{t('catForm.cerLabel')}</label>
+          <select value={form.cerStatus} onChange={e => setForm({ ...form, cerStatus: e.target.value })}
+                  className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle}>
+            {Object.keys(CER_STATUS).map((k) => <option key={k} value={k}>{t(`cer.${k}.label`)}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs font-medium mb-1" style={labelStyle}>{t('catForm.presenceLabel')}</label>
+          <select value={form.presence} onChange={e => setForm({ ...form, presence: e.target.value })}
+                  className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle}>
+            {PRESENCE_VALUES.map((k) => <option key={k} value={k}>{t(`presence.${k}`)}</option>)}
+          </select>
+        </div>
       </div>
 
       <div>

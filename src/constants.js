@@ -54,6 +54,10 @@ export const DAYS_OF_WEEK = [
 // Sexos posibles. Las etiquetas visibles salen de i18n (sex.H / sex.M / sex.D).
 export const SEX_VALUES = ['H', 'M', 'D']; // H=hembra, M=macho, D=desconocido
 
+// Presencia del gato en la colonia (frecuencia con la que aparece). Informativo,
+// independiente del estado CER. Etiquetas visibles en i18n (presence.<valor>).
+export const PRESENCE_VALUES = ['habitual', 'esporadico', 'no_viene'];
+
 export const ROLES = {
   admin:       { color: '#1F3A2F', bg: '#DDE6CC' },
   coordinator: { color: '#4A6332', bg: '#E5EDDB' },

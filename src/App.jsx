@@ -395,7 +395,7 @@ export default function App() {
                             canAddCat={can(currentRole, 'add_cat')} />
             )}
             {view === 'cats' && currentOrg && (
-              <CatsView cats={orgCats} colonies={orgColonies}
+              <CatsView cats={orgCats} colonies={orgColonies} reminders={orgReminders}
                         onSelect={(id) => onNav('cat', id)}
                         onAdd={() => can(currentRole, 'add_cat') ? setModal('addCat') : notify({ title: t('app.notify.noPermTitle'), message: t('app.notify.noPermCat') })}
                         filter={filter} setFilter={setFilter} />

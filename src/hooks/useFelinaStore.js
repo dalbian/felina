@@ -56,6 +56,9 @@ const mapCat = (row) => row && {
   name: row.name, sex: row.sex, color: row.color,
   cerStatus: row.cer_status, notes: row.notes, signs: row.signs,
   microchip: row.microchip, age: row.age,
+  // Presencia en la colonia (habitual/esporadico/no_viene). Default 'habitual'
+  // en BD, pero por robustez ante filas antiguas caemos a 'habitual' si viniera null.
+  presence: row.presence || 'habitual',
   // birth_date llega como 'YYYY-MM-DD' (DATE puro de Postgres), lo mantenemos así.
   // La app guarda siempre día 1; calculateAge() en lib/dates.js tolera cualquier día.
   birthDate: row.birth_date || null,
@@ -969,6 +972,7 @@ export function useFelinaStore() {
       color: toTextOrNull(form.color),
       colony_id: toTextOrNull(form.colonyId),
       cer_status: form.cerStatus || 'pendiente',
+      presence: form.presence || 'habitual',
       notes: toTextOrNull(form.notes),
       signs: toTextOrNull(form.signs),
       microchip: toTextOrNull(form.microchip),

@@ -3,7 +3,8 @@
 
 import { useState, lazy, Suspense } from 'react';
 import { MapPin, Plus, Search, ChevronLeft, Edit3, Trash2, PawPrint, Locate, Check, BarChart3 } from 'lucide-react';
-import { fmtRelative } from '../lib/dates.js';
+import { fmtRelative, todayYmd } from '../lib/dates.js';
+import { catReminderStatus } from '../lib/reminders.js';
 import { EmptyState } from './ui.jsx';
 import { CatCard } from './cats.jsx';
 import { inputStyle, labelStyle } from '../styles.jsx';
@@ -183,7 +184,11 @@ export const ColonyDetail = ({ colony, cats, events = [], reminders = [], onBack
                         action={canAddCat ? <button onClick={onAddCat} className="px-4 py-2 rounded-xl text-sm font-medium" style={{ backgroundColor: '#1F3A2F', color: '#F8F3E8' }}>{t('col.detail.addFirstCat')}</button> : null} />
           ) : (
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {colCats.map(cat => <CatCard key={cat.id} cat={cat} onSelect={() => onSelectCat(cat.id)} />)}
+              {colCats.map(cat => (
+                <CatCard key={cat.id} cat={cat}
+                         reminderStatus={catReminderStatus(cat.id, reminders, todayYmd())}
+                         onSelect={() => onSelectCat(cat.id)} />
+              ))}
             </div>
           )}
         </div>
