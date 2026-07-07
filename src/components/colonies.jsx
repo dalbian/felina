@@ -2,11 +2,12 @@
 // dentro de la colonia; de ahí la importación cruzada a cats.jsx (CatCard).
 
 import { useState, lazy, Suspense } from 'react';
-import { MapPin, Plus, Search, ChevronLeft, Edit3, Trash2, PawPrint, Locate, Check, BarChart3 } from 'lucide-react';
+import { MapPin, Plus, Search, ChevronLeft, Edit3, Trash2, PawPrint, BarChart3, ChevronDown } from 'lucide-react';
 import { fmtRelative, todayYmd } from '../lib/dates.js';
 import { catReminderStatus } from '../lib/reminders.js';
 import { EmptyState } from './ui.jsx';
 import { CatCard } from './cats.jsx';
+import { LocationPicker } from './locationPicker.jsx';
 import { inputStyle, labelStyle } from '../styles.jsx';
 import { useTranslation } from '../lib/i18n.jsx';
 
@@ -207,9 +208,13 @@ export const ColonyDetail = ({ colony, cats, events = [], reminders = [], onBack
   );
 };
 
-export const ColonyForm = ({ colony, onSave, onCancel, fromMap = false }) => {
+export const ColonyForm = ({ colony, onSave, onCancel }) => {
   const { t } = useTranslation();
   const [form, setForm] = useState(colony || { name: '', address: '', cuidadores: '', notes: '', lat: '', lng: '' });
+  // Campos lat/lng manuales colapsados por defecto: el mapa es la vía principal;
+  // los abrimos ya expandidos si la colonia trae coordenadas escritas a mano
+  // pero fuera del rango razonable (nunca), o si el usuario quiere pegar coords.
+  const [showManual, setShowManual] = useState(false);
   const valid = form.name.trim();
 
   return (
@@ -233,28 +238,30 @@ export const ColonyForm = ({ colony, onSave, onCancel, fromMap = false }) => {
                placeholder={t('col.form.carersPh')} />
       </div>
       <div>
-        <label className="block text-xs font-medium mb-1 flex items-center gap-1.5" style={labelStyle}>
-          <Locate className="w-3 h-3" /> {t('col.form.coordsLabel')}
-        </label>
-        <div className="grid grid-cols-2 gap-3">
-          <input type="number" step="any" value={form.lat ?? ''}
-                 onChange={e => setForm({ ...form, lat: e.target.value ? parseFloat(e.target.value) : '' })}
-                 className="w-full px-3 py-2 rounded-lg text-sm outline-none font-mono" style={inputStyle}
-                 placeholder={t('col.form.latPh')} />
-          <input type="number" step="any" value={form.lng ?? ''}
-                 onChange={e => setForm({ ...form, lng: e.target.value ? parseFloat(e.target.value) : '' })}
-                 className="w-full px-3 py-2 rounded-lg text-sm outline-none font-mono" style={inputStyle}
-                 placeholder={t('col.form.lngPh')} />
-        </div>
-        {fromMap ? (
-          <p className="text-[11px] mt-1.5 inline-flex items-center gap-1.5 px-2 py-1 rounded"
-             style={{ color: '#4A6332', backgroundColor: '#DDE6CC' }}>
-            <Check className="w-3 h-3" /> {t('col.form.fromMapNote')}
-          </p>
-        ) : (
-          <p className="text-[11px] mt-1.5" style={{ color: '#78706A' }}>
-            {t('col.form.coordsHint')}
-          </p>
+        <LocationPicker
+          lat={typeof form.lat === 'number' ? form.lat : undefined}
+          lng={typeof form.lng === 'number' ? form.lng : undefined}
+          onPick={({ lat, lng }) => setForm({ ...form, lat, lng })} />
+
+        {/* Coordenadas manuales, colapsadas: alternativa para quien pega
+            lat/lng de Google Maps en lugar de tocar el mapa. */}
+        <button type="button" onClick={() => setShowManual(v => !v)}
+                className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-medium"
+                style={{ color: '#8A7A5C' }}>
+          <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showManual ? 'rotate-180' : ''}`} />
+          {t('col.form.manualToggle')}
+        </button>
+        {showManual && (
+          <div className="grid grid-cols-2 gap-3 mt-2">
+            <input type="number" step="any" value={form.lat ?? ''}
+                   onChange={e => setForm({ ...form, lat: e.target.value ? parseFloat(e.target.value) : '' })}
+                   className="w-full px-3 py-2 rounded-lg text-sm outline-none font-mono" style={inputStyle}
+                   placeholder={t('col.form.latPh')} />
+            <input type="number" step="any" value={form.lng ?? ''}
+                   onChange={e => setForm({ ...form, lng: e.target.value ? parseFloat(e.target.value) : '' })}
+                   className="w-full px-3 py-2 rounded-lg text-sm outline-none font-mono" style={inputStyle}
+                   placeholder={t('col.form.lngPh')} />
+          </div>
         )}
       </div>
       <div>

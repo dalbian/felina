@@ -48,7 +48,6 @@ export const GlobalModals = ({
         colony={modal?.type === 'addColony' && modal.prefill
           ? { name: '', address: '', cuidadores: '', notes: '', lat: modal.prefill.lat, lng: modal.prefill.lng }
           : undefined}
-        fromMap={modal?.type === 'addColony' && !!modal.prefill}
         onSave={saveColony} onCancel={() => setModal(null)} />
     </Modal>
     <Modal open={modal === 'editColony'} onClose={() => setModal(null)} title={t('modal.title.editColony')}>
