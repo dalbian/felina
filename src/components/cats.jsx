@@ -105,7 +105,10 @@ export const CatsView = ({ cats, colonies, reminders = [], onSelect, onAdd, filt
   const { t } = useTranslation();
   const [search, setSearch] = useState('');
   const [colonyFilter, setColonyFilter] = useState('all');
-  const [presenceFilter, setPresenceFilter] = useState('all');
+  // Por defecto solo los habituales: es lo que se consulta en el día a día
+  // (petición de las protectoras). Se reinicia cada vez que se entra en la
+  // sección porque el estado es local de la vista.
+  const [presenceFilter, setPresenceFilter] = useState('habitual');
   const coloniesById = Object.fromEntries(colonies.map(c => [c.id, c]));
 
   // Estado de avisos por gato: { catId → 'overdue'|'soon'|null }. Se calcula
