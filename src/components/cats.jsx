@@ -95,7 +95,11 @@ export const CatCard = ({ cat, onSelect, colonyName, reminderStatus = null }) =>
         <SexBadge sex={cat.sex} />
         <div className="ml-auto"><ReminderBell status={reminderStatus} /></div>
       </div>
-      <div className="text-xs truncate mb-1.5" style={{ color: '#78706A' }}>{cat.color}{colonyName ? ` · ${colonyName}` : ''}</div>
+      {/* Solo la colonia: el pelaje se sacó de la tarjeta a petición de las
+          protectoras (sigue en la ficha, en el formulario y en el buscador). */}
+      {colonyName && (
+        <div className="text-xs truncate mb-1.5" style={{ color: '#78706A' }}>{colonyName}</div>
+      )}
       <StatusBadge status={cat.cerStatus} size="sm" />
     </div>
   </button>
@@ -333,6 +337,7 @@ export const CatDetail = ({
             <Field label={t('catDetail.field.colony')} value={colony?.name || '—'} />
             <Field label={t('catDetail.field.presence')} value={renderPresence(cat.presence, t)} />
             <Field label={t('catDetail.field.age')} value={renderCatAge(cat, t)} />
+            <Field label={t('catDetail.field.color')} value={cat.color || '—'} />
             <Field label={t('catDetail.field.microchip')} value={cat.microchip ? <span className="font-mono text-xs">{cat.microchip}</span> : '—'} />
             <Field label={t('catDetail.field.signs')} value={cat.signs || '—'} wide />
           </dl>
