@@ -13,7 +13,7 @@ import {
 } from 'recharts';
 import { PawPrint, Activity, Wallet, Bell } from 'lucide-react';
 
-import { CER_STATUS, EVENT_TYPES, SEX_VALUES } from '../constants.js';
+import { CER_STATUS, EVENT_TYPES, SEX_VALUES, PRESENCE_VALUES } from '../constants.js';
 import { useTranslation } from '../lib/i18n.jsx';
 import { inputStyle } from '../styles.jsx';
 
@@ -385,26 +385,35 @@ const EmptyMini = ({ label }) => (
 
 export const StatsView = ({ cats, colonies, events, reminders }) => {
   const { t } = useTranslation();
-  const [colonyFilter, setColonyFilter] = useState('all'); // 'all' | colonyId
-  const [rangeKey, setRangeKey] = useState('12m');         // '30d' | '12m' | 'ytd' | 'ly' | 'all'
+  const [colonyFilter, setColonyFilter] = useState('all');     // 'all' | colonyId
+  const [presenceFilter, setPresenceFilter] = useState('all'); // 'all' | valor de PRESENCE_VALUES
+  const [rangeKey, setRangeKey] = useState('12m');             // '30d' | '12m' | 'ytd' | 'ly' | 'all'
 
   const range = useMemo(() => rangeFor(rangeKey), [rangeKey]);
 
-  const scopedCats = useMemo(
-    () => colonyFilter === 'all' ? cats : cats.filter(c => c.colonyId === colonyFilter),
-    [cats, colonyFilter]
-  );
-  // Eventos: filtramos por colonia vía cat→colonyId.
+  // Dos dimensiones combinables (colonia + presencia). Sin filtro activo
+  // devolvemos los arrays tal cual para no recorrerlos en balde.
+  const noScope = colonyFilter === 'all' && presenceFilter === 'all';
+
+  const scopedCats = useMemo(() => {
+    if (noScope) return cats;
+    return cats.filter(c => {
+      if (colonyFilter !== 'all' && c.colonyId !== colonyFilter) return false;
+      if (presenceFilter !== 'all' && c.presence !== presenceFilter) return false;
+      return true;
+    });
+  }, [cats, colonyFilter, presenceFilter, noScope]);
+  // Eventos y recordatorios: filtramos por el gato al que pertenecen.
   const scopedEvents = useMemo(() => {
-    if (colonyFilter === 'all') return events;
+    if (noScope) return events;
     const ids = new Set(scopedCats.map(c => c.id));
     return events.filter(e => ids.has(e.catId));
-  }, [events, scopedCats, colonyFilter]);
+  }, [events, scopedCats, noScope]);
   const scopedReminders = useMemo(() => {
-    if (colonyFilter === 'all') return reminders;
+    if (noScope) return reminders;
     const ids = new Set(scopedCats.map(c => c.id));
     return (reminders || []).filter(r => ids.has(r.catId));
-  }, [reminders, scopedCats, colonyFilter]);
+  }, [reminders, scopedCats, noScope]);
 
   return (
     <div className="space-y-6">
@@ -429,6 +438,16 @@ export const StatsView = ({ cats, colonies, events, reminders }) => {
                   className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle}>
             <option value="all">{t('stats.filter.allColonies')}</option>
             {colonies.map(col => <option key={col.id} value={col.id}>{col.name}</option>)}
+          </select>
+        </div>
+        <div className="flex-1 min-w-0">
+          <label className="block text-[10px] uppercase tracking-widest mb-1" style={{ color: '#8A7A5C' }}>
+            {t('stats.filter.presence')}
+          </label>
+          <select value={presenceFilter} onChange={e => setPresenceFilter(e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg text-sm outline-none" style={inputStyle}>
+            <option value="all">{t('cats.filterPresenceAll')}</option>
+            {PRESENCE_VALUES.map(p => <option key={p} value={p}>{t(`presence.${p}`)}</option>)}
           </select>
         </div>
         <div className="flex-1 min-w-0">

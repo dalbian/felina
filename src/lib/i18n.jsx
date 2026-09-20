@@ -353,7 +353,6 @@ const dict = {
     'catDetail.ageMonthOne': '1 mes',
     'catDetail.ageMonths': '{n} meses',
     'catDetail.ageNewborn': 'Recién nacido',
-    'catDetail.field.color': 'Color / pelaje',
     'catDetail.field.microchip': 'Microchip',
     'catDetail.field.signs': 'Señas identificativas',
     'catDetail.notesLabel': 'Notas',
@@ -745,6 +744,7 @@ const dict = {
 
     'stats.filter.colony': 'Colonia',
     'stats.filter.allColonies': 'Todas las colonias',
+    'stats.filter.presence': 'Presencia',
     'stats.filter.range': 'Período',
     'stats.range.30d': 'Últimos 30 días',
     'stats.range.12m': 'Últimos 12 meses',
@@ -1163,7 +1163,6 @@ const dict = {
     'catDetail.ageMonthOne': '1 mes',
     'catDetail.ageMonths': '{n} mesos',
     'catDetail.ageNewborn': 'Nounat',
-    'catDetail.field.color': 'Color / pelatge',
     'catDetail.field.microchip': 'Microxip',
     'catDetail.field.signs': 'Senyals identificatius',
     'catDetail.notesLabel': 'Notes',
@@ -1529,6 +1528,7 @@ const dict = {
 
     'stats.filter.colony': 'Colònia',
     'stats.filter.allColonies': 'Totes les colònies',
+    'stats.filter.presence': 'Presència',
     'stats.filter.range': 'Període',
     'stats.range.30d': 'Últims 30 dies',
     'stats.range.12m': 'Últims 12 mesos',

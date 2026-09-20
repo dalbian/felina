@@ -333,7 +333,6 @@ export const CatDetail = ({
             <Field label={t('catDetail.field.colony')} value={colony?.name || '—'} />
             <Field label={t('catDetail.field.presence')} value={renderPresence(cat.presence, t)} />
             <Field label={t('catDetail.field.age')} value={renderCatAge(cat, t)} />
-            <Field label={t('catDetail.field.color')} value={cat.color || '—'} />
             <Field label={t('catDetail.field.microchip')} value={cat.microchip ? <span className="font-mono text-xs">{cat.microchip}</span> : '—'} />
             <Field label={t('catDetail.field.signs')} value={cat.signs || '—'} wide />
           </dl>
