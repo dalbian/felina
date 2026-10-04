@@ -5,9 +5,13 @@
 import { useState, useEffect, useRef } from 'react';
 import { MapPin, Map, AlertTriangle, ChevronRight, X } from 'lucide-react';
 import { EmptyState } from './ui.jsx';
+import { useTranslation } from '../lib/i18n.jsx';
 
 export const MapView = ({ colonies, cats, orgName, onSelectColony, canAddColony, onPickLocation }) => {
+  const { t } = useTranslation();
   const [mapReady, setMapReady] = useState(false);
+  // Guardamos la CLAVE i18n del error, no el texto: así el mensaje cambia
+  // de idioma aunque el fallo ocurriera antes de tocar el selector.
   const [error, setError] = useState(null);
   const [addMode, setAddMode] = useState(false);
   const mapContainerRef = useRef(null);
@@ -29,7 +33,7 @@ export const MapView = ({ colonies, cats, orgName, onSelectColony, canAddColony,
     const existing = document.querySelector('script[data-felina-leaflet]');
     if (existing) {
       existing.addEventListener('load', () => setMapReady(true));
-      existing.addEventListener('error', () => setError('No se pudo cargar el mapa.'));
+      existing.addEventListener('error', () => setError('map.error.load'));
       return;
     }
     const script = document.createElement('script');
@@ -37,7 +41,7 @@ export const MapView = ({ colonies, cats, orgName, onSelectColony, canAddColony,
     script.setAttribute('data-felina-leaflet', 'true');
     script.async = true;
     script.onload = () => setMapReady(true);
-    script.onerror = () => setError('No se pudo cargar Leaflet desde la CDN. Revisa tu conexión.');
+    script.onerror = () => setError('map.error.cdn');
     document.body.appendChild(script);
   }, []);
 
@@ -111,12 +115,12 @@ export const MapView = ({ colonies, cats, orgName, onSelectColony, canAddColony,
       const popupHtml = `
         <div class="felina-popup">
           <div class="felina-popup-title">${col.name}</div>
-          <div class="felina-popup-address">${col.address || 'Sin dirección'}</div>
+          <div class="felina-popup-address">${col.address || t('map.popup.noAddress')}</div>
           <div class="felina-popup-stats">
-            <span><strong>${colCats.length}</strong> gato${colCats.length !== 1 ? 's' : ''}</span>
+            <span><strong>${colCats.length}</strong> ${colCats.length === 1 ? t('map.popup.catOne') : t('map.popup.catMany')}</span>
             <span><strong>${pct}%</strong> CER</span>
           </div>
-          <button class="felina-popup-btn" data-colony-id="${col.id}">Ver ficha de la colonia</button>
+          <button class="felina-popup-btn" data-colony-id="${col.id}">${t('map.popup.cta')}</button>
         </div>
       `;
       marker.bindPopup(popupHtml, { closeButton: false, offset: [0, 0] });
@@ -136,7 +140,7 @@ export const MapView = ({ colonies, cats, orgName, onSelectColony, canAddColony,
       const bounds = L.latLngBounds(withCoords.map(c => [c.lat, c.lng]));
       map.fitBounds(bounds, { padding: [60, 60], maxZoom: 15 });
     }
-  }, [colonies, cats, mapReady, onSelectColony]);
+  }, [colonies, cats, mapReady, onSelectColony, t]); // t: repinta los popups al cambiar de idioma
 
   // Modo "añadir colonia": engancha un handler de click sobre el mapa.
   useEffect(() => {
@@ -221,14 +225,16 @@ export const MapView = ({ colonies, cats, orgName, onSelectColony, canAddColony,
 
       <div className="flex items-end justify-between gap-4 flex-wrap">
         <div>
-          <div className="text-xs uppercase tracking-[0.18em] mb-2" style={{ color: '#8A7A5C' }}>Visualización</div>
+          <div className="text-xs uppercase tracking-[0.18em] mb-2" style={{ color: '#8A7A5C' }}>{t('map.kicker')}</div>
           <h1 className="font-serif text-4xl md:text-5xl" style={{ color: '#1A1712' }}>
-            Mapa de <span className="italic" style={{ color: '#C67B5C' }}>colonias</span>
+            {t('map.title')} <span className="italic" style={{ color: '#C67B5C' }}>{t('map.titleEm')}</span>
           </h1>
           <p className="mt-3 text-[15px]" style={{ color: '#6B635A' }}>
-            {withCoords.length > 0
-              ? `Mostrando ${withCoords.length} colonia${withCoords.length !== 1 ? 's' : ''} de ${orgName}.`
-              : `${orgName} aún no tiene colonias con coordenadas registradas.`}
+            {withCoords.length === 0
+              ? t('map.noneWithCoords', { org: orgName })
+              : withCoords.length === 1
+                ? t('map.showingOne', { org: orgName })
+                : t('map.showingMany', { n: withCoords.length, org: orgName })}
           </p>
         </div>
         {canAddColony && mapReady && !error && (
@@ -238,7 +244,9 @@ export const MapView = ({ colonies, cats, orgName, onSelectColony, canAddColony,
                     backgroundColor: addMode ? '#F5DDCE' : '#1F3A2F',
                     color: addMode ? '#8A3A1F' : '#F8F3E8',
                   }}>
-            {addMode ? (<><X className="w-4 h-4" /> Cancelar</>) : (<><MapPin className="w-4 h-4" /> Añadir colonia tocando el mapa</>)}
+            {addMode
+              ? (<><X className="w-4 h-4" /> {t('common.cancel')}</>)
+              : (<><MapPin className="w-4 h-4" /> {t('map.addByTap')}</>)}
           </button>
         )}
       </div>
@@ -247,14 +255,14 @@ export const MapView = ({ colonies, cats, orgName, onSelectColony, canAddColony,
         <div className="rounded-xl px-4 py-2.5 text-sm flex items-center gap-2"
              style={{ backgroundColor: '#FDF4DE', color: '#8A6B1F', boxShadow: '0 0 0 1px #E8D4A0' }}>
           <MapPin className="w-4 h-4 flex-shrink-0" />
-          <span>Toca el mapa donde está la nueva colonia. Después podrás ajustar el nombre, dirección y notas.</span>
+          <span>{t('map.addHint')}</span>
         </div>
       )}
 
       {error ? (
         <div className="rounded-2xl p-8 text-center" style={{ backgroundColor: '#F5DDCE' }}>
           <AlertTriangle className="w-8 h-8 mx-auto mb-2" style={{ color: '#B15A3A' }} />
-          <p className="text-sm" style={{ color: '#4A433C' }}>{error}</p>
+          <p className="text-sm" style={{ color: '#4A433C' }}>{t(error)}</p>
         </div>
       ) : !mapReady ? (
         <div className="rounded-2xl flex items-center justify-center h-[45vh] min-h-[320px] md:h-[60vh] md:min-h-[400px]"
@@ -263,12 +271,12 @@ export const MapView = ({ colonies, cats, orgName, onSelectColony, canAddColony,
             <div className="w-10 h-10 mx-auto mb-3 rounded-full flex items-center justify-center" style={{ backgroundColor: '#F2EADB' }}>
               <Map className="w-5 h-5" style={{ color: '#8A7A5C' }} />
             </div>
-            <div className="font-serif italic text-sm" style={{ color: '#8A7A5C' }}>Cargando mapa…</div>
+            <div className="font-serif italic text-sm" style={{ color: '#8A7A5C' }}>{t('map.loading')}</div>
           </div>
         </div>
       ) : withCoords.length === 0 && withoutCoords.length === 0 ? (
-        <EmptyState icon={Map} title="Aún no hay colonias"
-                    description="Añade tu primera colonia desde la sección de Colonias para verla en el mapa." />
+        <EmptyState icon={Map} title={t('map.emptyTitle')}
+                    description={t('map.emptyDesc')} />
       ) : (
         <>
           <div ref={mapContainerRef}
@@ -277,26 +285,26 @@ export const MapView = ({ colonies, cats, orgName, onSelectColony, canAddColony,
 
           <div className="grid md:grid-cols-2 gap-4">
             <div className="rounded-2xl p-5" style={{ backgroundColor: '#FDFAF3', boxShadow: '0 0 0 1px #EADFC9' }}>
-              <div className="text-xs uppercase tracking-widest mb-3" style={{ color: '#8A7A5C' }}>Leyenda</div>
+              <div className="text-xs uppercase tracking-widest mb-3" style={{ color: '#8A7A5C' }}>{t('map.legend')}</div>
               <div className="space-y-2 text-xs" style={{ color: '#4A433C' }}>
                 <div className="flex items-center gap-2.5">
                   <div className="w-4 h-4 rounded-full flex-shrink-0 border-2" style={{ backgroundColor: '#4A6332', borderColor: '#FDFAF3' }} />
-                  <span>Más del 80% esterilizadas</span>
+                  <span>{t('map.legend.high')}</span>
                 </div>
                 <div className="flex items-center gap-2.5">
                   <div className="w-4 h-4 rounded-full flex-shrink-0 border-2" style={{ backgroundColor: '#8A6B1F', borderColor: '#FDFAF3' }} />
-                  <span>Entre el 50% y el 80%</span>
+                  <span>{t('map.legend.mid')}</span>
                 </div>
                 <div className="flex items-center gap-2.5">
                   <div className="w-4 h-4 rounded-full flex-shrink-0 border-2" style={{ backgroundColor: '#B15A3A', borderColor: '#FDFAF3' }} />
-                  <span>Menos del 50% (prioridad)</span>
+                  <span>{t('map.legend.low')}</span>
                 </div>
                 <div className="flex items-center gap-2.5">
                   <div className="w-4 h-4 rounded-full flex-shrink-0 border-2" style={{ backgroundColor: '#8A7A5C', borderColor: '#FDFAF3' }} />
-                  <span>Sin gatos fichados</span>
+                  <span>{t('map.legend.none')}</span>
                 </div>
                 <div className="pt-2 mt-2 border-t text-[11px]" style={{ borderColor: '#F0E8D6', color: '#78706A' }}>
-                  Pasa el ratón sobre un marcador para ver el nombre, o haz clic para abrir la ficha de la colonia.
+                  {t('map.legend.hint')}
                 </div>
               </div>
             </div>
@@ -304,10 +312,10 @@ export const MapView = ({ colonies, cats, orgName, onSelectColony, canAddColony,
             {withoutCoords.length > 0 && (
               <div className="rounded-2xl p-5" style={{ backgroundColor: '#FDF4DE', boxShadow: '0 0 0 1px #E8D4A0' }}>
                 <div className="text-xs uppercase tracking-widest mb-2 flex items-center gap-1.5" style={{ color: '#8A6B1F' }}>
-                  <AlertTriangle className="w-3.5 h-3.5" /> Sin coordenadas ({withoutCoords.length})
+                  <AlertTriangle className="w-3.5 h-3.5" /> {t('map.noCoordsTitle', { n: withoutCoords.length })}
                 </div>
                 <p className="text-xs mb-3" style={{ color: '#78706A' }}>
-                  Estas colonias no aparecen en el mapa. Edita su ficha para añadir latitud y longitud.
+                  {t('map.noCoordsDesc')}
                 </p>
                 <div className="space-y-1.5">
                   {withoutCoords.map(col => (

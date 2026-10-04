@@ -360,9 +360,9 @@ export function useFelinaStore() {
     // Mensajes específicos solo cuando ayudan; en el resto, genérico para no
     // filtrar si el email existe o no.
     if (error.message?.toLowerCase().includes('email not confirmed')) {
-      return 'Tu cuenta aún no está confirmada. Revisa tu correo.';
+      return t('login.err.notConfirmed');
     }
-    return 'Email o contraseña incorrectos.';
+    return t('login.err.badCredentials');
   };
 
   const handleLogout = async () => {
