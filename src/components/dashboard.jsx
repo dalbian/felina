@@ -11,7 +11,7 @@ import { useTranslation } from '../lib/i18n.jsx';
 
 const isShiftPast = (shift) => isShiftPastRaw(shift, todayYmd());
 
-export const Dashboard = ({ cats, colonies, events, reminders = [], templates, shifts, members, onNavigate }) => {
+export const Dashboard = ({ cats, colonies, events, reminders = [], templates, shifts, members, canSeeActivity = false, onNavigate }) => {
   const { t } = useTranslation();
   const totalCats = cats.length;
   const sterilized = cats.filter(c => ['esterilizado','en_colonia','en_acogida','adoptado'].includes(c.cerStatus)).length;
@@ -207,7 +207,14 @@ export const Dashboard = ({ cats, colonies, events, reminders = [], templates, s
         <div className="md:col-span-2">
           <div className="flex items-end justify-between mb-4">
             <h2 className="font-serif text-2xl" style={{ color: '#1A1712' }}>{t('dash.events.title')}</h2>
-            <button className="text-xs font-medium hover:underline" style={{ color: '#2D4A3E' }}>{t('dash.events.seeHistory')}</button>
+            {/* Lleva al Registro de actividad, que solo ven admin y super_admin:
+                para el resto no pintamos el botón en vez de dar un aviso. */}
+            {canSeeActivity && (
+              <button onClick={() => onNavigate('activity')}
+                      className="text-xs font-medium hover:underline" style={{ color: '#2D4A3E' }}>
+                {t('dash.events.seeHistory')}
+              </button>
+            )}
           </div>
           <div className="rounded-2xl overflow-hidden" style={{ backgroundColor: '#FDFAF3', boxShadow: '0 0 0 1px #EADFC9' }}>
             {recentEvents.length === 0 ? (

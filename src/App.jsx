@@ -127,7 +127,8 @@ export default function App() {
   const {
     // UI state
     loading, session, rgpdAcknowledged,
-    view, setView, selectedColony, setSelectedColony, selectedCat, setSelectedCat,
+    view, setView, activityFrom,
+    selectedColony, setSelectedColony, selectedCat, setSelectedCat,
     selectedShift, setSelectedShift, selectedTemplate, setSelectedTemplate,
     modal, setModal, filter, setFilter,
     confirmState, resolveConfirm, notify,
@@ -369,6 +370,7 @@ export default function App() {
               <Dashboard cats={orgCats} colonies={orgColonies} events={orgEvents}
                          reminders={orgReminders}
                          templates={orgTemplates} shifts={orgShifts} members={orgMembers}
+                         canSeeActivity={isSuperAdmin || currentRole === 'admin'}
                          onNavigate={onNav} />
             )}
             {view === 'colonies' && currentOrg && (
@@ -439,14 +441,14 @@ export default function App() {
             )}
             {view === 'activity' && currentOrg && (isSuperAdmin || currentRole === 'admin') && (
               <ActivityView activityLog={orgActivityLog} members={orgMembers}
-                            onBack={() => setView('settings')} />
+                            onBack={() => setView(activityFrom)} />
             )}
             {view === 'settings' && currentOrg && (
               <SettingsView currentOrg={currentOrg} currentUser={currentUser} currentRole={currentRole}
                             members={orgMembers}
                             activityLog={orgActivityLog}
                             isSuperAdmin={isSuperAdmin}
-                            onOpenActivity={() => setView('activity')}
+                            onOpenActivity={() => onNav('activity')}
                             onEditOrg={() => setModal('editOrg')}
                             onAddMember={handleAddMember}
                             onRemoveMember={handleRemoveMember}

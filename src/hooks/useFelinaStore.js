@@ -128,6 +128,9 @@ export function useFelinaStore() {
 
   // UI
   const [view, setView] = useState('dashboard');
+  // Desde dónde se abrió el Registro de actividad, para que su "Volver"
+  // regrese ahí: se entra desde Ajustes y desde el Resumen general.
+  const [activityFrom, setActivityFrom] = useState('settings');
   const [selectedColony, setSelectedColony] = useState(null);
   const [selectedCat, setSelectedCat] = useState(null);
   const [selectedShift, setSelectedShift] = useState(null);
@@ -1557,6 +1560,7 @@ export function useFelinaStore() {
   const onNav = (key, id) => {
     if (key === 'colony') { setSelectedColony(id); setView('colony'); }
     else if (key === 'cat') { setSelectedCat(id); setView('cat'); }
+    else if (key === 'activity') { setActivityFrom(view); setView('activity'); }
     else { setView(key); }
   };
 
@@ -1564,6 +1568,7 @@ export function useFelinaStore() {
     // UI state
     loading, session, rgpdAcknowledged,
     view, setView,
+    activityFrom,
     selectedColony, setSelectedColony,
     selectedCat, setSelectedCat,
     selectedShift, setSelectedShift,
