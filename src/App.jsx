@@ -136,7 +136,7 @@ export default function App() {
     organizations, users, memberships, colonies, cats, events, shiftTemplates, shifts,
     // Derivados
     currentUser, currentOrg, isSuperAdmin, currentRole,
-    orgColonies, orgCats, orgEvents, orgTemplates, orgShifts, orgReminders,
+    orgColonies, orgCats, orgEvents, orgTemplates, orgShifts, orgReminders, orgDayNotes,
     orgActivityLog,
     userOrgs, orgMembers, realMembership,
     // Handlers
@@ -157,7 +157,7 @@ export default function App() {
     saveCatReminder, deleteCatReminder, completeCatReminder, uncompleteCatReminder,
     saveShiftTemplate, deleteShiftTemplate,
     claimShift, unclaimShift, assignShiftTo, completeShift, uncompleteShift,
-    cancelShiftDay, uncancelShiftDay,
+    cancelShiftDay, uncancelShiftDay, saveDayNote,
     onNav,
   } = useFelinaStore();
 
@@ -434,6 +434,8 @@ export default function App() {
                             colonies={orgColonies} members={orgMembers}
                             users={users}
                             currentUser={currentUser} currentRole={currentRole}
+                            dayNotes={orgDayNotes}
+                            onEditNote={(date) => setModal({ type: 'dayNote', date })}
                             onSelectShift={(s) => { setSelectedShift(s); setModal('viewShift'); }}
                             onAddTemplate={() => can(currentRole, 'manage_shifts')
                               ? (setSelectedTemplate(null), setModal('addTemplate'))
@@ -497,6 +499,7 @@ export default function App() {
           claimShift={claimShift} unclaimShift={unclaimShift}
           completeShift={completeShift} uncompleteShift={uncompleteShift}
           cancelShiftDay={cancelShiftDay} uncancelShiftDay={uncancelShiftDay}
+          saveDayNote={saveDayNote} orgDayNotes={orgDayNotes}
           assignShiftTo={assignShiftTo} />
       </div>
 

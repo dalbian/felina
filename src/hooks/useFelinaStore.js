@@ -81,6 +81,14 @@ const mapCatReminder = (row) => row && {
   completedBy: row.completed_by,
   createdAt: toMs(row.created_at),
 };
+// Nota del calendario: una por día y organización (migración 0012).
+const mapDayNote = (row) => row && {
+  id: row.id, orgId: row.org_id,
+  date: row.date, text: row.text,
+  updatedBy: row.updated_by,
+  updatedAt: toMs(row.updated_at),
+  createdAt: toMs(row.created_at),
+};
 const mapShiftTemplate = (row) => row && {
   id: row.id, orgId: row.org_id, colonyId: row.colony_id,
   daysOfWeek: row.days_of_week || [],
@@ -125,6 +133,7 @@ export function useFelinaStore() {
   const [shiftTemplates, setShiftTemplates] = useState([]);
   const [shifts, setShifts] = useState([]);
   const [reminders, setReminders] = useState([]);
+  const [dayNotes, setDayNotes] = useState([]);
   // Log de actividad. Solo trae filas a admins/super_admin (RLS lo aplica
   // en BD); otros roles reciben array vacío de forma transparente.
   const [activityLog, setActivityLog] = useState([]);
@@ -176,7 +185,7 @@ export function useFelinaStore() {
   // Devuelve { me, ownOrgIds } para que el llamador pueda decidir la vista y
   // la org por defecto sin esperar al re-render de React.
   const loadAuthenticatedData = async (userId, userEmail) => {
-    const [meRes, profilesRes, orgsRes, membersRes, coloniesRes, catsRes, eventsRes, templatesRes, shiftsRes, remindersRes, activityRes] = await Promise.all([
+    const [meRes, profilesRes, orgsRes, membersRes, coloniesRes, catsRes, eventsRes, templatesRes, shiftsRes, remindersRes, notesRes, activityRes] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', userId).single(),
       supabase.from('profiles').select('*'),
       supabase.from('organizations').select('*'),
@@ -187,6 +196,7 @@ export function useFelinaStore() {
       supabase.from('shift_templates').select('*'),
       supabase.from('shifts').select('*'),
       supabase.from('cat_reminders').select('*'),
+      supabase.from('calendar_notes').select('*'),
       // RLS de activity_log devuelve [] a roles no admin → no necesitamos
       // filtrar en cliente. Limitamos a 500 entradas para no inflar memoria
       // (90 días × org activa con uso intenso ≈ < 500 normalmente).
@@ -207,6 +217,7 @@ export function useFelinaStore() {
     setShiftTemplates((templatesRes.data || []).map(mapShiftTemplate));
     setShifts((shiftsRes.data || []).map(mapShift));
     setReminders((remindersRes.data || []).map(mapCatReminder));
+    setDayNotes((notesRes.data || []).map(mapDayNote));
     setActivityLog((activityRes.data || []).map(mapActivity));
 
     const ownOrgIds = allMemberships
@@ -330,6 +341,7 @@ export function useFelinaStore() {
   const orgTemplates = shiftTemplates.filter(t => t.orgId === session?.orgId);
   const orgShifts = shifts.filter(s => s.orgId === session?.orgId);
   const orgReminders = reminders.filter(r => r.orgId === session?.orgId);
+  const orgDayNotes = dayNotes.filter(n => n.orgId === session?.orgId);
   const orgActivityLog = activityLog.filter(a => a.orgId === session?.orgId);
 
   // Orgs del usuario actual (superadmin ve todas)
@@ -1562,6 +1574,58 @@ export function useFelinaStore() {
     setSelectedShift(saved);
   };
 
+  // ───── Notas del calendario ─────
+  // Una nota por día y organización. Guardar con el texto vacío equivale a
+  // borrarla: así el formulario tiene una sola salida y no hace falta un
+  // botón de borrar separado.
+  const saveDayNote = async (date, rawText) => {
+    if (!can(currentRole, 'manage_shifts')) {
+      await notify({ title: t('store.noPerm.title'), message: t('store.noPerm.body'), tone: 'warning' });
+      return;
+    }
+    const text = (rawText || '').trim();
+    const existing = dayNotes.find(n => n.orgId === session.orgId && n.date === date);
+
+    if (!text) {
+      if (!existing) { setModal(null); return; }
+      const { error } = await supabase.from('calendar_notes').delete().eq('id', existing.id);
+      if (error) {
+        await notify({ title: t('store.dayNote.errTitle'), message: error.message });
+        return;
+      }
+      setDayNotes(prev => prev.filter(n => n.id !== existing.id));
+      setModal(null);
+      return;
+    }
+
+    if (text.length > 500) {
+      await notify({ title: t('store.dayNote.errTitle'), message: t('store.dayNote.tooLong') });
+      return;
+    }
+
+    // upsert sobre (org_id, date): el índice único de la 0012 hace que
+    // escribir dos veces el mismo día edite, no duplique.
+    const { data, error } = await supabase.from('calendar_notes')
+      .upsert({
+        org_id: session.orgId,
+        date,
+        text,
+        updated_by: session.userId,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'org_id,date' })
+      .select().single();
+    if (error) {
+      await notify({ title: t('store.dayNote.errTitle'), message: error.message });
+      return;
+    }
+    const saved = mapDayNote(data);
+    setDayNotes(prev => {
+      const rest = prev.filter(n => n.id !== saved.id);
+      return [...rest, saved];
+    });
+    setModal(null);
+  };
+
   // ───── Cancelar / reactivar el turno de un día suelto ─────
   // La plantilla no se toca: solo decimos que ESE día no se hace. Un turno
   // virtual se materializa para poder recordar la excepción.
@@ -1656,7 +1720,7 @@ export function useFelinaStore() {
 
     // Derivados
     currentUser, currentOrg, isSuperAdmin, realMembership, currentRole,
-    orgColonies, orgCats, orgEvents, orgTemplates, orgShifts, orgReminders,
+    orgColonies, orgCats, orgEvents, orgTemplates, orgShifts, orgReminders, orgDayNotes,
     orgActivityLog,
     userOrgs, orgMembers,
 
@@ -1690,6 +1754,7 @@ export function useFelinaStore() {
     upsertShift,
     claimShift, unclaimShift, assignShiftTo, completeShift, uncompleteShift,
     cancelShiftDay, uncancelShiftDay,
+    saveDayNote,
 
     // Navegación
     onNav,

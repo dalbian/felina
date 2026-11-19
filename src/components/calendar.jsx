@@ -7,7 +7,7 @@ import { useState } from 'react';
 import {
   Plus, ChevronLeft, ChevronRight, X, Edit3, Calendar, AlertTriangle, Check,
   CheckCircle2, Clock, UserCheck, CalendarDays, CalendarClock, Repeat, Trash2,
-  UserMinus, UserPlus, MapPin, CalendarOff, RotateCcw,
+  UserMinus, UserPlus, MapPin, CalendarOff, RotateCcw, StickyNote,
 } from 'lucide-react';
 import {
   ymd, parseYmd, todayYmd, addDays, startOfWeek, startOfMonth,
@@ -501,7 +501,7 @@ export const CalendarFilters = ({ colonies, colonyFilter, setColonyFilter, taskF
   );
 };
 
-export const MonthView = ({ cursor, setCursor, shifts, members, onSelectShift, onSelectDay }) => {
+export const MonthView = ({ cursor, setCursor, shifts, members, dayNotes = [], onSelectShift, onSelectDay }) => {
   const { t } = useTranslation();
   const first = startOfMonth(cursor);
   const monthStart = startOfWeek(first);
@@ -515,6 +515,7 @@ export const MonthView = ({ cursor, setCursor, shifts, members, onSelectShift, o
     (shiftsByDay[s.date] ||= []).push(s);
   }
   const memberById = Object.fromEntries(members.map(m => [m.userId, m]));
+  const noteByDay = Object.fromEntries(dayNotes.map(n => [n.date, n]));
 
   return (
     <div>
@@ -549,7 +550,8 @@ export const MonthView = ({ cursor, setCursor, shifts, members, onSelectShift, o
           const inMonth = d.getMonth() === cursor.getMonth();
           const isToday = key === today;
           const dayShifts = shiftsByDay[key] || [];
-          const uncovered = dayShifts.filter(s => s.status === 'open' && isShiftPast(s)).length;
+          const note = noteByDay[key];
+          const uncovered = dayShifts.filter(s => s.status === 'open' && isShiftPast(s) && !isShiftCancelled(s)).length;
           const visibleShifts = dayShifts.slice(0, 3);
           const moreCount = dayShifts.length - visibleShifts.length;
 
@@ -576,6 +578,15 @@ export const MonthView = ({ cursor, setCursor, shifts, members, onSelectShift, o
                   </span>
                 )}
               </div>
+              {/* Nota del día: una línea, con el texto completo en el title.
+                  El detalle se lee tocando el día (lleva a la semana). */}
+              {note && (
+                <div className="hidden md:flex items-start gap-1 mb-1 px-1 py-0.5 rounded"
+                     style={{ backgroundColor: '#FDF4DE' }} title={note.text}>
+                  <StickyNote className="w-2.5 h-2.5 flex-shrink-0 mt-[1px]" style={{ color: '#8A6B1F' }} />
+                  <span className="text-[10px] leading-tight line-clamp-2" style={{ color: '#8A6B1F' }}>{note.text}</span>
+                </div>
+              )}
               {/* Escritorio: chips con texto */}
               <div className="hidden md:block space-y-0.5">
                 {visibleShifts.map(s => (
@@ -587,6 +598,13 @@ export const MonthView = ({ cursor, setCursor, shifts, members, onSelectShift, o
                   <div className="text-[10px] px-1.5" style={{ color: '#8A7A5C' }}>{t('cal.moreCount', { n: moreCount })}</div>
                 )}
               </div>
+              {/* Móvil: en la cuadrícula no cabe el texto de la nota, así que
+                  solo se marca con el icono; se lee tocando el día. */}
+              {note && (
+                <div className="md:hidden mb-0.5">
+                  <StickyNote className="w-2.5 h-2.5" style={{ color: '#8A6B1F' }} />
+                </div>
+              )}
               {/* Móvil: puntos de colores por tarea */}
               {mobileDots.length > 0 && (
                 <div className="md:hidden flex flex-wrap gap-[3px] items-center">
@@ -637,13 +655,14 @@ export const LegendRow = () => {
   );
 };
 
-export const WeekView = ({ cursor, setCursor, shifts, members, colonies, onSelectShift }) => {
+export const WeekView = ({ cursor, setCursor, shifts, members, colonies, dayNotes = [], canEditNotes = false, onSelectShift, onEditNote }) => {
   const { t } = useTranslation();
   const start = startOfWeek(cursor);
   const days = Array.from({ length: 7 }, (_, i) => addDays(start, i));
   const today = todayYmd();
   const memberById = Object.fromEntries(members.map(m => [m.userId, m]));
   const colonyById = Object.fromEntries(colonies.map(c => [c.id, c]));
+  const noteByDay = Object.fromEntries(dayNotes.map(n => [n.date, n]));
 
   const rangeLabel = `${start.toLocaleDateString(getDateLocale(), { day: 'numeric', month: 'short' })} – ${days[6].toLocaleDateString(getDateLocale(), { day: 'numeric', month: 'short', year: 'numeric' })}`;
 
@@ -685,6 +704,25 @@ export const WeekView = ({ cursor, setCursor, shifts, members, colonies, onSelec
                   {d.getDate()}
                 </div>
               </div>
+              {/* Nota del día. Quien puede gestionar turnos la escribe tocándola;
+                  el resto solo la lee. Sin nota, solo se ve el "+" de añadir. */}
+              {note ? (
+                <button onClick={() => canEditNotes && onEditNote(key)}
+                        disabled={!canEditNotes}
+                        className="w-full text-left mb-1.5 px-1.5 py-1 rounded-lg"
+                        style={{ backgroundColor: '#FDF4DE', cursor: canEditNotes ? 'pointer' : 'default' }}>
+                  <div className="flex items-start gap-1">
+                    <StickyNote className="w-3 h-3 flex-shrink-0 mt-[1px]" style={{ color: '#8A6B1F' }} />
+                    <span className="text-[10px] leading-tight" style={{ color: '#8A6B1F' }}>{note.text}</span>
+                  </div>
+                </button>
+              ) : canEditNotes ? (
+                <button onClick={() => onEditNote(key)}
+                        className="w-full mb-1.5 px-1.5 py-1 rounded-lg text-[10px] inline-flex items-center justify-center gap-1 transition-colors hover:bg-[#FDF4DE]"
+                        style={{ color: '#B8A888' }}>
+                  <StickyNote className="w-3 h-3" /> {t('cal.note.add')}
+                </button>
+              ) : null}
               <div className="space-y-1">
                 {dayShifts.length === 0 ? (
                   <div className="text-[10px] text-center py-2" style={{ color: '#B8A888' }}>—</div>
@@ -725,6 +763,21 @@ export const WeekView = ({ cursor, setCursor, shifts, members, colonies, onSelec
                 </div>
                 {isToday && <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ backgroundColor: '#DDE6CC', color: '#4A6332' }}>{t('cal.todayBadge')}</span>}
               </div>
+              {/* En móvil la nota se lee aquí, que es donde cabe el texto. */}
+              {noteByDay[key] ? (
+                <button onClick={() => canEditNotes && onEditNote(key)}
+                        disabled={!canEditNotes}
+                        className="w-full text-left mb-2 px-2.5 py-2 rounded-xl flex items-start gap-2"
+                        style={{ backgroundColor: '#FDF4DE', cursor: canEditNotes ? 'pointer' : 'default' }}>
+                  <StickyNote className="w-3.5 h-3.5 flex-shrink-0 mt-[1px]" style={{ color: '#8A6B1F' }} />
+                  <span className="text-xs leading-snug" style={{ color: '#8A6B1F' }}>{noteByDay[key].text}</span>
+                </button>
+              ) : canEditNotes ? (
+                <button onClick={() => onEditNote(key)}
+                        className="mb-2 text-xs inline-flex items-center gap-1.5" style={{ color: '#B8A888' }}>
+                  <StickyNote className="w-3.5 h-3.5" /> {t('cal.note.add')}
+                </button>
+              ) : null}
               {dayShifts.length === 0 ? (
                 <div className="text-xs py-2" style={{ color: '#B8A888' }}>{t('cal.noShiftsScheduled')}</div>
               ) : (
@@ -909,8 +962,50 @@ export const DayListModal = ({ date, shifts, colonies, members, onSelectShift, o
   );
 };
 
+// Formulario de la nota del día. Guardar con el texto vacío la borra: así hay
+// una sola salida y no hace falta un botón de borrar aparte.
+export const DayNoteForm = ({ date, note, onSave, onCancel }) => {
+  const { t } = useTranslation();
+  const [text, setText] = useState(note?.text || '');
+  const clean = text.trim();
+  const tooLong = clean.length > 500;
+  const willDelete = note && !clean;
+
+  return (
+    <div className="space-y-3">
+      <div className="text-xs capitalize" style={{ color: '#78706A' }}>{fmtDayLong(parseYmd(date))}</div>
+      <div>
+        <label className="block text-xs font-medium mb-1" style={labelStyle}>{t('cal.note.label')}</label>
+        <textarea value={text} onChange={e => setText(e.target.value)} rows={4}
+                  placeholder={t('cal.note.placeholder')}
+                  className="w-full px-3 py-2 rounded-xl text-sm outline-none resize-none"
+                  style={inputStyle} />
+        <div className="flex justify-between mt-1 text-[11px]">
+          <span style={{ color: willDelete ? '#B15A3A' : '#8A7A5C' }}>
+            {willDelete ? t('cal.note.willDelete') : t('cal.note.hint')}
+          </span>
+          <span style={{ color: tooLong ? '#B15A3A' : '#8A7A5C' }}>{clean.length}/500</span>
+        </div>
+      </div>
+      <div className="flex gap-2 pt-1">
+        <button onClick={onCancel} className="flex-1 py-2.5 rounded-xl text-sm font-medium"
+                style={{ backgroundColor: '#F2EADB', color: '#4A433C' }}>{t('common.cancel')}</button>
+        <button onClick={() => onSave(text)} disabled={tooLong}
+                className="flex-1 py-2.5 rounded-xl text-sm font-medium disabled:opacity-50"
+                style={{
+                  backgroundColor: willDelete ? '#F5DDCE' : '#1F3A2F',
+                  color: willDelete ? '#B15A3A' : '#F8F3E8',
+                }}>
+          {willDelete ? t('cal.note.delete') : t('common.save')}
+        </button>
+      </div>
+    </div>
+  );
+};
+
 // Contenedor principal del calendario
 export const CalendarView = ({ templates, shifts, colonies, members, users, currentUser, currentRole,
+                       dayNotes = [], onEditNote,
                        onSelectShift, onAddTemplate, onEditTemplate, initialTab = 'month' }) => {
   const { t } = useTranslation();
   const [tab, setTab] = useState(initialTab);
@@ -993,6 +1088,7 @@ export const CalendarView = ({ templates, shifts, colonies, members, users, curr
 
       {tab === 'month' && (
         <MonthView cursor={cursor} setCursor={setCursor} shifts={allShifts} members={allKnown}
+                   dayNotes={dayNotes}
                    onSelectShift={onSelectShift}
                    onSelectDay={(d) => {
                      setCursor(d);
@@ -1001,7 +1097,9 @@ export const CalendarView = ({ templates, shifts, colonies, members, users, curr
       )}
       {tab === 'week' && (
         <WeekView cursor={cursor} setCursor={setCursor} shifts={allShifts} members={allKnown}
-                  colonies={availableColonies} onSelectShift={onSelectShift} />
+                  colonies={availableColonies} dayNotes={dayNotes}
+                  canEditNotes={can(currentRole, 'manage_shifts')} onEditNote={onEditNote}
+                  onSelectShift={onSelectShift} />
       )}
       {tab === 'mine' && (
         <MyShiftsView shifts={allShifts} members={allKnown} colonies={colonies}

@@ -7,7 +7,7 @@ import { ColonyForm } from './colonies.jsx';
 import { CatForm, EventForm, ReminderForm } from './cats.jsx';
 import { OrgForm } from './settings.jsx';
 import { ChangePasswordForm, ResetPasswordForm } from './auth.jsx';
-import { ShiftTemplateForm, ShiftAssignForm, ShiftDetailView } from './calendar.jsx';
+import { ShiftTemplateForm, ShiftAssignForm, ShiftDetailView, DayNoteForm } from './calendar.jsx';
 import { can } from '../lib/permissions.js';
 import { useTranslation } from '../lib/i18n.jsx';
 
@@ -39,7 +39,7 @@ export const GlobalModals = ({
   // handlers de turnos
   saveShiftTemplate, deleteShiftTemplate,
   claimShift, unclaimShift, completeShift, uncompleteShift, assignShiftTo,
-  cancelShiftDay, uncancelShiftDay,
+  cancelShiftDay, uncancelShiftDay, saveDayNote, orgDayNotes = [],
 }) => {
   const { t } = useTranslation();
   return (
@@ -110,6 +110,15 @@ export const GlobalModals = ({
           targetName={modal.userName}
           onSave={(data) => handleResetPassword(modal.userId, data)}
           onCancel={() => setModal(null)} />
+      )}
+    </Modal>
+
+    <Modal open={modal?.type === 'dayNote'} onClose={() => setModal(null)} title={t('modal.title.dayNote')}>
+      {modal?.type === 'dayNote' && (
+        <DayNoteForm date={modal.date}
+                     note={orgDayNotes.find(n => n.date === modal.date)}
+                     onSave={(text) => saveDayNote(modal.date, text)}
+                     onCancel={() => setModal(null)} />
       )}
     </Modal>
 
