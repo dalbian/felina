@@ -157,6 +157,7 @@ export default function App() {
     saveCatReminder, deleteCatReminder, completeCatReminder, uncompleteCatReminder,
     saveShiftTemplate, deleteShiftTemplate,
     claimShift, unclaimShift, assignShiftTo, completeShift, uncompleteShift,
+    cancelShiftDay, uncancelShiftDay,
     onNav,
   } = useFelinaStore();
 
@@ -495,6 +496,7 @@ export default function App() {
           deleteShiftTemplate={deleteShiftTemplate}
           claimShift={claimShift} unclaimShift={unclaimShift}
           completeShift={completeShift} uncompleteShift={uncompleteShift}
+          cancelShiftDay={cancelShiftDay} uncancelShiftDay={uncancelShiftDay}
           assignShiftTo={assignShiftTo} />
       </div>
 

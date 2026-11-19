@@ -25,6 +25,11 @@ export const slotFromTime = (time) => {
 
 export const slotOrder = (slot) => SHIFT_SLOT_META[slot]?.order ?? 0;
 
+// Un turno cancelado es el de un día concreto que al final no se hace. La
+// plantilla sigue viva y el resto de días no se tocan. Los virtuales nunca
+// están cancelados: cancelar obliga a materializar la fila.
+export const isShiftCancelled = (shift) => Boolean(shift?.cancelledAt);
+
 // Un turno se considera pasado únicamente cuando su fecha es anterior a hoy.
 // Antes se usaba la hora exacta; con franjas basta con el día: hace la app más
 // permisiva (un turno de mañana puede cubrirse aún por la tarde).

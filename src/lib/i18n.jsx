@@ -164,6 +164,7 @@ const dict = {
     'cal.moreCount': '+ {n} más',
     'cal.legend': 'Leyenda',
     'cal.uncovered': 'Sin cubrir',
+    'cal.cancelledShort': 'Cancelado',
     'cal.todayBadge': 'hoy',
     'cal.noShiftsScheduled': 'Sin turnos programados',
     'cal.dayNoShifts': 'Sin turnos programados este día.',
@@ -185,6 +186,10 @@ const dict = {
     'cal.detail.unassign': 'Desasignar',
     'cal.detail.undoComplete': 'Deshacer completado',
     'cal.detail.editTemplate': 'Editar plantilla recurrente',
+    'cal.detail.cancelDay': 'Cancelar el turno de este día',
+    'cal.detail.uncancelDay': 'Volver a activar este día',
+    'cal.detail.cancelledTitle': 'Este día no se hace',
+    'cal.detail.cancelledBody': 'El turno está cancelado solo para este día. La plantilla sigue activa para el resto.',
 
     'cal.assign.to': 'Asignar a',
     'cal.assign.btn': 'Asignar',
@@ -551,6 +556,7 @@ const dict = {
     'activity.action.reminder_completed': '{userName} marcó como hecho un recordatorio de {entityName}',
     'activity.action.shift_assigned': '{userName} asignó un turno en {entityName}',
     'activity.action.shift_completed': '{userName} completó un turno en {entityName}',
+    'activity.action.shift_cancelled': '{userName} canceló el turno de un día en {entityName}',
     'activity.action.member_invited': '{userName} invitó a {entityName}',
     'activity.action.member_removed': '{userName} expulsó a {entityName}',
     'activity.action.member_role_changed': '{userName} cambió el rol de {entityName}',
@@ -731,6 +737,13 @@ const dict = {
     'store.deleteTemplate.title': 'Eliminar plantilla de turno',
     'store.deleteTemplate.body': 'Los turnos ya asignados o completados se conservan como registro histórico, pero no se generarán nuevos a partir de esta plantilla.',
     'store.deleteTemplate.confirm': 'Eliminar plantilla',
+
+    // Cancelar el turno de un día suelto
+    'store.cancelShift.title': 'Cancelar el turno de este día',
+    'store.cancelShift.body': 'Este día no se hará el turno. La plantilla sigue igual y el resto de días no cambian. Puedes volver a activarlo cuando quieras.',
+    'store.cancelShift.bodyAssigned': 'Este día no se hará el turno, aunque ya hay alguien apuntado. La plantilla sigue igual y el resto de días no cambian. Puedes volver a activarlo cuando quieras.',
+    'store.cancelShift.confirm': 'Cancelar este día',
+    'store.uncancelShift.errTitle': 'No se pudo reactivar el turno',
 
     // Turnos
     'store.saveShift.errTitle': 'No se pudo guardar el turno',
@@ -1004,6 +1017,7 @@ const dict = {
     'cal.moreCount': '+ {n} més',
     'cal.legend': 'Llegenda',
     'cal.uncovered': 'Sense cobrir',
+    'cal.cancelledShort': 'Cancel·lat',
     'cal.todayBadge': 'avui',
     'cal.noShiftsScheduled': 'Sense torns programats',
     'cal.dayNoShifts': 'Cap torn programat aquest dia.',
@@ -1025,6 +1039,10 @@ const dict = {
     'cal.detail.unassign': 'Desassigna',
     'cal.detail.undoComplete': 'Desfés completat',
     'cal.detail.editTemplate': 'Edita la plantilla recurrent',
+    'cal.detail.cancelDay': 'Cancel·la el torn d\'aquest dia',
+    'cal.detail.uncancelDay': 'Torna a activar aquest dia',
+    'cal.detail.cancelledTitle': 'Aquest dia no es fa',
+    'cal.detail.cancelledBody': 'El torn està cancel·lat només per a aquest dia. La plantilla segueix activa per a la resta.',
 
     'cal.assign.to': 'Assigna a',
     'cal.assign.btn': 'Assigna',
@@ -1386,6 +1404,7 @@ const dict = {
     'activity.action.reminder_completed': '{userName} ha marcat com a fet un recordatori de {entityName}',
     'activity.action.shift_assigned': '{userName} ha assignat un torn a {entityName}',
     'activity.action.shift_completed': '{userName} ha completat un torn a {entityName}',
+    'activity.action.shift_cancelled': '{userName} ha cancel·lat el torn d\'un dia a {entityName}',
     'activity.action.member_invited': '{userName} ha convidat {entityName}',
     'activity.action.member_removed': '{userName} ha expulsat {entityName}',
     'activity.action.member_role_changed': '{userName} ha canviat el rol de {entityName}',
@@ -1546,6 +1565,12 @@ const dict = {
     'store.deleteTemplate.title': 'Elimina plantilla de torn',
     'store.deleteTemplate.body': 'Els torns ja assignats o completats es conserven com a registre històric, però no se\'n generaran de nous a partir d\'aquesta plantilla.',
     'store.deleteTemplate.confirm': 'Elimina la plantilla',
+
+    'store.cancelShift.title': 'Cancel·la el torn d\'aquest dia',
+    'store.cancelShift.body': 'Aquest dia no es farà el torn. La plantilla es queda igual i la resta de dies no canvien. El pots tornar a activar quan vulguis.',
+    'store.cancelShift.bodyAssigned': 'Aquest dia no es farà el torn, encara que ja hi ha algú apuntat. La plantilla es queda igual i la resta de dies no canvien. El pots tornar a activar quan vulguis.',
+    'store.cancelShift.confirm': 'Cancel·la aquest dia',
+    'store.uncancelShift.errTitle': 'No s\'ha pogut reactivar el torn',
 
     'store.saveShift.errTitle': 'No s\'ha pogut desar el torn',
     'store.updateShift.errTitle': 'No s\'ha pogut actualitzar el torn',

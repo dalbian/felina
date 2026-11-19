@@ -4,7 +4,7 @@
 import { MapPin, AlertTriangle, ChevronRight, CalendarClock, Stethoscope, Bell } from 'lucide-react';
 import { addDays, parseYmd, todayYmd, fmtDate, fmtShortDay } from '../lib/dates.js';
 import { fmtRelative } from '../lib/dates.js';
-import { computeShifts, isShiftPast as isShiftPastRaw } from '../lib/shifts.js';
+import { computeShifts, isShiftPast as isShiftPastRaw, isShiftCancelled } from '../lib/shifts.js';
 import { EVENT_TYPES, SHIFT_TASKS } from '../constants.js';
 import { UserAvatar } from './ui.jsx';
 import { useTranslation } from '../lib/i18n.jsx';
@@ -25,8 +25,10 @@ export const Dashboard = ({ cats, colonies, events, reminders = [], templates, s
   const rangeFrom = new Date(); rangeFrom.setHours(0,0,0,0);
   const rangeTo = addDays(rangeFrom, 7);
   const weekShifts = computeShifts({ templates: templates || [], shifts: shifts || [], colonyIds: null, from: rangeFrom, to: rangeTo });
-  const uncovered = weekShifts.filter(s => s.status === 'open' && isShiftPast(s));
-  const upcoming = weekShifts.filter(s => s.status !== 'done' && !isShiftPast(s)).slice(0, 5);
+  // Un día cancelado ni está sin cubrir ni se anuncia como próximo: ese día
+  // no se hace y no debe generar aviso.
+  const uncovered = weekShifts.filter(s => s.status === 'open' && isShiftPast(s) && !isShiftCancelled(s));
+  const upcoming = weekShifts.filter(s => s.status !== 'done' && !isShiftPast(s) && !isShiftCancelled(s)).slice(0, 5);
   const colonyById = Object.fromEntries(colonies.map(c => [c.id, c]));
   const memberById = Object.fromEntries((members || []).map(m => [m.userId, m]));
 

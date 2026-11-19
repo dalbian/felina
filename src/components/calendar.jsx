@@ -7,13 +7,13 @@ import { useState } from 'react';
 import {
   Plus, ChevronLeft, ChevronRight, X, Edit3, Calendar, AlertTriangle, Check,
   CheckCircle2, Clock, UserCheck, CalendarDays, CalendarClock, Repeat, Trash2,
-  UserMinus, UserPlus, MapPin,
+  UserMinus, UserPlus, MapPin, CalendarOff, RotateCcw,
 } from 'lucide-react';
 import {
   ymd, parseYmd, todayYmd, addDays, startOfWeek, startOfMonth,
   fmtDate, fmtDayLong, fmtMonth, fmtWeekday, getDateLocale,
 } from '../lib/dates.js';
-import { computeShifts, isShiftPast as isShiftPastRaw, slotFromTime } from '../lib/shifts.js';
+import { computeShifts, isShiftPast as isShiftPastRaw, slotFromTime, isShiftCancelled } from '../lib/shifts.js';
 import { can } from '../lib/permissions.js';
 import { SHIFT_TASKS, SHIFT_SLOTS, DAYS_OF_WEEK, ROLES } from '../constants.js';
 import { useTranslation } from '../lib/i18n.jsx';
@@ -33,24 +33,28 @@ export const ShiftChip = ({ shift, assignee, onClick, compact = false }) => {
   const done = shift.status === 'done';
   const open = shift.status === 'open';
   const past = isShiftPast(shift);
+  // Día cancelado: se sigue viendo, tachado, para que se entienda que ese día
+  // no se hace a propósito (y no parezca que falta por cubrir).
+  const cancelled = isShiftCancelled(shift);
   return (
     <button onClick={onClick}
             className="w-full flex items-center gap-1 rounded px-1.5 py-0.5 text-left transition-colors"
             style={{
-              backgroundColor: done ? '#F2EADB' : (open ? '#FDFAF3' : task.bg),
-              color: done ? '#78706A' : task.color,
-              boxShadow: open ? `0 0 0 1px ${past ? '#E5B8A8' : '#EADFC9'}` : 'none',
-              opacity: done ? 0.75 : 1,
+              backgroundColor: cancelled ? '#F2EADB' : (done ? '#F2EADB' : (open ? '#FDFAF3' : task.bg)),
+              color: cancelled ? '#8A7A5C' : (done ? '#78706A' : task.color),
+              boxShadow: cancelled ? 'none' : (open ? `0 0 0 1px ${past ? '#E5B8A8' : '#EADFC9'}` : 'none'),
+              opacity: cancelled ? 0.6 : (done ? 0.75 : 1),
+              textDecoration: cancelled ? 'line-through' : 'none',
             }}>
       <span className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-            style={{ backgroundColor: done ? '#B8A888' : (open ? (past ? '#B15A3A' : '#B8A888') : task.color) }} />
-      <span className="text-[10px] flex-shrink-0 font-medium" style={{ color: done ? '#8A7A5C' : task.color }}>{shift.slot ? t(`slot.${shift.slot}.short`) : ''}</span>
+            style={{ backgroundColor: cancelled ? '#B8A888' : (done ? '#B8A888' : (open ? (past ? '#B15A3A' : '#B8A888') : task.color)) }} />
+      <span className="text-[10px] flex-shrink-0 font-medium" style={{ color: cancelled ? '#8A7A5C' : (done ? '#8A7A5C' : task.color) }}>{shift.slot ? t(`slot.${shift.slot}.short`) : ''}</span>
       {!compact && (
         <span className="text-[10px] truncate flex-1">
-          {open ? (past ? t('cal.uncovered') : t('cal.chipFree')) : (assignee?.name?.split(' ')[0] || '—')}
+          {cancelled ? t('cal.cancelledShort') : open ? (past ? t('cal.uncovered') : t('cal.chipFree')) : (assignee?.name?.split(' ')[0] || '—')}
         </span>
       )}
-      {done && <Check className="w-2.5 h-2.5 flex-shrink-0" />}
+      {cancelled ? <CalendarOff className="w-2.5 h-2.5 flex-shrink-0" /> : done && <Check className="w-2.5 h-2.5 flex-shrink-0" />}
     </button>
   );
 };
@@ -63,7 +67,9 @@ export const ShiftRow = ({ shift, colony, assignee, onClick, showDate = true }) 
   const open = shift.status === 'open';
   const done = shift.status === 'done';
   const past = isShiftPast(shift);
-  const uncovered = open && past;
+  const cancelled = isShiftCancelled(shift);
+  // Un día cancelado no cuenta como "sin cubrir": nadie tiene que ir.
+  const uncovered = open && past && !cancelled;
   const d = parseYmd(shift.date);
 
   return (
@@ -82,7 +88,11 @@ export const ShiftRow = ({ shift, colony, assignee, onClick, showDate = true }) 
         <div className="text-xs flex items-center gap-2 flex-wrap" style={{ color: '#78706A' }}>
           {showDate && <span className="font-mono">{d.toLocaleDateString(getDateLocale(), { weekday: 'short', day: '2-digit', month: 'short' })}</span>}
           <span>· {shift.slot ? t(`slot.${shift.slot}.label`) : ''}</span>
-          {done ? (
+          {cancelled ? (
+            <span className="inline-flex items-center gap-1" style={{ color: '#B15A3A' }}>
+              <CalendarOff className="w-3 h-3" /> {t('cal.cancelledShort')}
+            </span>
+          ) : done ? (
             <span className="inline-flex items-center gap-1" style={{ color: '#6B8E4E' }}>
               <CheckCircle2 className="w-3 h-3" /> {t('cal.row.done')}
             </span>
@@ -306,7 +316,8 @@ export const ShiftAssignForm = ({ shift, members, colony, onSave, onCancel }) =>
 
 // Modal de detalle de un turno: muestra info + acciones contextuales según estado y rol
 export const ShiftDetailView = ({ shift, colony, assignee, completedBy, currentUser, currentRole,
-                          onClaim, onUnclaim, onComplete, onUncomplete, onAssign, onEditTemplate, onClose }) => {
+                          onClaim, onUnclaim, onComplete, onUncomplete, onAssign, onEditTemplate,
+                          onCancelDay, onUncancelDay, onClose }) => {
   const { t } = useTranslation();
   const task = SHIFT_TASKS[shift.task] || SHIFT_TASKS.otros;
   const Icon = task.icon;
@@ -316,11 +327,15 @@ export const ShiftDetailView = ({ shift, colony, assignee, completedBy, currentU
   const mine = assignee?.id === currentUser?.id;
   const past = isShiftPast(shift);
   const d = parseYmd(shift.date);
+  // Día cancelado: la plantilla sigue viva, pero ESTE día no se hace. Mientras
+  // lo esté, no se puede apuntar, asignar ni completar nadie.
+  const cancelled = isShiftCancelled(shift);
 
-  const canClaim = open && can(currentRole, 'claim_shift');
-  const canAssign = can(currentRole, 'assign_shift');
-  const canComplete = (assigned || open) && can(currentRole, 'complete_shift');
-  const canUnclaim = assigned && (mine || canAssign);
+  const canClaim = open && !cancelled && can(currentRole, 'claim_shift');
+  const canAssign = !cancelled && can(currentRole, 'assign_shift');
+  const canComplete = (assigned || open) && !cancelled && can(currentRole, 'complete_shift');
+  const canUnclaim = assigned && !cancelled && (mine || canAssign);
+  const canManageDay = can(currentRole, 'manage_shifts');
 
   return (
     <div className="space-y-4">
@@ -348,7 +363,15 @@ export const ShiftDetailView = ({ shift, colony, assignee, completedBy, currentU
         </div>
       </div>
 
-      {done ? (
+      {cancelled ? (
+        <div className="p-3 rounded-xl" style={{ backgroundColor: '#F5DDCE' }}>
+          <div className="flex items-center gap-2">
+            <CalendarOff className="w-4 h-4" style={{ color: '#B15A3A' }} />
+            <span className="text-sm font-medium" style={{ color: '#B15A3A' }}>{t('cal.detail.cancelledTitle')}</span>
+          </div>
+          <div className="text-xs mt-1" style={{ color: '#8A4A2F' }}>{t('cal.detail.cancelledBody')}</div>
+        </div>
+      ) : done ? (
         <div className="p-3 rounded-xl" style={{ backgroundColor: '#DDE6CC' }}>
           <div className="flex items-center gap-2 mb-1">
             <CheckCircle2 className="w-4 h-4" style={{ color: '#4A6332' }} />
@@ -428,6 +451,21 @@ export const ShiftDetailView = ({ shift, colony, assignee, completedBy, currentU
                   style={{ backgroundColor: '#F2EADB', color: '#6B635A' }}>
             {t('cal.detail.undoComplete')}
           </button>
+        )}
+        {canManageDay && !done && (
+          cancelled ? (
+            <button onClick={onUncancelDay}
+                    className="w-full py-2.5 rounded-xl text-sm font-medium inline-flex items-center justify-center gap-2"
+                    style={{ backgroundColor: '#F2EADB', color: '#4A433C' }}>
+              <RotateCcw className="w-4 h-4" /> {t('cal.detail.uncancelDay')}
+            </button>
+          ) : (
+            <button onClick={onCancelDay}
+                    className="w-full py-2.5 rounded-xl text-sm font-medium inline-flex items-center justify-center gap-2"
+                    style={{ backgroundColor: '#F5DDCE', color: '#B15A3A' }}>
+              <CalendarOff className="w-4 h-4" /> {t('cal.detail.cancelDay')}
+            </button>
+          )
         )}
         {shift._template && can(currentRole, 'manage_shifts') && (
           <button onClick={onEditTemplate}
@@ -713,11 +751,13 @@ export const MyShiftsView = ({ shifts, members, colonies, currentUser, currentRo
   const memberById = Object.fromEntries(members.map(m => [m.userId, m]));
   const colonyById = Object.fromEntries(colonies.map(c => [c.id, c]));
 
-  const mine = shifts.filter(s => s.assigneeId === currentUser?.id && s.status !== 'done').slice(0, 30);
+  // Los días cancelados quedan fuera de esta vista: no hay que ir, y ofrecerlos
+  // como "libres para apuntarse" sería engañoso.
+  const mine = shifts.filter(s => s.assigneeId === currentUser?.id && s.status !== 'done' && !isShiftCancelled(s)).slice(0, 30);
   const recent = shifts.filter(s => s.assigneeId === currentUser?.id && s.status === 'done')
                        .sort((a, b) => b.date.localeCompare(a.date)).slice(0, 10);
   const canClaim = can(currentRole, 'claim_shift');
-  const open = canClaim ? shifts.filter(s => s.status === 'open' && !isShiftPast(s)).slice(0, 30) : [];
+  const open = canClaim ? shifts.filter(s => s.status === 'open' && !isShiftPast(s) && !isShiftCancelled(s)).slice(0, 30) : [];
 
   return (
     <div className="space-y-6">

@@ -17,7 +17,7 @@ import { load, save, STORAGE_PREFIX } from '../lib/storage.js';
 import { normalizeEmail, isValidEmail, validatePassword } from '../lib/auth.js';
 import { can } from '../lib/permissions.js';
 import { sampleData } from '../lib/seed.js';
-import { slotFromTime } from '../lib/shifts.js';
+import { slotFromTime, isShiftCancelled } from '../lib/shifts.js';
 import { supabase, initialAuthFlow } from '../lib/supabaseClient.js';
 import { uploadCatPhoto, deleteCatPhoto } from '../lib/images.js';
 import { useTranslation } from '../lib/i18n.jsx';
@@ -97,6 +97,9 @@ const mapShift = (row) => row && {
   assigneeId: row.assignee_id, status: row.status, notes: row.notes,
   completedAt: row.completed_at ? toMs(row.completed_at) : null,
   completedBy: row.completed_by,
+  // Cancelación de un día suelto (migración 0011). Null = el turno se hace.
+  cancelledAt: row.cancelled_at ? toMs(row.cancelled_at) : null,
+  cancelledBy: row.cancelled_by,
   createdAt: toMs(row.created_at),
 };
 
@@ -1401,6 +1404,8 @@ export function useFelinaStore() {
         notes: merged.notes ?? null,
         completed_at: merged.completedAt ? new Date(merged.completedAt).toISOString() : null,
         completed_by: merged.completedBy ?? null,
+        cancelled_at: merged.cancelledAt ? new Date(merged.cancelledAt).toISOString() : null,
+        cancelled_by: merged.cancelledBy ?? null,
       };
       return out;
     };
@@ -1557,6 +1562,72 @@ export function useFelinaStore() {
     setSelectedShift(saved);
   };
 
+  // ───── Cancelar / reactivar el turno de un día suelto ─────
+  // La plantilla no se toca: solo decimos que ESE día no se hace. Un turno
+  // virtual se materializa para poder recordar la excepción.
+  const cancelShiftDay = async (shift) => {
+    if (!can(currentRole, 'manage_shifts')) {
+      await notify({ title: t('store.noPerm.title'), message: t('store.noPerm.body'), tone: 'warning' });
+      return;
+    }
+    if (isShiftCancelled(shift)) return;
+    const ok = await confirmAsync({
+      title: t('store.cancelShift.title'),
+      message: shift.assigneeId
+        ? t('store.cancelShift.bodyAssigned')
+        : t('store.cancelShift.body'),
+      confirmLabel: t('store.cancelShift.confirm'),
+      destructive: true,
+    });
+    if (!ok) return;
+    const saved = await upsertShift(shift, {
+      cancelledAt: Date.now(),
+      cancelledBy: session.userId,
+    });
+    if (!saved) return;
+    const colony = colonies.find(c => c.id === saved.colonyId);
+    log(ACTIONS.SHIFT_CANCELLED, {
+      entityType: ENTITY.SHIFT,
+      entityId: saved.id,
+      entityName: colony?.name || '?',
+      metadata: { date: saved.date, slot: saved.slot, task: saved.task },
+    });
+    setSelectedShift(saved);
+  };
+
+  const uncancelShiftDay = async (shift) => {
+    if (!can(currentRole, 'manage_shifts')) {
+      await notify({ title: t('store.noPerm.title'), message: t('store.noPerm.body'), tone: 'warning' });
+      return;
+    }
+    if (!isShiftCancelled(shift)) return;
+
+    // Si la fila solo existía para recordar la cancelación (sin notas, sin
+    // nadie apuntado, no completada y con plantilla detrás), la borramos y el
+    // turno vuelve a ser virtual. Mismo criterio que `unclaimShift`.
+    const onlyHeldTheCancellation = !shift.notes && !shift.assigneeId
+      && shift.templateId && shift.status !== 'done';
+    if (onlyHeldTheCancellation) {
+      const { error } = await supabase.from('shifts').delete().eq('id', shift.id);
+      if (error) {
+        await notify({ title: t('store.uncancelShift.errTitle'), message: error.message });
+        return;
+      }
+      setShifts(prev => prev.filter(s => s.id !== shift.id));
+      setSelectedShift({
+        ...shift,
+        id: `v:${shift.templateId}|${shift.date}|${shift.slot}`,
+        _virtual: true, _template: shift._template,
+        status: 'open', notes: '', cancelledAt: null, cancelledBy: null,
+      });
+      return;
+    }
+
+    const saved = await upsertShift(shift, { cancelledAt: null, cancelledBy: null });
+    if (!saved) return;
+    setSelectedShift(saved);
+  };
+
   const onNav = (key, id) => {
     if (key === 'colony') { setSelectedColony(id); setView('colony'); }
     else if (key === 'cat') { setSelectedCat(id); setView('cat'); }
@@ -1618,6 +1689,7 @@ export function useFelinaStore() {
     saveShiftTemplate, deleteShiftTemplate,
     upsertShift,
     claimShift, unclaimShift, assignShiftTo, completeShift, uncompleteShift,
+    cancelShiftDay, uncancelShiftDay,
 
     // Navegación
     onNav,

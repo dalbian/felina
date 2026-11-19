@@ -39,6 +39,7 @@ export const GlobalModals = ({
   // handlers de turnos
   saveShiftTemplate, deleteShiftTemplate,
   claimShift, unclaimShift, completeShift, uncompleteShift, assignShiftTo,
+  cancelShiftDay, uncancelShiftDay,
 }) => {
   const { t } = useTranslation();
   return (
@@ -144,6 +145,8 @@ export const GlobalModals = ({
                          onComplete={() => completeShift(selectedShift)}
                          onUncomplete={() => uncompleteShift(selectedShift)}
                          onAssign={() => setModal('assignShift')}
+                         onCancelDay={() => cancelShiftDay(selectedShift)}
+                         onUncancelDay={() => uncancelShiftDay(selectedShift)}
                          onEditTemplate={() => {
                            const tpl = orgTemplates.find(x => x.id === selectedShift.templateId);
                            if (tpl) { setSelectedTemplate(tpl); setModal('editTemplate'); }

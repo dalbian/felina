@@ -36,6 +36,7 @@ export const ACTIONS = {
   // Turnos
   SHIFT_ASSIGNED:      'shift_assigned',
   SHIFT_COMPLETED:     'shift_completed',
+  SHIFT_CANCELLED:     'shift_cancelled',
   // Miembros
   MEMBER_INVITED:      'member_invited',
   MEMBER_REMOVED:      'member_removed',

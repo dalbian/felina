@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { slotFromTime, slotOrder, isShiftPast, computeShifts } from './shifts.js';
+import { slotFromTime, slotOrder, isShiftPast, computeShifts, isShiftCancelled } from './shifts.js';
 
 describe('slotFromTime', () => {
   it('hora < 14:00 → mañana', () => {
@@ -135,5 +135,59 @@ describe('computeShifts', () => {
     const match = out.find(s => s.date === '2026-04-21');
     expect(match._virtual).toBe(false);
     expect(match.slot).toBe('afternoon');
+  });
+});
+
+describe('isShiftCancelled', () => {
+  it('sin cancelledAt el turno se hace', () => {
+    expect(isShiftCancelled({ id: 's1' })).toBe(false);
+    expect(isShiftCancelled({ id: 's1', cancelledAt: null })).toBe(false);
+  });
+
+  it('con cancelledAt el turno está cancelado', () => {
+    expect(isShiftCancelled({ id: 's1', cancelledAt: 1770000000000 })).toBe(true);
+  });
+
+  it('no revienta con null/undefined', () => {
+    expect(isShiftCancelled(null)).toBe(false);
+    expect(isShiftCancelled(undefined)).toBe(false);
+  });
+});
+
+describe('computeShifts con días cancelados', () => {
+  const tpl = {
+    id: 't1', orgId: 'o1', colonyId: 'c1', task: 'alimentacion',
+    slot: 'morning', daysOfWeek: [0,1,2,3,4,5,6], active: true,
+  };
+  const from = new Date(2026, 3, 20); // lunes 20 abr 2026
+  const to = new Date(2026, 3, 22);
+
+  it('la cancelación de un día no afecta al resto', () => {
+    const cancelled = {
+      id: 's1', orgId: 'o1', colonyId: 'c1', templateId: 't1',
+      date: '2026-04-21', slot: 'morning', task: 'alimentacion',
+      status: 'open', cancelledAt: 1770000000000,
+    };
+    const out = computeShifts({ templates: [tpl], shifts: [cancelled], from, to });
+    expect(out).toHaveLength(3);
+    const dia21 = out.find(s => s.date === '2026-04-21');
+    expect(isShiftCancelled(dia21)).toBe(true);
+    expect(dia21._virtual).toBe(false);
+    // Los otros dos días siguen virtuales y sin cancelar.
+    for (const d of ['2026-04-20', '2026-04-22']) {
+      const s = out.find(x => x.date === d);
+      expect(s._virtual).toBe(true);
+      expect(isShiftCancelled(s)).toBe(false);
+    }
+  });
+
+  it('el turno cancelado conserva la plantilla detrás', () => {
+    const cancelled = {
+      id: 's1', orgId: 'o1', colonyId: 'c1', templateId: 't1',
+      date: '2026-04-20', slot: 'morning', task: 'alimentacion',
+      status: 'open', cancelledAt: 1770000000000,
+    };
+    const out = computeShifts({ templates: [tpl], shifts: [cancelled], from, to });
+    expect(out.find(s => s.date === '2026-04-20')._template.id).toBe('t1');
   });
 });
