@@ -690,6 +690,7 @@ export const WeekView = ({ cursor, setCursor, shifts, members, colonies, dayNote
           const key = ymd(d);
           const isToday = key === today;
           const dayShifts = shifts.filter(s => s.date === key);
+          const note = noteByDay[key];
           return (
             <div key={i} className="rounded-xl p-2 min-h-[200px]"
                  style={{
