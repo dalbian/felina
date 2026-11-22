@@ -96,7 +96,6 @@ export const logActivity = ({
     metadata,
   }).then(({ error }) => {
     if (error) {
-      // eslint-disable-next-line no-console
       console.warn('[activity] log failed:', error.message);
     }
   });

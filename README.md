@@ -70,7 +70,15 @@ Luego:
 npm run dev      # servidor de desarrollo en http://localhost:5173
 npm run build    # compila a dist/ (lo que despliega Cloudflare)
 npm run test     # tests unitarios (vitest)
+npm run lint     # ESLint: variables sin declarar, imports que faltan, hooks
+npm run check    # lint + tests: pasar esto ANTES de subir a main
 ```
+
+**Por qué `npm run check`:** el `build` de Vite **no** detecta una variable que
+no existe, y los tests solo cubren la lógica pura de `src/lib`. Un fallo así
+llegó a producción (la vista de semana usaba una variable sin declarar y se
+quedaba en blanco) con el build limpio y los tests en verde. ESLint lo marca
+como error. Los avisos (imports sin usar, dependencias de efectos) no bloquean.
 
 El `npm run dev` se conecta al **mismo** Supabase que producción. No hay base de
 datos local: trabajas contra datos reales. Cuidado con lo que borras.
