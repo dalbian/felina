@@ -17,7 +17,7 @@ import { useTranslation } from '../lib/i18n.jsx';
 export const GlobalModals = ({
   // estado
   modal, setModal,
-  selectedColony, selectedCat, selectedShift, selectedTemplate,
+  selectedColony, selectedShift, selectedTemplate,
   setSelectedShift, setSelectedTemplate,
   currentOrg, currentUser, currentRole,
   orgColonies, orgMembers, orgTemplates,
@@ -33,7 +33,7 @@ export const GlobalModals = ({
   saveCat,
   saveEvent,
   saveCatReminder,
-  handleCreateNewOrg, handleEditOrg,
+  handleEditOrg,
   handlePlatformCreateOrg, handlePlatformEditOrg,
   handleChangeMyPassword, handleResetPassword,
   // handlers de turnos
@@ -88,9 +88,6 @@ export const GlobalModals = ({
       )}
     </Modal>
 
-    <Modal open={modal === 'createOrg'} onClose={() => setModal(null)} title={t('modal.title.createOrg')}>
-      <OrgForm onSave={handleCreateNewOrg} onCancel={() => setModal(null)} />
-    </Modal>
     <Modal open={modal === 'editOrg'} onClose={() => setModal(null)} title={t('modal.title.editOrg')}>
       <OrgForm org={currentOrg} onSave={handleEditOrg} onCancel={() => setModal(null)} />
     </Modal>

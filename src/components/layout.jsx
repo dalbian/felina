@@ -11,7 +11,7 @@ import { ROLES } from '../constants.js';
 import { useTranslation } from '../lib/i18n.jsx';
 import { OrgAvatar, UserAvatar } from './ui.jsx';
 
-export const OrgSwitcher = ({ currentOrg, userOrgs, currentRole, onSwitch, onCreateNew, isSuperAdmin, onExitToPlatform }) => {
+export const OrgSwitcher = ({ currentOrg, userOrgs, currentRole, onSwitch, isSuperAdmin, onExitToPlatform }) => {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
 
@@ -88,7 +88,7 @@ const getNav = ({ isSuperAdmin, hasOrg }) => {
   return items;
 };
 
-export const Sidebar = ({ view, onNav, currentOrg, userOrgs, currentRole, currentUser, onSwitchOrg, onCreateOrg, onLogout, isSuperAdmin }) => {
+export const Sidebar = ({ view, onNav, currentOrg, userOrgs, currentRole, currentUser, onSwitchOrg, onLogout, isSuperAdmin }) => {
   const { t } = useTranslation();
   const navItems = getNav({ isSuperAdmin, hasOrg: !!currentOrg });
   return (
@@ -105,7 +105,7 @@ export const Sidebar = ({ view, onNav, currentOrg, userOrgs, currentRole, curren
 
       {currentOrg ? (
         <OrgSwitcher currentOrg={currentOrg} userOrgs={userOrgs} currentRole={currentRole}
-                     onSwitch={onSwitchOrg} onCreateNew={onCreateOrg} isSuperAdmin={isSuperAdmin}
+                     onSwitch={onSwitchOrg} isSuperAdmin={isSuperAdmin}
                      onExitToPlatform={isSuperAdmin ? () => onNav('platform') : null} />
       ) : isSuperAdmin ? (
         <button onClick={() => onNav('platform')}

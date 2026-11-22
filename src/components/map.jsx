@@ -155,10 +155,14 @@ export const MapView = ({ colonies, cats, orgName, onSelectColony, canAddColony,
       if (typeof onPickLocation === 'function') onPickLocation({ lat, lng });
     };
     map.on('click', handler);
-    if (mapContainerRef.current) mapContainerRef.current.classList.add('felina-map-picking');
+    // Guardamos el nodo en una variable: en la limpieza, `mapContainerRef.current`
+    // puede apuntar ya a otro sitio (o a null) y nos dejaríamos el cursor de
+    // cruz puesto. Hay que quitar la clase al MISMO nodo al que se le puso.
+    const container = mapContainerRef.current;
+    if (container) container.classList.add('felina-map-picking');
     return () => {
       map.off('click', handler);
-      if (mapContainerRef.current) mapContainerRef.current.classList.remove('felina-map-picking');
+      if (container) container.classList.remove('felina-map-picking');
     };
   }, [addMode, mapReady, onPickLocation]);
 

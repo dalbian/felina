@@ -7,12 +7,11 @@ import {
   ChevronRight, Trash2, Check, LogOut,
 } from 'lucide-react';
 import { fmtRelative } from '../lib/dates.js';
-import { ROLES } from '../constants.js';
 import { useTranslation } from '../lib/i18n.jsx';
 import { OrgAvatar, UserAvatar, EmptyState } from './ui.jsx';
 import { inputStyle } from '../styles.jsx';
 
-export const PlatformView = ({ organizations, users, memberships, colonies, cats, events,
+export const PlatformView = ({ organizations, users, memberships, colonies, cats,
                         onCreateOrg, onDeleteOrg, onSuspendOrg, onEnterOrg, onEditOrg, onToggleSuperAdmin, onResetUserPassword, currentUserId, onLogout }) => {
   const { t } = useTranslation();
   const [tab, setTab] = useState('orgs');

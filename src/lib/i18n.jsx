@@ -289,7 +289,6 @@ const dict = {
     'modal.title.editEvent': 'Editar evento veterinario',
     'modal.title.addReminder': 'Nuevo recordatorio',
     'modal.title.editReminder': 'Editar recordatorio',
-    'modal.title.createOrg': 'Nueva organización',
     'modal.title.editOrg': 'Editar organización',
     'modal.title.platformCreateOrg': 'Crear organización desde plataforma',
     'modal.title.changeMyPassword': 'Cambiar contraseña',
@@ -646,9 +645,6 @@ const dict = {
 
     // Crear/editar organización (no plataforma)
     'store.createOrg.errTitle': 'No se pudo crear la organización',
-    'store.createOrg.errRls': 'Solo la administración de la plataforma puede crear nuevas organizaciones. Pídesela a un superadministrador.',
-    'store.createOrg.partialTitle': 'Org creada, pero…',
-    'store.createOrg.partialBody': 'No se pudo asignar tu rol de admin: {message}',
 
     // Invitar miembro
     'store.invite.sentTitle': 'Invitación enviada',
@@ -1152,7 +1148,6 @@ const dict = {
     'modal.title.editEvent': 'Edita l\'esdeveniment veterinari',
     'modal.title.addReminder': 'Nou recordatori',
     'modal.title.editReminder': 'Edita el recordatori',
-    'modal.title.createOrg': 'Nova organització',
     'modal.title.editOrg': 'Edita l\'organització',
     'modal.title.platformCreateOrg': 'Crea una organització des de la plataforma',
     'modal.title.changeMyPassword': 'Canvia la contrasenya',
@@ -1500,9 +1495,6 @@ const dict = {
     'store.err.leaveFail': 'No s\'ha pogut sortir',
 
     'store.createOrg.errTitle': 'No s\'ha pogut crear l\'organització',
-    'store.createOrg.errRls': 'Només l\'administració de la plataforma pot crear noves organitzacions. Demana-ho a un superadministrador.',
-    'store.createOrg.partialTitle': 'Org creada, però…',
-    'store.createOrg.partialBody': 'No s\'ha pogut assignar el teu rol d\'admin: {message}',
 
     'store.invite.sentTitle': 'Convidatòria enviada',
     'store.invite.sentBody': 'Hem enviat un correu a {email} amb l\'enllaç d\'activació. Apareixerà com a membre quan l\'obri i defineixi una contrasenya. Les primeres invitacions poden trigar uns minuts a arribar i, si no arriben, convé mirar la safata de correu brossa.',

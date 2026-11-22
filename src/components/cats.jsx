@@ -5,7 +5,7 @@ import { useState, useRef, useEffect } from 'react';
 import {
   MapPin, Plus, Search, ChevronLeft, ChevronRight, Edit3, Trash2,
   PawPrint, Camera, Check, Stethoscope, X as XIcon,
-  Bell, CheckCircle2, RotateCcw, AlertCircle, Repeat,
+  Bell, CheckCircle2, RotateCcw, Repeat,
 } from 'lucide-react';
 import { fmtDate, fmtMonthYear, parseYmd, todayYmd, calculateAge } from '../lib/dates.js';
 import { catReminderStatus } from '../lib/reminders.js';

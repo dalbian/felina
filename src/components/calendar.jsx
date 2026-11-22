@@ -5,7 +5,7 @@
 
 import { useState } from 'react';
 import {
-  Plus, ChevronLeft, ChevronRight, X, Edit3, Calendar, AlertTriangle, Check,
+  Plus, ChevronLeft, ChevronRight, Edit3, Calendar, AlertTriangle, Check,
   CheckCircle2, Clock, UserCheck, CalendarDays, CalendarClock, Repeat, Trash2,
   UserMinus, UserPlus, MapPin, CalendarOff, RotateCcw, StickyNote,
 } from 'lucide-react';
@@ -17,7 +17,7 @@ import { computeShifts, isShiftPast as isShiftPastRaw, slotFromTime, isShiftCanc
 import { can } from '../lib/permissions.js';
 import { SHIFT_TASKS, SHIFT_SLOTS, DAYS_OF_WEEK, ROLES } from '../constants.js';
 import { useTranslation } from '../lib/i18n.jsx';
-import { TaskPill, EmptyState, UserAvatar, Field, RoleBadge } from './ui.jsx';
+import { EmptyState, UserAvatar } from './ui.jsx';
 import { inputStyle, labelStyle } from '../styles.jsx';
 
 // Wrapper local para que isShiftPast mantenga su firma de un único argumento
@@ -317,7 +317,7 @@ export const ShiftAssignForm = ({ shift, members, colony, onSave, onCancel }) =>
 // Modal de detalle de un turno: muestra info + acciones contextuales según estado y rol
 export const ShiftDetailView = ({ shift, colony, assignee, completedBy, currentUser, currentRole,
                           onClaim, onUnclaim, onComplete, onUncomplete, onAssign, onEditTemplate,
-                          onCancelDay, onUncancelDay, onClose }) => {
+                          onCancelDay, onUncancelDay }) => {
   const { t } = useTranslation();
   const task = SHIFT_TASKS[shift.task] || SHIFT_TASKS.otros;
   const Icon = task.icon;
@@ -952,7 +952,7 @@ export const TemplatesView = ({ templates, colonies, currentRole, onAdd, onEdit 
   );
 };
 
-export const DayListModal = ({ date, shifts, colonies, members, onSelectShift, onClose }) => {
+export const DayListModal = ({ date, shifts, colonies, members, onSelectShift }) => {
   const { t } = useTranslation();
   const colonyById = Object.fromEntries(colonies.map(c => [c.id, c]));
   const memberById = Object.fromEntries(members.map(m => [m.userId, m]));

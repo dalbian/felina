@@ -12,11 +12,9 @@
 
 import { useState, useEffect } from 'react';
 
-import { uid } from '../lib/ids.js';
 import { load, save, STORAGE_PREFIX } from '../lib/storage.js';
-import { normalizeEmail, isValidEmail, validatePassword } from '../lib/auth.js';
+import { normalizeEmail, isValidEmail } from '../lib/auth.js';
 import { can } from '../lib/permissions.js';
-import { sampleData } from '../lib/seed.js';
 import { slotFromTime, isShiftCancelled } from '../lib/shifts.js';
 import { supabase, initialAuthFlow } from '../lib/supabaseClient.js';
 import { uploadCatPhoto, deleteCatPhoto } from '../lib/images.js';
@@ -184,7 +182,7 @@ export function useFelinaStore() {
   //
   // Devuelve { me, ownOrgIds } para que el llamador pueda decidir la vista y
   // la org por defecto sin esperar al re-render de React.
-  const loadAuthenticatedData = async (userId, userEmail) => {
+  const loadAuthenticatedData = async (userId) => {
     const [meRes, profilesRes, orgsRes, membersRes, coloniesRes, catsRes, eventsRes, templatesRes, shiftsRes, remindersRes, notesRes, activityRes] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', userId).single(),
       supabase.from('profiles').select('*'),
@@ -231,7 +229,7 @@ export function useFelinaStore() {
   const refresh = async () => {
     const { data: { session: supaSession } } = await supabase.auth.getSession();
     if (!supaSession?.user) return;
-    await loadAuthenticatedData(supaSession.user.id, supaSession.user.email);
+    await loadAuthenticatedData(supaSession.user.id);
   };
 
   // ───── Conexión a Supabase Auth ─────
@@ -248,7 +246,7 @@ export function useFelinaStore() {
     const handleSession = async (supaSession) => {
       if (!mounted) return;
       if (supaSession?.user) {
-        const { me, ownOrgIds } = await loadAuthenticatedData(supaSession.user.id, supaSession.user.email);
+        const { me, ownOrgIds } = await loadAuthenticatedData(supaSession.user.id);
         if (!mounted) return;
 
         // Resolver qué org abrir:
@@ -433,40 +431,6 @@ export function useFelinaStore() {
       keys.forEach(k => window.localStorage.removeItem(k));
     } catch {}
     window.location.reload();
-  };
-
-  const handleCreateNewOrg = async ({ name, city, contactEmail }) => {
-    // Crear org. Por RLS solo super_admin puede hacerlo; otros roles reciben
-    // el rechazo del servidor. El flujo de "super_admin crea org y asigna
-    // admin" es la vía estándar en producción (Plataforma).
-    const { data: newOrg, error: orgErr } = await supabase
-      .from('organizations')
-      .insert({ name, city, contact_email: contactEmail, color: '#2D4A3E', suspended: false })
-      .select()
-      .single();
-    if (orgErr) {
-      await notify({
-        title: t('store.createOrg.errTitle'),
-        message: orgErr.code === '42501' || /row-level security/i.test(orgErr.message)
-          ? t('store.createOrg.errRls')
-          : orgErr.message,
-      });
-      return;
-    }
-    // El usuario que la crea queda como admin de la org (solo si no es ya
-    // super_admin "puro": super_admin no necesita membership para administrarla).
-    if (!isSuperAdmin) {
-      const { error: memErr } = await supabase.from('memberships').insert({
-        user_id: session.userId, org_id: newOrg.id, role: 'admin',
-      });
-      if (memErr) {
-        await notify({ title: t('store.createOrg.partialTitle'), message: t('store.createOrg.partialBody', { message: memErr.message }) });
-      }
-    }
-    await refresh();
-    setSession({ ...session, orgId: newOrg.id });
-    await persistSelectedOrg(newOrg.id);
-    setView('dashboard'); setModal(null);
   };
 
   const handleSwitchOrg = async (orgId) => {
@@ -1730,7 +1694,7 @@ export function useFelinaStore() {
     handleForgotPassword, handleSetPassword, passwordSetupMode,
 
     // Handlers de organización
-    handleCreateNewOrg, handleSwitchOrg,
+    handleSwitchOrg,
     handleEditOrg, handleLeaveOrg, handleDeleteOrg,
 
     // Handlers de miembros

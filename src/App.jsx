@@ -128,12 +128,12 @@ export default function App() {
     // UI state
     loading, session, rgpdAcknowledged,
     view, setView, activityFrom,
-    selectedColony, setSelectedColony, selectedCat, setSelectedCat,
+    selectedColony, setSelectedColony, selectedCat,
     selectedShift, setSelectedShift, selectedTemplate, setSelectedTemplate,
     modal, setModal, filter, setFilter,
     confirmState, resolveConfirm, notify,
     // Datos
-    organizations, users, memberships, colonies, cats, events, shiftTemplates, shifts,
+    organizations, users, memberships, colonies, cats, events,
     // Derivados
     currentUser, currentOrg, isSuperAdmin, currentRole,
     orgColonies, orgCats, orgEvents, orgTemplates, orgShifts, orgReminders, orgDayNotes,
@@ -143,7 +143,7 @@ export default function App() {
     handleAcceptRgpd,
     handleLogin, handleLogout, handleResetData,
     handleForgotPassword, handleSetPassword, passwordSetupMode,
-    handleCreateNewOrg, handleSwitchOrg,
+    handleSwitchOrg,
     handleEditOrg, handleLeaveOrg, handleDeleteOrg,
     handleAddMember, handleRemoveMember, handleChangeRole,
     handleChangeMyPassword, handleResetPassword,
@@ -318,7 +318,6 @@ export default function App() {
         <Sidebar view={view} onNav={onNav}
                  currentOrg={currentOrg} userOrgs={userOrgs} currentRole={currentRole} currentUser={currentUser}
                  onSwitchOrg={isSuperAdmin ? handleEnterOrgAsSuperAdmin : handleSwitchOrg}
-                 onCreateOrg={() => setModal('createOrg')}
                  onLogout={handleLogout}
                  isSuperAdmin={isSuperAdmin} />
 
@@ -353,7 +352,7 @@ export default function App() {
             }>
             {view === 'platform' && isSuperAdmin && (
               <PlatformView organizations={organizations} users={users} memberships={memberships}
-                            colonies={colonies} cats={cats} events={events}
+                            colonies={colonies} cats={cats}
                             currentUserId={currentUser.id}
                             onCreateOrg={() => setModal('platformCreateOrg')}
                             onDeleteOrg={handlePlatformDeleteOrg}
@@ -475,7 +474,6 @@ export default function App() {
         <GlobalModals
           modal={modal} setModal={setModal}
           selectedColony={selectedColony}
-          selectedCat={selectedCat}
           selectedShift={selectedShift}
           selectedTemplate={selectedTemplate}
           setSelectedShift={setSelectedShift}
@@ -489,7 +487,7 @@ export default function App() {
           saveCat={saveCat}
           saveEvent={saveEvent}
           saveCatReminder={saveCatReminder}
-          handleCreateNewOrg={handleCreateNewOrg} handleEditOrg={handleEditOrg}
+          handleEditOrg={handleEditOrg}
           handlePlatformCreateOrg={handlePlatformCreateOrg}
           handlePlatformEditOrg={handlePlatformEditOrg}
           handleChangeMyPassword={handleChangeMyPassword}
