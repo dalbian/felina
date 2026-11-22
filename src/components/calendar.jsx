@@ -483,7 +483,8 @@ export const ShiftDetailView = ({ shift, colony, assignee, completedBy, currentU
 // CALENDARIO: VISTAS (mes, semana, mis turnos, plantillas)
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const CalendarFilters = ({ colonies, colonyFilter, setColonyFilter, taskFilter, setTaskFilter }) => {
+export const CalendarFilters = ({ colonies, colonyFilter, setColonyFilter, taskFilter, setTaskFilter,
+                                 showCancelled, setShowCancelled }) => {
   const { t } = useTranslation();
   return (
     <div className="flex flex-wrap gap-2 mb-4">
@@ -497,6 +498,14 @@ export const CalendarFilters = ({ colonies, colonyFilter, setColonyFilter, taskF
         <option value="all">{t('cal.allTasks')}</option>
         {Object.entries(SHIFT_TASKS).map(([k]) => <option key={k} value={k}>{t(`task.${k}.label`)}</option>)}
       </select>
+      {/* Los días cancelados no se pintan: el día queda limpio. Este
+          interruptor es la forma de recuperarlos si se anuló por error. */}
+      <label className="inline-flex items-center gap-2 px-3 py-2 rounded-lg text-sm cursor-pointer"
+             style={{ backgroundColor: showCancelled ? '#F5DDCE' : '#FDFAF3', boxShadow: '0 0 0 1px #EADFC9', color: showCancelled ? '#B15A3A' : '#4A433C' }}>
+        <input type="checkbox" checked={showCancelled} onChange={e => setShowCancelled(e.target.checked)}
+               className="w-4 h-4 rounded" />
+        <CalendarOff className="w-3.5 h-3.5" /> {t('cal.showCancelled')}
+      </label>
     </div>
   );
 };
@@ -1013,6 +1022,8 @@ export const CalendarView = ({ templates, shifts, colonies, members, users, curr
   const [cursor, setCursor] = useState(new Date());
   const [colonyFilter, setColonyFilter] = useState('all');
   const [taskFilter, setTaskFilter] = useState('all');
+  // Apagado por defecto: lo normal es no querer ver los días que se anularon.
+  const [showCancelled, setShowCancelled] = useState(false);
 
   // Rango a materializar según la vista
   let rangeFrom, rangeTo;
@@ -1032,6 +1043,11 @@ export const CalendarView = ({ templates, shifts, colonies, members, users, curr
   const colonyIds = colonyFilter === 'all' ? null : new Set([colonyFilter]);
   let allShifts = computeShifts({ templates, shifts, colonyIds, from: rangeFrom, to: rangeTo });
   if (taskFilter !== 'all') allShifts = allShifts.filter(s => s.task === taskFilter);
+  // Un día cancelado deja el día LIMPIO: no se pinta nada, para poder poner
+  // otra cosa sin ruido visual. La fila sigue en la base de datos (es lo que
+  // impide que la plantilla lo vuelva a generar), pero solo se ve activando
+  // "Ver cancelados", que es la puerta para recuperarlos si fue un error.
+  if (!showCancelled) allShifts = allShifts.filter(s => !isShiftCancelled(s));
 
   // Lista enriquecida para resolver assignees/completedBy: miembros reales de
   // la org + perfiles globales (users) como fallback. Usuarios "de paso" como
@@ -1084,7 +1100,8 @@ export const CalendarView = ({ templates, shifts, colonies, members, users, curr
 
       {tab !== 'templates' && tab !== 'mine' && (
         <CalendarFilters colonies={colonies} colonyFilter={colonyFilter} setColonyFilter={setColonyFilter}
-                         taskFilter={taskFilter} setTaskFilter={setTaskFilter} />
+                         taskFilter={taskFilter} setTaskFilter={setTaskFilter}
+                         showCancelled={showCancelled} setShowCancelled={setShowCancelled} />
       )}
 
       {tab === 'month' && (
